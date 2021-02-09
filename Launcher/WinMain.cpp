@@ -4,7 +4,7 @@
 #pragma comment(lib, "Winmm.lib")
 
 #define RBOX_EXE   "C:\\Program Files\\Pioneer\\rekordbox 6.5.0\\rekordbox.exe"
-#define MODULE_DLL "C:\\Users\\danie\\source\\repos\\RekordBoxSongExporter\\x64\\Release\\SongExporterModule.dll"
+#define MODULE_DLL "C:\\Users\\danie\\source\\repos\\RekordBoxSongExporter\\x64\\Release\\Module.dll"
 
 // write a string into a remote process
 void *inject_string(HANDLE hProc, const char *str)
@@ -30,7 +30,9 @@ HANDLE find_rekordbox_window()
     DWORD procID = 0;
     uint32_t i = 0;
     do {
-        Sleep(1000);
+        if (i > 0) {
+            Sleep(3000);
+        }
         hWnd = FindWindowA(NULL, "rekordbox");
         i++;
     } while (hWnd == NULL && i < 15);

@@ -35,14 +35,18 @@ void _log(const char *prefix, const char *fmt, ...)
     va_end(args);
 }
 
+struct deck_struct
+{
+    uint8_t pad[0x138];
+    char *track_title; // deck 1 track title
+    uint8_t pad2[0xa0];
+};
+
 // structure reversed out of rekordbox that appears to
 // contain the track info for each deck
 struct play_track_event
 {
-    uint8_t pad[0x138];
-    char *track_title; // deck 1 track title
-    uint8_t pad2[0x1D8];
-    char *track2_title; // deck 2 track title
+    deck_struct decks[2];
 };
 
 // a pointer of this type is passed into the eventPlay function
@@ -90,8 +94,8 @@ void play_track_hook(event_struct *event)
     static const char *old_track1 = nullptr;
     static const char *old_track2 = nullptr;
     // grab the current tracks we have selected
-    const char *track1 = track_info->track_title;
-    const char *track2 = track_info->track2_title;
+    const char *track1 = track_info->decks[0].track_title;
+    const char *track2 = track_info->decks[1].track_title;
     const char *new_track = nullptr;
     // check if either of the tracks changed and if one did then log that 
     // track. Unfortunately if you change both tracks at the same time 
