@@ -138,9 +138,9 @@ DWORD mainThread(void *param)
 		return 1;
 	}
 
-	// write the indirect call to our func
+	// write the jmp to our func
 	write_jump(trampoline_addr, (uintptr_t)play_track_hook); // 0xE bytes
-	// write the retn address
+	// write a push for the retn address so our function can return
 	write_push64(trampoline_addr + 0xE, trampoline_addr + 0x1B); // 0xD bytes
 
 	void *trampoline = (void *)trampoline_addr;
@@ -149,7 +149,7 @@ DWORD mainThread(void *param)
 #define TRAMPOLINE_LEN 0x13
 
 	// copy trampoline bytes
-	uintptr_t trampoline_after_call = trampoline_addr + 0x1B;
+	uintptr_t trampoline_after_call = trampoline_addr + 0x1B; // 0x1B = 0xE + 0xD (the jmp + push above)
 	memcpy((void *)trampoline_after_call, event_play_func, TRAMPOLINE_LEN);
 	info("Copied trampoline bytes");
 
