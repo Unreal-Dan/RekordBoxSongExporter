@@ -1,6 +1,9 @@
 # RekordBoxSongExporter
 A hack for Rekordbox (Windows 64bit ONLY) to export played tracks for integration with OBS
 
+NOTE: This does **NOT** poll the rekordbox database, this directly hooks rekordbox
+      which means your track listings will update in realtime in about ~2 seconds
+
 Simply configure the paths in the program, compile it, and run the Launcher.
 
 The Launcher will launch RekordBox and inject a module which hooks a function,
