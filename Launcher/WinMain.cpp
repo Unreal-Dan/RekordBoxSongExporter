@@ -3,8 +3,8 @@
 
 #pragma comment(lib, "Winmm.lib")
 
-#define RBOX_EXE	"C:\\Program Files\\Pioneer\\rekordbox 6.5.0\\rekordbox.exe"
-#define MODULE_DLL	"C:\\Users\\danie\\source\\repos\\RekordBoxSongExporter\\x64\\Release\\SongExporterModule.dll"
+#define RBOX_EXE   "C:\\Program Files\\Pioneer\\rekordbox 6.5.0\\rekordbox.exe"
+#define MODULE_DLL "C:\\Users\\danie\\source\\repos\\RekordBoxSongExporter\\x64\\Release\\SongExporterModule.dll"
 
 // write a string into a remote process
 void *inject_string(HANDLE hProc, const char *str)

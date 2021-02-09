@@ -16,13 +16,13 @@
 #define success(msg, ...) _log("+", msg, __VA_ARGS__)
 
 // This is the number of songs that will be kept in current_tracks.txt
-#define MAX_SONGS		10
+#define MAX_SONGS       10
 
 // This is the file containing the last 10 songs
-#define TRACK_FILE		"C:\\Users\\danie\\Documents\\current_tracks.txt"
+#define TRACK_FILE      "C:\\Users\\danie\\Documents\\current_tracks.txt"
 
 // this is the logfile for all songs played
-#define TRACK_LOG_FILE	"C:\\Users\\danie\\Documents\\played_tracks.txt"
+#define TRACK_LOG_FILE  "C:\\Users\\danie\\Documents\\played_tracks.txt"
 
 // log a message with a prefix in brackets
 void _log(const char *prefix, const char *fmt, ...)
