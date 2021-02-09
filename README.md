@@ -1,5 +1,5 @@
 # RekordBoxSongExporter
-A hack for Rekordbox (64bit ONLY) to export played tracks for integration with OBS
+A hack for Rekordbox (Windows 64bit ONLY) to export played tracks for integration with OBS
 
 Simply configure the paths in the program, compile it, and run the Launcher.
 
