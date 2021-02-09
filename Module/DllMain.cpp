@@ -7,13 +7,24 @@
 #include <sstream>
 #include <string>
 
+// don't touch this
+#define TRAMPOLINE_LEN 0x13
+
+// logging macro functions
 #define info(msg, ...) _log("*", msg, __VA_ARGS__)
 #define error(msg, ...) _log("-", msg, __VA_ARGS__)
 #define success(msg, ...) _log("+", msg, __VA_ARGS__)
 
-#define TRACK_FILE "C:\\Users\\danie\\Documents\\current_tracks.txt"
-#define TRACK_LOG_FILE "C:\\Users\\danie\\Documents\\played_tracks.txt"
+// This is the number of songs that will be kept in current_tracks.txt
+#define MAX_SONGS		10
 
+// This is the file containing the last 10 songs
+#define TRACK_FILE		"C:\\Users\\danie\\Documents\\current_tracks.txt"
+
+// this is the logfile for all songs played
+#define TRACK_LOG_FILE	"C:\\Users\\danie\\Documents\\played_tracks.txt"
+
+// log a message with a prefix in brackets
 void _log(const char *prefix, const char *fmt, ...)
 {
 	va_list args;
@@ -24,20 +35,25 @@ void _log(const char *prefix, const char *fmt, ...)
 	va_end(args);
 }
 
+// structure reversed out of rekordbox that appears to
+// contain the track info for each deck
 struct play_track_event
 {
 	uint8_t pad[0x138];
-	char *track_title; // 0x140
+	char *track_title; // deck 1 track title
 	uint8_t pad2[0x1D8];
-	char *track2_title;
+	char *track2_title; // deck 2 track title
 };
 
+// a pointer of this type is passed into the eventPlay function
+// we only really need the event_info contained inside
 struct event_struct
 {
 	void *qword0;
 	play_track_event *event_info;
 };
 
+// clears the last-10 tracks file 
 void clear_track_file()
 {
 	FILE *f = NULL;
@@ -46,6 +62,7 @@ void clear_track_file()
 	}
 }
 
+// logs a track to both the global log and last-10 tracks
 void log_track(const char *track)
 {
 	// log to the global log
@@ -60,19 +77,26 @@ void log_track(const char *track)
 	trackFile.open(TRACK_FILE, std::fstream::out | std::fstream::trunc);
 	std::istringstream iss(fileData.str());
 	std::string line;
-	for (uint32_t i = 0; (i < 10) && std::getline(iss, line); i++) {
+	for (uint32_t i = 0; (i < MAX_SONGS) && std::getline(iss, line); i++) {
 		trackFile << line << "\n";
 	}
 }
 
+// the actual hook function that eventPlay is redirected to
 void play_track_hook(event_struct *event)
 {
 	play_track_event *track_info = event->event_info;
+	// keep track of the last tracks we had selected 
 	static const char *old_track1 = nullptr;
 	static const char *old_track2 = nullptr;
+	// grab the current tracks we have selected
 	const char *track1 = track_info->track_title;
 	const char *track2 = track_info->track2_title;
 	const char *new_track = nullptr;
+	// check if either of the tracks changed and if one did then log that 
+	// track. Unfortunately if you change both tracks at the same time 
+	// then press play it will always log the track that was loaded onto 
+	// the second deck regardless of which deck you pressed play on.
 	if (old_track1 != track1 && track1[0]) {
 		new_track = track1;
 	}
@@ -83,11 +107,12 @@ void play_track_hook(event_struct *event)
 		info("Playing track: %s", new_track);
 		log_track(new_track);
 	}
+	// store current tracks for the next time play button is pressed
 	old_track1 = track1;
 	old_track2 = track2;
 }
 
-// 13 byte push 64 bit value absolute
+// 13 byte push of a 64 bit value absolute via push + mov [rsp + 4]
 void write_push64(uintptr_t addr, uintptr_t value)
 {
 	// push
@@ -101,7 +126,7 @@ void write_push64(uintptr_t addr, uintptr_t value)
 	*(uint32_t *)(addr + 9) = (uint32_t)((value >> 32) & 0xFFFFFFFF);
 }
 
-// 14 byte absolute jmp to 64bit dest written to src
+// 14 byte absolute jmp to 64bit dest via push + ret written to src
 void write_jump(uintptr_t src, uintptr_t dest)
 {
 	// push dest
@@ -113,9 +138,6 @@ void write_jump(uintptr_t src, uintptr_t dest)
 
 DWORD mainThread(void *param)
 {
-	uintptr_t base = (uintptr_t)GetModuleHandle(NULL);
-	uintptr_t event_play_addr = base + 0x908D70;
-	void *event_play_func = (void *)event_play_addr;
 	FILE *con = NULL;
 	if (!AllocConsole() || freopen_s(&con, "CONOUT$", "w", stdout) != 0) {
 		error("Failed to initialize console");
@@ -127,8 +149,13 @@ DWORD mainThread(void *param)
 
 	info("Cleared track file");
 
+	// wait to let rekordbox completely open, hooking too soon can cause problems
 	Sleep(3000);
 
+	// determine address of target function to hook
+	uintptr_t base = (uintptr_t)GetModuleHandle(NULL);
+	uintptr_t event_play_addr = base + 0x908D70;
+	void *event_play_func = (void *)event_play_addr;
 	info("event_play_func: %p + 0x908D70 = %p", base, event_play_func);
 
 	// allocate trampoline
@@ -145,8 +172,6 @@ DWORD mainThread(void *param)
 
 	void *trampoline = (void *)trampoline_addr;
 	success("Allocated trampoline: %p", trampoline);
-
-#define TRAMPOLINE_LEN 0x13
 
 	// copy trampoline bytes
 	uintptr_t trampoline_after_call = trampoline_addr + 0x1B; // 0x1B = 0xE + 0xD (the jmp + push above)
