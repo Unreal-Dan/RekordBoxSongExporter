@@ -27,187 +27,187 @@
 // log a message with a prefix in brackets
 void _log(const char *prefix, const char *fmt, ...)
 {
-	va_list args;
-	va_start(args, fmt);
-	printf("[%s] ", prefix);
-	vprintf(fmt, args);
-	printf("\n");
-	va_end(args);
+    va_list args;
+    va_start(args, fmt);
+    printf("[%s] ", prefix);
+    vprintf(fmt, args);
+    printf("\n");
+    va_end(args);
 }
 
 // structure reversed out of rekordbox that appears to
 // contain the track info for each deck
 struct play_track_event
 {
-	uint8_t pad[0x138];
-	char *track_title; // deck 1 track title
-	uint8_t pad2[0x1D8];
-	char *track2_title; // deck 2 track title
+    uint8_t pad[0x138];
+    char *track_title; // deck 1 track title
+    uint8_t pad2[0x1D8];
+    char *track2_title; // deck 2 track title
 };
 
 // a pointer of this type is passed into the eventPlay function
 // we only really need the event_info contained inside
 struct event_struct
 {
-	void *qword0;
-	play_track_event *event_info;
+    void *qword0;
+    play_track_event *event_info;
 };
 
 // clears the last-10 tracks file 
 void clear_track_file()
 {
-	FILE *f = NULL;
-	if (fopen_s(&f, TRACK_FILE, "w") == ERROR_SUCCESS && f) {
-		fclose(f);
-	}
+    FILE *f = NULL;
+    if (fopen_s(&f, TRACK_FILE, "w") == ERROR_SUCCESS && f) {
+        fclose(f);
+    }
 }
 
 // logs a track to both the global log and last-10 tracks
 void log_track(const char *track)
 {
-	// log to the global log
-	std::ofstream trackLogFile(TRACK_LOG_FILE, std::ios::app);
-	trackLogFile << track << "\n";
-	// update the last 10 file
-	std::fstream trackFile(TRACK_FILE);
-	std::stringstream fileData;
-	fileData << track << "\n";
-	fileData << trackFile.rdbuf();
-	trackFile.close();
-	trackFile.open(TRACK_FILE, std::fstream::out | std::fstream::trunc);
-	std::istringstream iss(fileData.str());
-	std::string line;
-	for (uint32_t i = 0; (i < MAX_SONGS) && std::getline(iss, line); i++) {
-		trackFile << line << "\n";
-	}
+    // log to the global log
+    std::ofstream trackLogFile(TRACK_LOG_FILE, std::ios::app);
+    trackLogFile << track << "\n";
+    // update the last 10 file
+    std::fstream trackFile(TRACK_FILE);
+    std::stringstream fileData;
+    fileData << track << "\n";
+    fileData << trackFile.rdbuf();
+    trackFile.close();
+    trackFile.open(TRACK_FILE, std::fstream::out | std::fstream::trunc);
+    std::istringstream iss(fileData.str());
+    std::string line;
+    for (uint32_t i = 0; (i < MAX_SONGS) && std::getline(iss, line); i++) {
+        trackFile << line << "\n";
+    }
 }
 
 // the actual hook function that eventPlay is redirected to
 void play_track_hook(event_struct *event)
 {
-	play_track_event *track_info = event->event_info;
-	// keep track of the last tracks we had selected 
-	static const char *old_track1 = nullptr;
-	static const char *old_track2 = nullptr;
-	// grab the current tracks we have selected
-	const char *track1 = track_info->track_title;
-	const char *track2 = track_info->track2_title;
-	const char *new_track = nullptr;
-	// check if either of the tracks changed and if one did then log that 
-	// track. Unfortunately if you change both tracks at the same time 
-	// then press play it will always log the track that was loaded onto 
-	// the second deck regardless of which deck you pressed play on.
-	if (old_track1 != track1 && track1[0]) {
-		new_track = track1;
-	}
-	if (old_track2 != track2 && track2[0]) {
-		new_track = track2;
-	}
-	if (new_track) {
-		info("Playing track: %s", new_track);
-		log_track(new_track);
-	}
-	// store current tracks for the next time play button is pressed
-	old_track1 = track1;
-	old_track2 = track2;
+    play_track_event *track_info = event->event_info;
+    // keep track of the last tracks we had selected 
+    static const char *old_track1 = nullptr;
+    static const char *old_track2 = nullptr;
+    // grab the current tracks we have selected
+    const char *track1 = track_info->track_title;
+    const char *track2 = track_info->track2_title;
+    const char *new_track = nullptr;
+    // check if either of the tracks changed and if one did then log that 
+    // track. Unfortunately if you change both tracks at the same time 
+    // then press play it will always log the track that was loaded onto 
+    // the second deck regardless of which deck you pressed play on.
+    if (old_track1 != track1 && track1[0]) {
+        new_track = track1;
+    }
+    if (old_track2 != track2 && track2[0]) {
+        new_track = track2;
+    }
+    if (new_track) {
+        info("Playing track: %s", new_track);
+        log_track(new_track);
+    }
+    // store current tracks for the next time play button is pressed
+    old_track1 = track1;
+    old_track2 = track2;
 }
 
 // 13 byte push of a 64 bit value absolute via push + mov [rsp + 4]
 void write_push64(uintptr_t addr, uintptr_t value)
 {
-	// push
-	*(uint8_t *)(addr + 0) = 0x68;
-	*(uint32_t *)(addr + 1) = (uint32_t)(value & 0xFFFFFFFF);
-	// mov [rsp + 4], dword
-	*(uint8_t *)(addr + 5) = 0xC7;
-	*(uint8_t *)(addr + 6) = 0x44;
-	*(uint8_t *)(addr + 7) = 0x24;
-	*(uint8_t *)(addr + 8) = 0x04;
-	*(uint32_t *)(addr + 9) = (uint32_t)((value >> 32) & 0xFFFFFFFF);
+    // push
+    *(uint8_t *)(addr + 0) = 0x68;
+    *(uint32_t *)(addr + 1) = (uint32_t)(value & 0xFFFFFFFF);
+    // mov [rsp + 4], dword
+    *(uint8_t *)(addr + 5) = 0xC7;
+    *(uint8_t *)(addr + 6) = 0x44;
+    *(uint8_t *)(addr + 7) = 0x24;
+    *(uint8_t *)(addr + 8) = 0x04;
+    *(uint32_t *)(addr + 9) = (uint32_t)((value >> 32) & 0xFFFFFFFF);
 }
 
 // 14 byte absolute jmp to 64bit dest via push + ret written to src
 void write_jump(uintptr_t src, uintptr_t dest)
 {
-	// push dest
-	write_push64(src, dest);
-	// retn
-	*(int32_t *)(src + 13) = 0xC3;
-	info("jmp written %p -> %p", src, dest);
+    // push dest
+    write_push64(src, dest);
+    // retn
+    *(int32_t *)(src + 13) = 0xC3;
+    info("jmp written %p -> %p", src, dest);
 }
 
 DWORD mainThread(void *param)
 {
-	FILE *con = NULL;
-	if (!AllocConsole() || freopen_s(&con, "CONOUT$", "w", stdout) != 0) {
-		error("Failed to initialize console");
-		return 1;
-	}
-	success("Initialized console");
+    FILE *con = NULL;
+    if (!AllocConsole() || freopen_s(&con, "CONOUT$", "w", stdout) != 0) {
+        error("Failed to initialize console");
+        return 1;
+    }
+    success("Initialized console");
 
-	clear_track_file();
+    clear_track_file();
 
-	info("Cleared track file");
+    info("Cleared track file");
 
-	// wait to let rekordbox completely open, hooking too soon can cause problems
-	Sleep(3000);
+    // wait to let rekordbox completely open, hooking too soon can cause problems
+    Sleep(3000);
 
-	// determine address of target function to hook
-	uintptr_t base = (uintptr_t)GetModuleHandle(NULL);
-	uintptr_t event_play_addr = base + 0x908D70;
-	void *event_play_func = (void *)event_play_addr;
-	info("event_play_func: %p + 0x908D70 = %p", base, event_play_func);
+    // determine address of target function to hook
+    uintptr_t base = (uintptr_t)GetModuleHandle(NULL);
+    uintptr_t event_play_addr = base + 0x908D70;
+    void *event_play_func = (void *)event_play_addr;
+    info("event_play_func: %p + 0x908D70 = %p", base, event_play_func);
 
-	// allocate trampoline
-	uintptr_t trampoline_addr = (uintptr_t)VirtualAlloc(NULL, 1024, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-	if (!trampoline_addr) {
-		error("Failed to allocate trampoline");
-		return 1;
-	}
+    // allocate trampoline
+    uintptr_t trampoline_addr = (uintptr_t)VirtualAlloc(NULL, 1024, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (!trampoline_addr) {
+        error("Failed to allocate trampoline");
+        return 1;
+    }
 
-	// write the jmp to our func
-	write_jump(trampoline_addr, (uintptr_t)play_track_hook); // 0xE bytes
-	// write a push for the retn address so our function can return
-	write_push64(trampoline_addr + 0xE, trampoline_addr + 0x1B); // 0xD bytes
+    // write the jmp to our func
+    write_jump(trampoline_addr, (uintptr_t)play_track_hook); // 0xE bytes
+    // write a push for the retn address so our function can return
+    write_push64(trampoline_addr + 0xE, trampoline_addr + 0x1B); // 0xD bytes
 
-	void *trampoline = (void *)trampoline_addr;
-	success("Allocated trampoline: %p", trampoline);
+    void *trampoline = (void *)trampoline_addr;
+    success("Allocated trampoline: %p", trampoline);
 
-	// copy trampoline bytes
-	uintptr_t trampoline_after_call = trampoline_addr + 0x1B; // 0x1B = 0xE + 0xD (the jmp + push above)
-	memcpy((void *)trampoline_after_call, event_play_func, TRAMPOLINE_LEN);
-	info("Copied trampoline bytes");
+    // copy trampoline bytes
+    uintptr_t trampoline_after_call = trampoline_addr + 0x1B; // 0x1B = 0xE + 0xD (the jmp + push above)
+    memcpy((void *)trampoline_after_call, event_play_func, TRAMPOLINE_LEN);
+    info("Copied trampoline bytes");
 
-	// src = 5 bytes after the ret at end of tramp
-	// dest = after patched bytes in event play
-	uintptr_t trampoline_ret_start = trampoline_after_call + TRAMPOLINE_LEN;
-	write_jump(trampoline_ret_start, event_play_addr + TRAMPOLINE_LEN);
+    // src = 5 bytes after the ret at end of tramp
+    // dest = after patched bytes in event play
+    uintptr_t trampoline_ret_start = trampoline_after_call + TRAMPOLINE_LEN;
+    write_jump(trampoline_ret_start, event_play_addr + TRAMPOLINE_LEN);
 
-	// unprotect event play func
-	DWORD oldProt = 0;
-	VirtualProtect(event_play_func, 16, PAGE_EXECUTE_READWRITE, &oldProt);
+    // unprotect event play func
+    DWORD oldProt = 0;
+    VirtualProtect(event_play_func, 16, PAGE_EXECUTE_READWRITE, &oldProt);
 
-	// src = event play addr
-	// dest = the trampoline
-	write_jump(event_play_addr, trampoline_addr);
+    // src = event play addr
+    // dest = the trampoline
+    write_jump(event_play_addr, trampoline_addr);
 
-	success("Success");
+    success("Success");
 
-	return 0;
+    return 0;
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
 {
-	switch (fdwReason) {
-	case DLL_PROCESS_ATTACH:
-		CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)mainThread, NULL, 0, NULL);
-		break;
-	case DLL_THREAD_ATTACH:
-		break;
-	case DLL_THREAD_DETACH:
-		break;
-	case DLL_PROCESS_DETACH:
-		break;
-	}
-	return TRUE;
+    switch (fdwReason) {
+    case DLL_PROCESS_ATTACH:
+        CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)mainThread, NULL, 0, NULL);
+        break;
+    case DLL_THREAD_ATTACH:
+        break;
+    case DLL_THREAD_DETACH:
+        break;
+    case DLL_PROCESS_DETACH:
+        break;
+    }
+    return TRUE;
 }
