@@ -1,11 +1,14 @@
 #include <windows.h>
 #include <inttypes.h>
+#include <shlwapi.h>
 #include <stdio.h>
 
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
+
+#pragma comment(lib, "Shlwapi.lib")
 
 // These are amount of bytes we copy out of the target hook function in order
 // to allow us to overwrite the starting bytes of the function with a jump 
@@ -21,18 +24,22 @@
 #define success(msg, ...) _log("+", msg, __VA_ARGS__)
 
 // This is the number of songs that will be kept in current_tracks.txt
-#define MAX_SONGS       10
+#define MAX_SONGS       2
 
 // This is the file containing the last 10 songs
-#define TRACK_FILE      "C:\\Users\\danie\\Documents\\current_tracks.txt"
+#define TRACK_FILE      "\\current_tracks.txt"
 
 // this is the logfile for all songs played
-#define TRACK_LOG_FILE  "C:\\Users\\danie\\Documents\\played_tracks.txt"
+#define TRACK_LOG_FILE  "\\played_tracks.txt"
+
+// handle to the current dll itself
+EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
 // some globals to share stuff between the hooks
 char *last_track = nullptr;
 char *last_artist = nullptr;
-// the hooks may be on separate threads
+// the hooks may be on separate threads so this
+// protects the shared globals
 CRITICAL_SECTION last_track_critsec;
 
 // log a message with a prefix in brackets
@@ -71,11 +78,31 @@ struct event_struct
     play_track_event *event_info;
 };
 
+std::string get_dll_path()
+{
+    char path[MAX_PATH];
+    DWORD len = GetModuleFileName((HINSTANCE)&__ImageBase, path, sizeof(path));
+    if (!len || !PathRemoveFileSpec(path)) {
+        error("Failed to process file path");
+    }
+    return std::string(path);
+}
+
+std::string get_log_file()
+{
+    return get_dll_path() + TRACK_LOG_FILE;
+}
+
+std::string get_track_file()
+{
+    return get_dll_path() + TRACK_FILE;
+}
+
 // clears the last-10 tracks file 
 void clear_track_file()
 {
     FILE *f = NULL;
-    if (fopen_s(&f, TRACK_FILE, "w") == ERROR_SUCCESS && f) {
+    if (fopen_s(&f, get_track_file().c_str(), "w") == ERROR_SUCCESS && f) {
         fclose(f);
     }
 }
@@ -84,7 +111,7 @@ void clear_track_file()
 void log_track(const char *track, const char *artist)
 {
     // log to the global log
-    std::ofstream trackLogFile(TRACK_LOG_FILE, std::ios::app);
+    std::ofstream trackLogFile(get_log_file(), std::ios::app);
     trackLogFile << track << "-" << artist << "\n";
 }
 
@@ -92,12 +119,13 @@ void log_track(const char *track, const char *artist)
 void update_track_list(const char *track, const char *artist)
 {
     // update the last 10 file
-    std::fstream trackFile(TRACK_FILE);
+    std::string track_file = get_track_file();
+    std::fstream trackFile(track_file);
     std::stringstream fileData;
     fileData << track << "-" << artist << "\n";
     fileData << trackFile.rdbuf();
     trackFile.close();
-    trackFile.open(TRACK_FILE, std::fstream::out | std::fstream::trunc);
+    trackFile.open(track_file, std::fstream::out | std::fstream::trunc);
     std::istringstream iss(fileData.str());
     std::string line;
     for (uint32_t i = 0; (i < MAX_SONGS) && std::getline(iss, line); i++) {
@@ -317,6 +345,9 @@ DWORD mainThread(void *param)
     clear_track_file();
 
     info("Cleared track file");
+
+    info("log file: %s", get_log_file().c_str());
+    info("track file: %s", get_track_file().c_str());
 
     // setup the critical section because our two hooks will be on 
     // different threads and they will be sharing data

@@ -1,10 +1,13 @@
 #include <Windows.h>
+#include <shlwapi.h>
 #include <inttypes.h>
 
+#include <string>
+
+#pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "Winmm.lib")
 
 #define RBOX_EXE   "C:\\Program Files\\Pioneer\\rekordbox 6.5.0\\rekordbox.exe"
-#define MODULE_DLL "C:\\Users\\danie\\source\\repos\\RekordBoxSongExporter\\x64\\Release\\Module.dll"
 
 // write a string into a remote process
 void *inject_string(HANDLE hProc, const char *str)
@@ -64,9 +67,18 @@ bool launch_rekordbox()
 // inject the module dll into remote proc
 bool inject_module(HANDLE hProc)
 {
+    char buffer[MAX_PATH] = { 0 };
+    // grab path of current executable
+    DWORD len = GetModuleFileName(NULL, buffer, MAX_PATH);
+    // strip off the filename
+    if (!len || !PathRemoveFileSpec(buffer)) {
+        return false;
+    }
+    // append the module name, it should fit
+    strncat_s(buffer, "\\Module.dll", sizeof(buffer) - strlen(buffer));
     DWORD remoteThreadID = 0;
     // allocate and write the string containing the path of the dll to rekordbox
-    void *remoteString = inject_string(hProc, MODULE_DLL);
+    void *remoteString = inject_string(hProc, buffer);
     if (!remoteString) {
         return false;
     }
