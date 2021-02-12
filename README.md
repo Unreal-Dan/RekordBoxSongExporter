@@ -7,8 +7,6 @@ means your track listings will update in realtime in about ~2 seconds.
 The 2 second delay is a result of OBS polling the chatlog file, the file is updated
 instantaneously by the Song Exporter module as soon as you fade into the track.
 
-Simply configure the paths in the program, compile it, and run the Launcher.
-
 The Launcher will launch RekordBox and inject a module which hooks two functions,
 one function is called anytime the play/cue button is pressed on a track, and
 the other function is called anytime the 'master' deck switches in Rekordbox.
