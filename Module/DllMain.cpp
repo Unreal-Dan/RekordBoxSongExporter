@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <vector>
 #include <string>
 
 #pragma comment(lib, "Shlwapi.lib")
@@ -121,6 +122,10 @@ void log_track(const char *track, const char *artist)
 // updates the last-10 tracks log file
 void update_track_list(const char *track, const char *artist)
 {
+    static std::vector<std::string> track_list;
+    static std::vector<std::string> artist_list;
+
+
     // update the last 10 file
     std::string track_file = get_track_file();
     std::fstream trackFile(track_file);
@@ -204,7 +209,7 @@ void play_track_hook(event_struct *event)
     old_track2 = track2;
 }
 
-// the actual hook function that eventPlay is redirected to
+// the actual hook function that notifyMasterChange is redirected to
 void notify_master_change_hook(event_struct *event)
 {
     // 128 should be enough to tell if a track name matches right?
