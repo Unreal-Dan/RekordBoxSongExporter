@@ -1,10 +1,11 @@
 # RekordBoxSongExporter
 A hack for Rekordbox 6.5.0 (Windows 64bit ONLY) to export played tracks for integration with OBS
 
-NOTE: This does **NOT** poll the rekordbox database, this directly hooks rekordbox
-      which means your track listings will update in realtime in about ~2 seconds.
-      The 2 second delay is purely OBS polling the chatlog file, the file is updated
-      instantaneously.
+This does **NOT** poll the rekordbox database, this directly hooks rekordbox which 
+means your track listings will update in realtime in about ~2 seconds.
+
+The 2 second delay is a result of OBS polling the chatlog file, the file is updated
+instantaneously by the Song Exporter module as soon as you fade into the track.
 
 Simply configure the paths in the program, compile it, and run the Launcher.
 
