@@ -22,3 +22,8 @@ the file to a maximum of 10 lines.
 The second file is the trick to integrating with OBS, you create a GDI text
 object in OBS and point it at that file then enable chatlog mode and adjust
 the max lines to 10 (or however many you want)
+
+There is plans in the future to hook into fader controls to be able to 
+determine when a track is being faded into, which would in turn trigger
+the track logging. This would be preferable to the track being logged
+the moment it is cueud or played.
