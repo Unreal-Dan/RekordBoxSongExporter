@@ -99,20 +99,23 @@ std::string get_track_file()
 }
 
 // clears the last-10 tracks file 
-void clear_track_file()
+void clear_track_files()
 {
     FILE *f = NULL;
     if (fopen_s(&f, get_track_file().c_str(), "w") == ERROR_SUCCESS && f) {
         fclose(f);
     }
+    if (fopen_s(&f, get_log_file().c_str(), "w") == ERROR_SUCCESS && f) {
+        fclose(f);
+    }
 }
 
-// logs a track to both the global log
+// logs a track to the global log
 void log_track(const char *track, const char *artist)
 {
     // log to the global log
     std::ofstream trackLogFile(get_log_file(), std::ios::app);
-    trackLogFile << track << "-" << artist << "\n";
+    trackLogFile << track << " - " << artist << "\n";
 }
 
 // updates the last-10 tracks log file
@@ -122,7 +125,7 @@ void update_track_list(const char *track, const char *artist)
     std::string track_file = get_track_file();
     std::fstream trackFile(track_file);
     std::stringstream fileData;
-    fileData << track << "-" << artist << "\n";
+    fileData << track << " - " << artist << "\n";
     fileData << trackFile.rdbuf();
     trackFile.close();
     trackFile.open(track_file, std::fstream::out | std::fstream::trunc);
@@ -342,9 +345,9 @@ DWORD mainThread(void *param)
     }
     success("Initialized console");
 
-    clear_track_file();
+    clear_track_files();
 
-    info("Cleared track file");
+    info("Cleared track files");
 
     info("log file: %s", get_log_file().c_str());
     info("track file: %s", get_track_file().c_str());
