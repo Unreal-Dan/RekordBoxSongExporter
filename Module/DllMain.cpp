@@ -6,10 +6,13 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <vector>
 #include <string>
+#include <deque>
 
 #pragma comment(lib, "Shlwapi.lib")
+
+// yeah why not
+using namespace std;
 
 // These are amount of bytes we copy out of the target hook function in order
 // to allow us to overwrite the starting bytes of the function with a jump 
@@ -25,7 +28,7 @@
 #define success(msg, ...) _log("+", msg, __VA_ARGS__)
 
 // This is the number of songs that will be kept in current_tracks.txt
-#define MAX_SONGS       2
+#define MAX_SONGS       3
 
 // This is the file containing the last 10 songs
 #define TRACK_FILE      "\\current_tracks.txt"
@@ -79,22 +82,22 @@ struct event_struct
     play_track_event *event_info;
 };
 
-std::string get_dll_path()
+string get_dll_path()
 {
     char path[MAX_PATH];
     DWORD len = GetModuleFileName((HINSTANCE)&__ImageBase, path, sizeof(path));
     if (!len || !PathRemoveFileSpec(path)) {
         error("Failed to process file path");
     }
-    return std::string(path);
+    return string(path);
 }
 
-std::string get_log_file()
+string get_log_file()
 {
     return get_dll_path() + TRACK_LOG_FILE;
 }
 
-std::string get_track_file()
+string get_track_file()
 {
     return get_dll_path() + TRACK_FILE;
 }
@@ -115,30 +118,29 @@ void clear_track_files()
 void log_track(const char *track, const char *artist)
 {
     // log to the global log
-    std::ofstream trackLogFile(get_log_file(), std::ios::app);
+    ofstream trackLogFile(get_log_file(), ios::app);
     trackLogFile << track << " - " << artist << "\n";
 }
 
 // updates the last-10 tracks log file
 void update_track_list(const char *track, const char *artist)
 {
-    static std::vector<std::string> track_list;
-    static std::vector<std::string> artist_list;
-
-
-    // update the last 10 file
-    std::string track_file = get_track_file();
-    std::fstream trackFile(track_file);
-    std::stringstream fileData;
-    fileData << track << " - " << artist << "\n";
-    fileData << trackFile.rdbuf();
-    trackFile.close();
-    trackFile.open(track_file, std::fstream::out | std::fstream::trunc);
-    std::istringstream iss(fileData.str());
-    std::string line;
-    for (uint32_t i = 0; (i < MAX_SONGS) && std::getline(iss, line); i++) {
-        trackFile << line << "\n";
+    // static list of tracks
+    static deque<pair<string, string>> track_list;
+    // prepend this new track to the list
+    track_list.push_front(pair<string, string>(track, artist));
+    // make sure the list doesn't go beyond MAX_SONGS
+    if (track_list.size() > MAX_SONGS) {
+        // remove from the end
+        track_list.pop_back();
     }
+    // update the last x file by iterating track_list and writing
+    string track_file = get_track_file();
+    fstream trackFile(track_file, fstream::out | fstream::trunc);
+    for (auto it = track_list.begin(); it != track_list.end(); it++) {
+        trackFile << it->first << " - " << it->second << "\n";
+    }
+    trackFile.close();
 }
 
 // dupe the track into global threadsafe last-track storage
