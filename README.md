@@ -1,29 +1,34 @@
 # RekordBoxSongExporter
-A hack for Rekordbox (Windows 64bit ONLY) to export played tracks for integration with OBS
+A hack for Rekordbox 6.5.0 (Windows 64bit ONLY) to export played tracks for integration with OBS
 
 NOTE: This does **NOT** poll the rekordbox database, this directly hooks rekordbox
-      which means your track listings will update in realtime in about ~2 seconds
+      which means your track listings will update in realtime in about ~2 seconds.
+      The 2 second delay is purely OBS polling the chatlog file, the file is updated
+      instantaneously.
 
 Simply configure the paths in the program, compile it, and run the Launcher.
 
-The Launcher will launch RekordBox and inject a module which hooks a function,
-that function is called anytime the play button is pressed on a track.
+The Launcher will launch RekordBox and inject a module which hooks two functions,
+one function is called anytime the play/cue button is pressed on a track, and
+the other function is called anytime the 'master' deck switches in Rekordbox.
 
 The hook will detect anytime one of the two decks has a different song loaded
-since the last time the user hit play, it will log that song to two files.
+since the last time the user hit play, it will log that song to played_tracks.
 
-One file is simply a track log which will append each song you play to the
-played_tracks.txt file.
+The other hook will detect anytime the 'master' switches to another deck, when
+this happens it will log the last song that was played to 'current_tracks'.
 
-The other file contains the last 10 songs played in reverse order, where the 
-newest song is always at the top of the file and older songs are pushed down 
-the file to a maximum of 10 lines.
+So the expected flow is to load a track, play/cue it, then eventually fade into 
+the track. When you fade from one deck into the other Rekordbox will update the 
+'master', this will trigger the hack to log the new track to 'current_tracks'.
 
-The second file is the trick to integrating with OBS, you create a GDI text
-object in OBS and point it at that file then enable chatlog mode and adjust
-the max lines to 10 (or however many you want)
+The played_tracks file is simply a track log which will append each song you play
+and will never be cleared.
 
-There is plans in the future to hook into fader controls to be able to 
-determine when a track is being faded into, which would in turn trigger
-the track logging. This would be preferable to the track being logged
-the moment it is cueud or played.
+The other file contains the last 2 songs played in reverse order, where the newest
+song is always at the top of the file and older songs are pushed down the file to
+a maximum of 2 lines. The line count can be configured if you build from source.
+
+The second file is the trick to integrating with OBS, create a GDI text object in 
+OBS and point it at that file then enable chatlog mode and adjust the max lines 
+to 2 (or however many you want if you built from source).
