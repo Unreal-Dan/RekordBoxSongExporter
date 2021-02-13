@@ -125,10 +125,21 @@ void log_track(const char *track, const char *artist)
 // updates the last-10 tracks log file
 void update_track_list(const char *track, const char *artist)
 {
+    // simple local class for the static track listing
+    class track_list_entry
+    {
+    public:
+        track_list_entry(string track, string artist, string genre) :
+            track(track), artist(artist), genre(genre) {}
+        string track;
+        string artist;
+        string genre;
+    };
+
     // static list of tracks
-    static deque<pair<string, string>> track_list;
+    static deque<track_list_entry> track_list;
     // prepend this new track to the list
-    track_list.push_front(pair<string, string>(track, artist));
+    track_list.push_front(track_list_entry(track, artist, ""));
     // make sure the list doesn't go beyond MAX_SONGS
     if (track_list.size() > MAX_SONGS) {
         // remove from the end
@@ -138,7 +149,7 @@ void update_track_list(const char *track, const char *artist)
     string track_file = get_track_file();
     fstream trackFile(track_file, fstream::out | fstream::trunc);
     for (auto it = track_list.begin(); it != track_list.end(); it++) {
-        trackFile << it->first << " - " << it->second << "\n";
+        trackFile << it->track << " - " << it->artist << "\n";
     }
     trackFile.close();
 }
