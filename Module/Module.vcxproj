@@ -149,17 +149,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Config.cpp" />
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="Hook.cpp" />
+    <ClCompile Include="LastTrackStorage.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="NotifyMasterChangeHook.cpp" />
-    <ClCompile Include="PlayTrackHook.cpp" />
+    <ClCompile Include="EventPlayTrackHook.cpp" />
+    <ClCompile Include="OutputFiles.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Config.h" />
     <ClInclude Include="Hook.h" />
+    <ClInclude Include="LastTrackStorage.h" />
     <ClInclude Include="Log.h" />
     <ClInclude Include="NotifyMasterChangeHook.h" />
-    <ClInclude Include="PlayTrackHook.h" />
+    <ClInclude Include="EventPlayTrackHook.h" />
+    <ClInclude Include="OutputFiles.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
