@@ -39,6 +39,10 @@ There are four output files:
       last_track.txt - this is only the last track to play, nothing else
 ```                    
 
+Each of these output files will be cleared when you first inject the hack into
+Rekordbox, so if you want to save your played_tracks.txt file inbetween sessions
+make sure to make a copy before launching the hack again.
+
 The trick to integrating with OBS is to create a Text GDI object and select the 
 'read from file' option.
 
