@@ -16,22 +16,31 @@ one function is called anytime the play/cue button is pressed on a track, and
 the other function is called anytime the 'master' deck switches in Rekordbox.
 
 The hook will detect anytime one of the two decks has a different song loaded
-since the last time the user hit play, it will log that song to played_tracks.
+since the last time the user hit play, it will cache that song and artist for later.
 
 The other hook will detect anytime the 'master' switches to another deck, when
-this happens it will log the last song that was played to 'current_tracks'.
+this happens it will log the cached track and artist to the output files.
 
 So the expected flow is to load a track, play/cue it, then eventually fade into 
 the track. When you fade from one deck into the other Rekordbox will update the 
-'master', this will trigger the hack to log the new track to 'current_tracks'.
+'master', this will trigger the hack to log the new track title and artist.
 
-The played_tracks file is simply a track log which will append each song you play
-and will never be cleared.
+There are four output files:
 
-The other file contains the last 2 songs played in reverse order, where the newest
-song is always at the top of the file and older songs are pushed down the file to
-a maximum of 2 lines. The line count can be configured if you build from source.
+```
+   played_tracks.txt - this is a full log of all songs played in the entire session,
+                       the oldest song will be at the top and newest at bottom
+                       
+  current_tracks.txt - this is the last X songs (configurable), newest song at top and
+                       older songs under it
+                       
+   current_track.txt - this is only the current track playing, nothing else
+   
+      last_track.txt - this is only the last track to play, nothing else
+```                    
 
-The second file is the trick to integrating with OBS, create a GDI text object in 
-OBS and point it at that file then enable chatlog mode and adjust the max lines 
-to 2 (or however many you want if you built from source).
+The trick to integrating with OBS is to create a Text GDI object and select the 
+'read from file' option.
+
+Point the text GDI object at any of the four files and turn on 'chatlog' mode to
+ensure the object is refreshed anytime the file changes content.
