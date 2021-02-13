@@ -3,7 +3,6 @@
 #include <shlwapi.h>
 #include <stdio.h>
 
-#include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -21,6 +20,10 @@ using namespace std;
 // the boundary of an opcode and is at least 14 (0xE) bytes for the hook itself
 #define PLAY_TRACK_TRAMPOLINE_LEN       0x13
 #define NOTIFY_MASTER_TRAMPOLINE_LEN    0x10
+
+// These are the offsets of the functions from the base of the module
+#define PLAY_TRACK_OFFSET               0x908D70
+#define NOTIFY_MASTER_CHANGE_OFFSET     0x1772d70
 
 // logging macro functions
 #define info(msg, ...) _log("*", msg, __VA_ARGS__)
@@ -118,36 +121,59 @@ string get_cur_tracks_file()
     return get_dll_path() + CUR_TRACKS_FILE;
 }
 
-// clears all the track files
-void clear_track_files()
+// truncate a single file
+bool clear_file(string filename)
 {
-    FILE *f = NULL;
-    if (fopen_s(&f, get_cur_tracks_file().c_str(), "w") == ERROR_SUCCESS && f) {
-        fclose(f);
+    // open with CREATE_ALWAYS to truncate any existing file and create any missing
+    HANDLE hFile = CreateFile(filename.c_str(), GENERIC_READ|GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        error("Failed to open for truncate %s (%d)", filename.c_str(), GetLastError());
+        return false;
     }
-    if (fopen_s(&f, get_cur_track_file().c_str(), "w") == ERROR_SUCCESS && f) {
-        fclose(f);
+    CloseHandle(hFile);
+    return true;
+}
+
+// append data to a file
+bool append_file(string filename, string data)
+{
+    // open for append, create new or open existing
+    HANDLE hFile = CreateFile(filename.c_str(), FILE_APPEND_DATA, 0, NULL, CREATE_NEW|OPEN_EXISTING, 0, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        error("Failed to open file for append %s (%d)", filename.c_str(), GetLastError());
+        return false;
     }
-    if (fopen_s(&f, get_last_track_file().c_str(), "w") == ERROR_SUCCESS && f) {
-        fclose(f);
+    DWORD written = 0;
+    if (!WriteFile(hFile, data.c_str(), data.length(), &written, NULL)) {
+        error("Failed to write to %s (%d)", filename.c_str(), GetLastError());
+        CloseHandle(hFile);
+        return false;
     }
-    if (fopen_s(&f, get_log_file().c_str(), "w") == ERROR_SUCCESS && f) {
-        fclose(f);
-    }
+    CloseHandle(hFile);
+    return true;
+}
+
+// clears all the track files
+bool clear_track_files()
+{
+    return clear_file(get_last_track_file()) &&
+           clear_file(get_cur_tracks_file()) &&
+           clear_file(get_cur_track_file()) &&
+           clear_file(get_log_file());
 }
 
 // logs a track to the global log
-void log_track(const char *track, const char *artist)
+void log_track(string track, string artist)
 {
     // log to the global log
-    ofstream trackLogFile(get_log_file(), ios::app);
-    trackLogFile << track << " - " << artist << "\n";
+    if (!append_file(get_log_file(), track + " - " + artist + "\n")) {
+        error("Failed to log track to global log");
+    }
 }
 
 // updates the last_track, current_track, and current_tracks files
-void update_track_list(const char *track, const char *artist)
+void update_track_list(string track, string artist)
 {
-    fstream trackFile;
     // simple local class for the static track listing
     class track_list_entry
     {
@@ -171,21 +197,35 @@ void update_track_list(const char *track, const char *artist)
         
     // update the last x file by iterating track_list and writing
     if (track_list.size() > 0) {
-        trackFile.open(get_cur_tracks_file(), fstream::out | fstream::trunc);
+        // concatenate the track_list into a single string
+        std::string tracks;
         for (auto it = track_list.begin(); it != track_list.end(); it++) {
-            trackFile << it->track << " - " << it->artist << "\n";
+            tracks.append(it->track).append(" - ").append(it->artist).append( "\n");
         }
-        trackFile.close();
+        // update the tracks file
+        if (!clear_file(get_cur_tracks_file())) {
+            error("Failed to clear tracks file");
+        }
+        if (!append_file(get_cur_tracks_file(), tracks.c_str())) {
+            error("Failed to write to tracks file");
+        }
+
         // update the current track file
-        trackFile.open(get_cur_track_file(), fstream::out | fstream::trunc);
-        trackFile << track_list.at(0).track << "\n";
-        trackFile.close();
+        if (!clear_file(get_cur_track_file())) {
+            error("Failed to clear current track file");
+        }
+        if (!append_file(get_cur_track_file(), track_list.at(0).track)) {
+            error("Failed to append to current track file");
+        }
     }
     // update the last track file
     if (track_list.size() > 1) {
-        trackFile.open(get_last_track_file(), fstream::out | fstream::trunc);
-        trackFile << track_list.at(1).track << "\n";
-        trackFile.close();
+        if (!clear_file(get_last_track_file())) {
+            error("Failed to clear last track file");
+        }
+        if (!append_file(get_last_track_file(), track_list.at(1).track)) {
+            error("Failed to write last track file");
+        }
     }
 }
 
@@ -257,6 +297,8 @@ void play_track_hook(event_struct *event)
     old_track2 = track2;
 }
 
+// beginning to reverse this stuff and hopefully find track name
+// referenced from the sync master or something like that
 struct sync_master
 {
     void *idk;
@@ -295,7 +337,7 @@ void notify_master_change_hook(sync_manager *syncManager)
 }
 
 // 13 byte push of a 64 bit value absolute via push + mov [rsp + 4]
-void write_push64(uintptr_t addr, uintptr_t value)
+uintptr_t write_push64(uintptr_t addr, uintptr_t value)
 {
     // push
     *(uint8_t *)(addr + 0) = 0x68;
@@ -306,16 +348,56 @@ void write_push64(uintptr_t addr, uintptr_t value)
     *(uint8_t *)(addr + 7) = 0x24;
     *(uint8_t *)(addr + 8) = 0x04;
     *(uint32_t *)(addr + 9) = (uint32_t)((value >> 32) & 0xFFFFFFFF);
+    // the number of bytes written
+    return 13;
 }
 
 // 14 byte absolute jmp to 64bit dest via push + ret written to src
-void write_jump(uintptr_t src, uintptr_t dest)
+uintptr_t write_jump(uintptr_t src, uintptr_t dest)
 {
-    // push dest
-    write_push64(src, dest);
-    // retn
-    *(int32_t *)(src + 13) = 0xC3;
+    // push dest and grab number of bytes written
+    uintptr_t amt = write_push64(src, dest);
+    // retn after the number of bytes that were used for push
+    *(uint8_t *)(src + amt) = 0xC3;
+    amt += sizeof(uint8_t);
     info("jmp written %p -> %p", src, dest);
+    // return number of bytes written
+    return amt;
+}
+
+// write several register pushes, used to backup registers before running hook
+uintptr_t write_push_registers(uintptr_t addr)
+{
+    *(uint8_t *)(addr + 0) = 0x51; // push rcx
+    *(uint8_t *)(addr + 1) = 0x52; // push rdx
+    *(uint8_t *)(addr + 2) = 0x41; // push r8
+    *(uint8_t *)(addr + 3) = 0x50;
+    *(uint8_t *)(addr + 4) = 0x41; // push r9
+    *(uint8_t *)(addr + 5) = 0x51;
+    *(uint8_t *)(addr + 6) = 0x41; // push r10
+    *(uint8_t *)(addr + 7) = 0x52;
+    *(uint8_t *)(addr + 8) = 0x41; // push r11
+    *(uint8_t *)(addr + 9) = 0x53;
+    // number of bytes written
+    return 10;
+}
+
+// write several register pushes, used to backup registers before running hook
+uintptr_t write_pop_registers(uintptr_t addr)
+{
+    // reverse order of the push function above
+    *(uint8_t *)(addr + 0) = 0x41; // pop r11
+    *(uint8_t *)(addr + 1) = 0x5b;
+    *(uint8_t *)(addr + 2) = 0x41; // pop r10
+    *(uint8_t *)(addr + 3) = 0x5a;
+    *(uint8_t *)(addr + 4) = 0x41; // pop r9
+    *(uint8_t *)(addr + 5) = 0x59;
+    *(uint8_t *)(addr + 6) = 0x41; // pop r8
+    *(uint8_t *)(addr + 7) = 0x58;
+    *(uint8_t *)(addr + 8) = 0x5a; // pop rdx
+    *(uint8_t *)(addr + 9) = 0x59; // pop rcx
+    // number of bytes written
+    return 10;
 }
 
 // install hook at src, redirec to dest, copy trampoline_len bytes to make room for hook
@@ -333,34 +415,45 @@ bool install_hook(uintptr_t target_func, void *hook_func, size_t trampoline_len)
         error("Failed to allocate trampoline");
         return false;
     }
+    success("Allocated trampoline: %p", (void *)trampoline_addr);
+
+    // A variable to keep track of the current location we're writing opcodes
+    // all the write functions return the number of bytes written
+    uintptr_t cur_write_pos = trampoline_addr;
+
+    // push all registers at start of shellcode because we're paranoid
+    cur_write_pos += write_push_registers(cur_write_pos);
 
     // write a push for the retn address so our function can return back to here
     // this is needed because we use absolute jmps instead of trying to calculate
     // offsets to perform calls, which means we need to push the ret address ourself
-    write_push64(trampoline_addr + 0xE, trampoline_addr + 0x1B); // 0xD bytes
-    // write the jmp into the start of the trampoline which jumps to the hook function
-    write_jump(trampoline_addr, (uintptr_t)hook_func); // 0xE bytes
+    // 0x1B = size of the current push and next jmp
+    cur_write_pos += write_push64(cur_write_pos, cur_write_pos + 0x1B);
 
-    void *trampoline = (void *)trampoline_addr;
-    success("Allocated trampoline: %p", trampoline);
+    // write the jmp into the start of the trampoline which jumps to the hook function
+    cur_write_pos += write_jump(cur_write_pos, (uintptr_t)hook_func); 
+
+    // pop all registers at start of shellcode because we're paranoid
+    cur_write_pos += write_pop_registers(cur_write_pos);
 
     // copy trampoline bytes
-    uintptr_t trampoline_after_call = trampoline_addr + 0x1B; // 0x1B = 0xE + 0xD (the jmp + push above)
-    memcpy((void *)trampoline_after_call, (void *)target_func, trampoline_len);
-    info("Copied trampoline bytes");
+    memcpy((void *)cur_write_pos, (void *)target_func, trampoline_len);
+    cur_write_pos += trampoline_len;
 
-    // the beginning of the return from the trampoline
-    uintptr_t trampoline_ret_start = trampoline_after_call + trampoline_len;
     // this jump will go from the end of the trampoline back to original function
     // src = after the copied bytes that form the trampoline
     // dest = after trampoline_len bytes in src function
-    write_jump(trampoline_ret_start, target_func + trampoline_len);
+    cur_write_pos += write_jump(cur_write_pos, target_func + trampoline_len);
 
     // unprotect src function so we can trash it
     DWORD oldProt = 0;
-    VirtualProtect((void *)target_func, 16, PAGE_EXECUTE_READWRITE, &oldProt);
+    if (!VirtualProtect((void *)target_func, 16, PAGE_EXECUTE_READWRITE, &oldProt)) {
+        error("Failed to unprotect target function for hook");
+        return false;
+    }
 
     // install the meat and potatoes hook, redirect source to trampoline
+    // this will overwrite rekordbox's function with a jump to our code
     // src = event play addr
     // dest = the trampoline
     write_jump(target_func, trampoline_addr);
@@ -373,9 +466,8 @@ bool install_hook(uintptr_t target_func, void *hook_func, size_t trampoline_len)
 bool hook_event_play()
 {
     // determine address of target function to hook
-    uintptr_t base = (uintptr_t)GetModuleHandle(NULL);
-    uintptr_t ep_addr = base + 0x908D70;
-    info("event_play_func: %p + 0x908D70 = %p", base, ep_addr);
+    uintptr_t ep_addr = (uintptr_t)GetModuleHandle(NULL) + PLAY_TRACK_OFFSET;
+    info("event_play_func: %p", ep_addr);
 
     // install hook on event_play_addr that redirects to play_track_hook
     if (!install_hook(ep_addr, play_track_hook, PLAY_TRACK_TRAMPOLINE_LEN)) {
@@ -388,9 +480,8 @@ bool hook_event_play()
 bool hook_notify_master_change()
 {
     // determine address of target function to hook
-    uintptr_t base = (uintptr_t)GetModuleHandle(NULL);
-    uintptr_t nmc_addr = base + 0x1772d70;
-    info("notify_master_change: %p + 0x1772d70 = %p", base, nmc_addr);
+    uintptr_t nmc_addr = (uintptr_t)GetModuleHandle(NULL) + NOTIFY_MASTER_CHANGE_OFFSET;
+    info("notify_master_change: %p", nmc_addr);
 
     // install hook on event_play_addr that redirects to play_track_hook
     if (!install_hook(nmc_addr, notify_master_change_hook, NOTIFY_MASTER_TRAMPOLINE_LEN)) {
@@ -409,12 +500,16 @@ DWORD mainThread(void *param)
     }
     success("Initialized console");
 
-    clear_track_files();
-
-    info("Cleared track files");
+    if (!clear_track_files()) {
+        error("Failed to clear track files!");
+        return 1;
+    }
+    success("Cleared track files");
 
     info("log file: %s", get_log_file().c_str());
-    info("track file: %s", get_cur_tracks_file().c_str());
+    info("tracks file: %s", get_cur_tracks_file().c_str());
+    info("last track file: %s", get_last_track_file().c_str());
+    info("current track file: %s", get_cur_track_file().c_str());
 
     // setup the critical section because our two hooks will be on 
     // different threads and they will be sharing data
