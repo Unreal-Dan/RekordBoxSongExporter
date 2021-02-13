@@ -32,8 +32,8 @@ There are four output files:
    played_tracks.txt - this is a full log of all songs played in the entire session,
                        the oldest song will be at the top and newest at bottom
                        
-  current_tracks.txt - this is the last X songs (configurable), newest song at top and
-                       older songs under it
+  current_tracks.txt - this is the last 3 songs (configurable in Module Config.h), 
+                       newest song at top and older songs under it
                        
    current_track.txt - this is only the current track playing, nothing else
    
