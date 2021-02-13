@@ -4,7 +4,7 @@ A hack for Rekordbox 6.5.0 (Windows 64bit ONLY) to export played tracks for inte
 This does **NOT** poll the rekordbox database, this directly hooks rekordbox which 
 means your track listings will update in realtime in about ~2 seconds.
 
-At the moment this will is designed to work with (and tested with) **two decks**, it is 
+At the moment this is designed to work with (and tested with) **two decks**, it is 
 highly likely it will not work with four decks, the very least it will probably ignore
 decks three and four. There may be updates in the future to handle this.
 
