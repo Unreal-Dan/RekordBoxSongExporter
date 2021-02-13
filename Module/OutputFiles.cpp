@@ -28,10 +28,11 @@ bool initialize_output_files()
         !clear_file(get_cur_tracks_file()) ||
         !clear_file(get_cur_track_file()) ||
         !clear_file(get_log_file())) {
-        error("Failed to clear track files");
+        error("Failed to clear output files");
         return false;
     }
 
+    // log them to the console
     info("log file: %s", get_log_file().c_str());
     info("tracks file: %s", get_cur_tracks_file().c_str());
     info("last track file: %s", get_last_track_file().c_str());

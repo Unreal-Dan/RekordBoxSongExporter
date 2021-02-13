@@ -15,7 +15,7 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 // path/folder where the module exists
 string get_dll_path()
 {
-    char path[MAX_PATH];
+    char path[MAX_PATH] = {0};
     DWORD len = GetModuleFileName((HINSTANCE)&__ImageBase, path, sizeof(path));
     if (!len || !PathRemoveFileSpec(path)) {
         error("Failed to process file path");
