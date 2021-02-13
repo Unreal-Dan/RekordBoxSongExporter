@@ -28,10 +28,16 @@ using namespace std;
 #define success(msg, ...) _log("+", msg, __VA_ARGS__)
 
 // This is the number of songs that will be kept in current_tracks.txt
-#define MAX_SONGS       3
+#define MAX_TRACKS       3
 
-// This is the file containing the last 10 songs
-#define TRACK_FILE      "\\current_tracks.txt"
+// This is the file containing the last MAX_TRACKS songs
+#define CUR_TRACKS_FILE "\\current_tracks.txt"
+
+// This file contains the current track only
+#define CUR_TRACK_FILE  "\\current_track.txt"
+
+// This file contains the last track only
+#define LAST_TRACK_FILE "\\last_track.txt"
 
 // this is the logfile for all songs played
 #define TRACK_LOG_FILE  "\\played_tracks.txt"
@@ -97,16 +103,32 @@ string get_log_file()
     return get_dll_path() + TRACK_LOG_FILE;
 }
 
-string get_track_file()
+string get_cur_track_file()
 {
-    return get_dll_path() + TRACK_FILE;
+    return get_dll_path() + CUR_TRACK_FILE;
 }
 
-// clears the last-10 tracks file 
+string get_last_track_file()
+{
+    return get_dll_path() + LAST_TRACK_FILE;
+}
+
+string get_cur_tracks_file()
+{
+    return get_dll_path() + CUR_TRACKS_FILE;
+}
+
+// clears all the track files
 void clear_track_files()
 {
     FILE *f = NULL;
-    if (fopen_s(&f, get_track_file().c_str(), "w") == ERROR_SUCCESS && f) {
+    if (fopen_s(&f, get_cur_tracks_file().c_str(), "w") == ERROR_SUCCESS && f) {
+        fclose(f);
+    }
+    if (fopen_s(&f, get_cur_track_file().c_str(), "w") == ERROR_SUCCESS && f) {
+        fclose(f);
+    }
+    if (fopen_s(&f, get_last_track_file().c_str(), "w") == ERROR_SUCCESS && f) {
         fclose(f);
     }
     if (fopen_s(&f, get_log_file().c_str(), "w") == ERROR_SUCCESS && f) {
@@ -122,9 +144,10 @@ void log_track(const char *track, const char *artist)
     trackLogFile << track << " - " << artist << "\n";
 }
 
-// updates the last-10 tracks log file
+// updates the last_track, current_track, and current_tracks files
 void update_track_list(const char *track, const char *artist)
 {
+    fstream trackFile;
     // simple local class for the static track listing
     class track_list_entry
     {
@@ -140,18 +163,30 @@ void update_track_list(const char *track, const char *artist)
     static deque<track_list_entry> track_list;
     // prepend this new track to the list
     track_list.push_front(track_list_entry(track, artist, ""));
-    // make sure the list doesn't go beyond MAX_SONGS
-    if (track_list.size() > MAX_SONGS) {
+    // make sure the list doesn't go beyond MAX_TRACKS
+    if (track_list.size() > MAX_TRACKS) {
         // remove from the end
         track_list.pop_back();
     }
+        
     // update the last x file by iterating track_list and writing
-    string track_file = get_track_file();
-    fstream trackFile(track_file, fstream::out | fstream::trunc);
-    for (auto it = track_list.begin(); it != track_list.end(); it++) {
-        trackFile << it->track << " - " << it->artist << "\n";
+    if (track_list.size() > 0) {
+        trackFile.open(get_cur_tracks_file(), fstream::out | fstream::trunc);
+        for (auto it = track_list.begin(); it != track_list.end(); it++) {
+            trackFile << it->track << " - " << it->artist << "\n";
+        }
+        trackFile.close();
+        // update the current track file
+        trackFile.open(get_cur_track_file(), fstream::out | fstream::trunc);
+        trackFile << track_list.at(0).track << "\n";
+        trackFile.close();
     }
-    trackFile.close();
+    // update the last track file
+    if (track_list.size() > 1) {
+        trackFile.open(get_last_track_file(), fstream::out | fstream::trunc);
+        trackFile << track_list.at(1).track << "\n";
+        trackFile.close();
+    }
 }
 
 // dupe the track into global threadsafe last-track storage
@@ -222,8 +257,19 @@ void play_track_hook(event_struct *event)
     old_track2 = track2;
 }
 
+struct sync_master
+{
+    void *idk;
+};
+
+struct sync_manager
+{
+    uint8_t pad[0xF0];
+    sync_master *curSyncMaster;
+};
+
 // the actual hook function that notifyMasterChange is redirected to
-void notify_master_change_hook(event_struct *event)
+void notify_master_change_hook(sync_manager *syncManager)
 {
     // 128 should be enough to tell if a track name matches right?
     static char last_notified_track[128] = {0};
@@ -236,7 +282,7 @@ void notify_master_change_hook(event_struct *event)
         if (strcmp(last_track, last_notified_track) != 0 ||
             strcmp(last_artist, last_notified_artist) != 0) {
             // yep they faded into a new song
-            info("Master Changed to: %s - %s", last_track, last_artist);
+            info("Master Changed to: %s - %s (%p)", last_track, last_artist, syncManager);
             // log it to our track list
             update_track_list(last_track, last_artist);
             // store the last song for next time
@@ -288,12 +334,12 @@ bool install_hook(uintptr_t target_func, void *hook_func, size_t trampoline_len)
         return false;
     }
 
-    // write the jmp into the start of the trampoline which jumps to the hook function
-    write_jump(trampoline_addr, (uintptr_t)hook_func); // 0xE bytes
     // write a push for the retn address so our function can return back to here
     // this is needed because we use absolute jmps instead of trying to calculate
     // offsets to perform calls, which means we need to push the ret address ourself
     write_push64(trampoline_addr + 0xE, trampoline_addr + 0x1B); // 0xD bytes
+    // write the jmp into the start of the trampoline which jumps to the hook function
+    write_jump(trampoline_addr, (uintptr_t)hook_func); // 0xE bytes
 
     void *trampoline = (void *)trampoline_addr;
     success("Allocated trampoline: %p", trampoline);
@@ -368,7 +414,7 @@ DWORD mainThread(void *param)
     info("Cleared track files");
 
     info("log file: %s", get_log_file().c_str());
-    info("track file: %s", get_track_file().c_str());
+    info("track file: %s", get_cur_tracks_file().c_str());
 
     // setup the critical section because our two hooks will be on 
     // different threads and they will be sharing data
