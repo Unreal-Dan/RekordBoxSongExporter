@@ -35,14 +35,12 @@ struct play_track_event
 
 // a pointer of this type is passed into the eventPlay function
 // we only really need the event_info contained inside
-#pragma pack(4)
 struct event_struct
 {
     uint32_t deck_idx; // this is the index of the deck we are pressing play on
     uint32_t unknown;
     play_track_event *event_info;
 };
-#pragma pack()
 
 // the actual hook function that eventPlay is redirected to
 void play_track_hook(event_struct *event)
