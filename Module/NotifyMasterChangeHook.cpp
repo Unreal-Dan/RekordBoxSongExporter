@@ -2,7 +2,6 @@
 #include <inttypes.h>
 
 #include <string>
-#include <deque>
 
 #include "NotifyMasterChangeHook.h"
 #include "LastTrackStorage.h"
@@ -18,64 +17,6 @@
 
 using namespace std;
 
-// updates the last_track, current_track, and current_tracks files
-void update_track_list(string track, string artist)
-{
-    // simple local class for the static track listing
-    class track_list_entry
-    {
-    public:
-        track_list_entry(string track, string artist, string genre) :
-            track(track), artist(artist), genre(genre) {}
-        string track;
-        string artist;
-        string genre;
-    };
-
-    // static list of tracks
-    static deque<track_list_entry> track_list;
-    // prepend this new track to the list
-    track_list.push_front(track_list_entry(track, artist, ""));
-    // make sure the list doesn't go beyond MAX_TRACKS
-    if (track_list.size() > MAX_TRACKS) {
-        // remove from the end
-        track_list.pop_back();
-    }
-        
-    // update the last x file by iterating track_list and writing
-    if (track_list.size() > 0) {
-        // concatenate the track_list into a single string
-        std::string tracks;
-        for (auto it = track_list.begin(); it != track_list.end(); it++) {
-            tracks.append(it->track).append(" - ").append(it->artist).append( "\n");
-        }
-        // update the tracks file
-        if (!clear_file(get_cur_tracks_file())) {
-            error("Failed to clear tracks file");
-        }
-        if (!append_file(get_cur_tracks_file(), tracks.c_str())) {
-            error("Failed to write to tracks file");
-        }
-
-        // update the current track file
-        if (!clear_file(get_cur_track_file())) {
-            error("Failed to clear current track file");
-        }
-        if (!append_file(get_cur_track_file(), track_list.at(0).track)) {
-            error("Failed to append to current track file");
-        }
-    }
-    // update the last track file
-    if (track_list.size() > 1) {
-        if (!clear_file(get_last_track_file())) {
-            error("Failed to clear last track file");
-        }
-        if (!append_file(get_last_track_file(), track_list.at(1).track)) {
-            error("Failed to write last track file");
-        }
-    }
-}
-
 // beginning to reverse this stuff and hopefully find track name
 // referenced from the sync master or something like that
 struct sync_master
@@ -86,32 +27,56 @@ struct sync_master
 struct sync_manager
 {
     uint8_t pad[0xF0];
+    // the current sync master
     sync_master *curSyncMaster;
+    // the list of sync masters
+    sync_master **syncMasterList;
+    void *unknown;
+    // the number of sync masters in the list
+    uint32_t numSyncMasters;
 };
+
+// the sync masters are listed in order and the current sync master is
+// pointed to by a member, but we need to know which sync master in
+// the list is being used -- this is effectively the same as the deck id
+// that we use to cache the tracks from EventPlayTrack
+uint32_t determine_master_id(const sync_manager *syncManager)
+{
+    if (!syncManager) {
+        return 0;
+    }
+    for (uint32_t i = 0; i < syncManager->numSyncMasters; ++i) {
+        if (syncManager->curSyncMaster == syncManager->syncMasterList[i]) {
+            return i;
+        }
+    }
+    return 0;
+}
 
 // the actual hook function that notifyMasterChange is redirected to
 void notify_master_change_hook(sync_manager *syncManager)
 {
-    // 128 should be enough to tell if a track name matches right?
-    static string last_notified_track;
-    static string last_notified_artist;
-    string last_track = get_last_track();
-    string last_artist = get_last_artist();
-    if (!last_track.length() || !last_artist.length()) {
-        return;
-    }
-    // make sure they didn't fade back into the same song
-    if (last_track == last_notified_track && last_artist == last_notified_artist) {
+    // grab the master id we switched to
+    uint32_t master_id = determine_master_id(syncManager);
+    // grab the cached track for that id
+    string last_track = get_last_track(master_id);
+    string last_artist = get_last_artist(master_id);
+    if (!last_track.length() && !last_artist.length()) {
         return;
     }
     // yep they faded into a new song
-    info("Master Changed to: %s - %s", 
+    info("Master Changed to: %s - %s",
         last_track.c_str(), last_artist.c_str());
-    // log it to our track list
-    update_track_list(last_track, last_artist);
-    // store the last song for next time
-    last_notified_track = last_track;
-    last_notified_artist = last_artist;
+    // set the new master
+    set_master(master_id);
+    // only if this deck hasn't been logged yet
+    if (!get_logged(master_id)) {
+        // log it to our track list
+        update_track_list(last_track, last_artist);
+        // we logged this deck now, must wait for a
+        // new song to be loaded to unset this
+        set_logged(master_id, true);
+    }
 }
 
 bool hook_notify_master_change()
