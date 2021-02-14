@@ -4,10 +4,21 @@
 
 #include <string>
 
+#define REKORDBOX_585
+
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "Winmm.lib")
 
-#define RBOX_EXE   "C:\\Program Files\\Pioneer\\rekordbox 6.5.0\\rekordbox.exe"
+// the folder of rekordbox
+#ifdef REKORDBOX_650
+#define RBOX_PATH "C:\\Program Files\\Pioneer\\rekordbox 6.5.0\\"
+#endif
+#ifdef REKORDBOX_585
+#define RBOX_PATH "C:\\Program Files\\Pioneer\\rekordbox 5.8.5\\"
+#endif
+
+// rekordbox binary itself
+#define RBOX_EXE   RBOX_PATH "rekordbox.exe"
 
 // write a string into a remote process
 void *inject_string(HANDLE hProc, const char *str)
@@ -57,7 +68,7 @@ bool launch_rekordbox()
     PROCESS_INFORMATION pi;
     memset(&si, 0, sizeof(si));
     memset(&pi, 0, sizeof(pi));
-    if (!CreateProcessA(RBOX_EXE, NULL, NULL, NULL, false, 0, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(RBOX_EXE, NULL, NULL, NULL, false, 0, NULL, RBOX_PATH, &si, &pi)) {
         MessageBox(NULL, "Failed to launch rekordbox", "Error", 0);
         return false;
     }
@@ -107,6 +118,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, 
         return 1;
     }
     // success
-    PlaySound("MouseClick", NULL, SND_SYNC);
+    //PlaySound("MouseClick", NULL, SND_SYNC);
     return 0;
 }

@@ -11,9 +11,17 @@
 #include "Log.h"
 
 // offset of notifyMasterChange from base of rekordbox.exe
+// and the number of bytes to copy out into a trampoline
+// Find nmc with bytes 50 16 08 00 in decideSyncMaster
+#ifdef REKORDBOX_650
 #define NOTIFY_MASTER_CHANGE_OFFSET     0x1772d70
-// the number of bytes to copy out into a trampoline
 #define NOTIFY_MASTER_TRAMPOLINE_LEN    0x10
+#endif
+#ifdef REKORDBOX_585
+#define NOTIFY_MASTER_CHANGE_OFFSET     0x14CEF80
+#define NOTIFY_MASTER_TRAMPOLINE_LEN    0x10
+#endif
+
 
 using namespace std;
 
@@ -24,6 +32,7 @@ struct sync_master
     void *idk;
 };
 
+#ifdef REKORDBOX_650
 struct sync_manager
 {
     uint8_t pad[0xF0];
@@ -35,6 +44,20 @@ struct sync_manager
     // the number of sync masters in the list
     uint32_t numSyncMasters;
 };
+#endif
+#ifdef REKORDBOX_585
+struct sync_manager
+{
+    uint8_t pad[0xF8];
+    // the current sync master
+    sync_master *curSyncMaster;
+    // the list of sync masters
+    sync_master **syncMasterList;
+    void *unknown;
+    // the number of sync masters in the list
+    uint32_t numSyncMasters;
+};
+#endif
 
 // the sync masters are listed in order and the current sync master is
 // pointed to by a member, but we need to know which sync master in

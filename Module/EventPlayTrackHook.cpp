@@ -11,14 +11,21 @@
 
 using namespace std;
 
-// offset of eventPlayTrack from base of rekordbox.exe
+// offset of notifyMasterChange from base of rekordbox.exe
+// and the number of bytes to copy out into a trampoline
+#ifdef REKORDBOX_650
 #define PLAY_TRACK_OFFSET               0x908D70
-// the number of bytes to copy out into a trampoline
 #define PLAY_TRACK_TRAMPOLINE_LEN       0x13
+#endif
+#ifdef REKORDBOX_585
+#define PLAY_TRACK_OFFSET               0x7A5DE0
+#define PLAY_TRACK_TRAMPOLINE_LEN       0x13
+#endif
 
 // determined that track title is 0x138 bytes into
 struct deck_struct
 {
+    // this appears to be the same size for version 5.8.5 and 6.5.0
     uint8_t pad[0x138];
     char *track_title; 
     char *track_artist; 
@@ -45,6 +52,10 @@ struct event_struct
 // the actual hook function that eventPlay is redirected to
 void play_track_hook(event_struct *event)
 {
+//#ifdef REKORDBOX_585
+//    info("event: %p", event);
+//    return;
+//#endif
     // lets not segfault
     if (!event || !event->event_info || event->deck_idx > 8) {
         return;
