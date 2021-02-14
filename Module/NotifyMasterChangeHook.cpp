@@ -10,7 +10,7 @@
 #include "Hook.h"
 #include "Log.h"
 
-// offset of notify master change from base of rekordbox.exe
+// offset of notifyMasterChange from base of rekordbox.exe
 #define NOTIFY_MASTER_CHANGE_OFFSET     0x1772d70
 // the number of bytes to copy out into a trampoline
 #define NOTIFY_MASTER_TRAMPOLINE_LEN    0x10

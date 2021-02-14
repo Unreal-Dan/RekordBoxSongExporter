@@ -11,7 +11,7 @@
 
 using namespace std;
 
-// offset of notify master change from base of rekordbox.exe
+// offset of eventPlayTrack from base of rekordbox.exe
 #define PLAY_TRACK_OFFSET               0x908D70
 // the number of bytes to copy out into a trampoline
 #define PLAY_TRACK_TRAMPOLINE_LEN       0x13
