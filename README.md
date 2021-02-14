@@ -8,9 +8,7 @@ By using GDI text objects in OBS your track listings will update in realtime in 
 ~2 seconds, the 2 second delay is from OBS polling the chatlog file, not because this 
 hack is delayed in writing the output.
 
-At the moment this is designed to work with (and tested with) **two decks**, it is 
-highly likely it will not work with four decks, the very least it will probably ignore
-decks three and four. There may be updates in the future to handle this.
+At the moment this is tested and works with either two or four decks.
 
 The Launcher will launch RekordBox and inject a module which hooks two functions,
 one function is called anytime the play/cue button is pressed on a track, and
@@ -20,11 +18,15 @@ The hook will detect anytime one of the two decks has a different song loaded
 since the last time the user hit play, it will cache that song and artist for later.
 
 The other hook will detect anytime the 'master' switches to another deck, when
-this happens it will log the cached track and artist to the output files.
+this happens it will log the cached track and artist for that deck.
 
 So the expected flow is to load a track, play/cue it, then eventually fade into 
 the track. When you fade from one deck into the other Rekordbox will update the 
 'master', this will trigger the hack to log the new track title and artist.
+
+There is also edge-case support for when you load a new track onto a deck without
+fading or changing the master, this would sound horrible, but the song will still
+be logged correctly.
 
 There are four output files:
 
