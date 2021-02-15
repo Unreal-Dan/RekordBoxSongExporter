@@ -1,5 +1,8 @@
 # RekordBoxSongExporter
-A hack for Rekordbox 6.5.0 (Windows 64bit ONLY) to export played tracks for integration with OBS
+A hack for Rekordbox 6.5.0 or 5.8.5 on Windows 64bit only. 
+
+This will export played tracks for integration with OBS or any system that can
+consume the track names from a file.
 
 This does **NOT** poll the rekordbox database, this directly hooks rekordbox which 
 means the output files update instantaneously when you fade into another track.
