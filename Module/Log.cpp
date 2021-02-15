@@ -8,22 +8,24 @@
 // log a message with a prefix in brackets
 void log_msg(const char *prefix, const char *fmt, ...)
 {
+    char buffer[512] = { 0 };
     va_list args;
     va_start(args, fmt);
-    printf("[%s] ", prefix);
-    vprintf(fmt, args);
-    printf("\n");
+    vsnprintf(buffer, sizeof(buffer) - 1, fmt, args);
     va_end(args);
+    printf("[%s] %s\n", prefix, buffer);
 }
 
 // initialize a console for logging
 bool initialize_log()
 {
+#ifdef _DEBUG
     FILE *con = NULL;
     if (!AllocConsole() || freopen_s(&con, "CONOUT$", "w", stdout) != 0) {
         error("Failed to initialize console");
         return false;
     }
     success("Initialized console");
+#endif
     return true;
 }

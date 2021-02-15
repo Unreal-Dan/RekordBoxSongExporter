@@ -37,6 +37,11 @@ DWORD mainThread(void *param)
     // success
     success("Success");
 
+    // listen for any messages from the hook functions about which tracks
+    // to log to the output files, we must do this on the main thread to
+    // avoid crashes on windows 8.1
+    run_log_listener();
+
     return 0;
 }
 

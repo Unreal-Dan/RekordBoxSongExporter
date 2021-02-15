@@ -22,7 +22,6 @@
 #define NOTIFY_MASTER_TRAMPOLINE_LEN    0x10
 #endif
 
-
 using namespace std;
 
 // beginning to reverse this stuff and hopefully find track name
@@ -88,14 +87,14 @@ void notify_master_change_hook(sync_manager *syncManager)
         return;
     }
     // yep they faded into a new song
-    info("Master Changed to: %s - %s",
-        last_track.c_str(), last_artist.c_str());
+    info("Master Changed to %d: %s - %s",
+        master_id, last_track.c_str(), last_artist.c_str());
     // set the new master
     set_master(master_id);
     // only if this deck hasn't been logged yet
     if (!get_logged(master_id)) {
         // log it to our track list
-        update_track_list(last_track, last_artist);
+        update_output_files(last_track, last_artist);
         // we logged this deck now, must wait for a
         // new song to be loaded to unset this
         set_logged(master_id, true);

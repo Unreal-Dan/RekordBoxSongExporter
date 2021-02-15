@@ -52,10 +52,6 @@ struct event_struct
 // the actual hook function that eventPlay is redirected to
 void play_track_hook(event_struct *event)
 {
-//#ifdef REKORDBOX_585
-//    info("event: %p", event);
-//    return;
-//#endif
     // lets not segfault
     if (!event || !event->event_info || event->deck_idx > 8) {
         return;
@@ -66,18 +62,19 @@ void play_track_hook(event_struct *event)
     // grab the current deck we have pressed play on
     deck_struct *new_track_deck = &track_info->decks[deck_idx];
 
-    info("Playing track (%u): %s - %s", deck_idx,
+    info("Playing track on %u: %s - %s", deck_idx,
         new_track_deck->track_title, new_track_deck->track_artist);
 
     // if we are playing a new song
     if (get_last_track(deck_idx) != new_track_deck->track_title ||
         get_last_artist(deck_idx) != new_track_deck->track_artist) {
+
         // if we're loading the new song onto the same deck then
         // notifyMasterChange will not be called because this deck
         // is already the master -- so we must log it ourselves
         if (get_master() == deck_idx) {
             // log it to our track list
-            update_track_list(new_track_deck->track_title, new_track_deck->track_artist);
+            update_output_files(new_track_deck->track_title, new_track_deck->track_artist);
             // we logged this track now
             set_logged(deck_idx, true);
         } else {
