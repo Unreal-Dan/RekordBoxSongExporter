@@ -36,7 +36,7 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\..\..\..\Downloads\rbxsx.ico">
+    <Image Include="rbxsx.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
