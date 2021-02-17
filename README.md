@@ -1,5 +1,6 @@
 # RekordBoxSongExporter
-A hack for Rekordbox 6.5.0 or 5.8.5 on Windows 64bit only. Tested on Win10 and Win8.1
+A hack for Rekordbox 6.5.0 or 5.8.5 on Windows 64bit only. 
+Tested on Win10 and Win8.1
 
 ![Alt text](/launcher.png?raw=true "Launcher")
 
