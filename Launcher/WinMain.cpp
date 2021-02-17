@@ -54,37 +54,48 @@ LRESULT CALLBACK comboProc(HWND hwnd, UINT msg, WPARAM wParam,
         return DefSubclassProc(hwnd, msg, wParam, lParam);
     }
 
+    COLORREF bkcolor = RGB(25, 25, 25);
+    COLORREF textcolor = RGB(255, 255, 255);
+    COLORREF arrowcolor = RGB(200, 200, 200);
+
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hwnd, &ps);
+
     RECT rc;
     GetClientRect(hwnd, &rc);
 
-    PAINTSTRUCT ps;
-    auto hdc = BeginPaint(hwnd, &ps);
-
-    auto bkcolor = RGB(25, 25, 25);
-    auto brush = CreateSolidBrush(bkcolor);
-    auto oldbrush = SelectObject(hdc, brush);
-    auto pen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
-    auto oldpen = SelectObject(hdc, pen);
-
+    HBRUSH brush = CreateSolidBrush(bkcolor);
+    HGDIOBJ oldbrush = SelectObject(hdc, brush);
+    HPEN pen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
+    HGDIOBJ oldpen = SelectObject(hdc, pen);
 
     SelectObject(hdc, (HFONT)SendMessage(hwnd, WM_GETFONT, 0, 0));
     SetBkColor(hdc, bkcolor);
-    SetTextColor(hdc, RGB(255, 255, 255));
+    SetTextColor(hdc, textcolor);
 
+    // draw the two rectangles
     Rectangle(hdc, 0, 0, rc.right, rc.bottom);
-    //Rectangle(hdc, 1, 1, rc.right - 1, rc.bottom - 1);
+
+    // need to redraw the text as long as the dropdown is open, win32 sucks
+    int index = (int)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+    if (index >= 0) {
+        size_t buflen = (size_t)SendMessage(hwnd, CB_GETLBTEXTLEN, index, 0);
+        char *buf = new char[(buflen + 1)];
+        SendMessage(hwnd, CB_GETLBTEXT, index, (LPARAM)buf);
+        rc.left += 5;
+        DrawText(hdc, buf, -1, &rc, DT_EDITCONTROL | DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        delete[] buf;
+    }
+
     Rectangle(hdc, rc.right - 25, rc.top + 2, rc.right - 24, rc.bottom - 2);
 
-    SelectObject(hdc, oldbrush);
-    SelectObject(hdc, oldpen);
     DeleteObject(brush);
     DeleteObject(pen);
 
-    pen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
-    oldpen = SelectObject(hdc, pen);
-    bkcolor = RGB(200, 200, 200);
-    brush = CreateSolidBrush(bkcolor);
-    oldbrush = SelectObject(hdc, brush);
+    pen = CreatePen(PS_SOLID, 1, arrowcolor);
+    brush = CreateSolidBrush(arrowcolor);
+    SelectObject(hdc, brush);
+    SelectObject(hdc, pen);
 
     POINT vertices[] = { {123, 7}, {133, 7}, {128, 15} };
     SetPolyFillMode(hdc, ALTERNATE);
@@ -95,21 +106,6 @@ LRESULT CALLBACK comboProc(HWND hwnd, UINT msg, WPARAM wParam,
     SelectObject(hdc, oldpen);
     DeleteObject(pen);
 
-    if (GetFocus() == hwnd) {
-        RECT temp = rc;
-        InflateRect(&temp, -2, -2);
-        DrawFocusRect(hdc, &temp);
-    }
-
-    int index = (int)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
-    if (index >= 0) {
-        size_t buflen = (size_t)SendMessage(hwnd, CB_GETLBTEXTLEN, index, 0);
-        char *buf = new char[(buflen + 1)];
-        SendMessage(hwnd, CB_GETLBTEXT, index, (LPARAM)buf);
-        rc.left += 5;
-        DrawText(hdc, buf, -1, &rc, DT_EDITCONTROL | DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-        delete[] buf;
-    }
     return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
 
