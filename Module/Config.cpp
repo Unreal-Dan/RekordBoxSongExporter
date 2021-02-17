@@ -14,22 +14,35 @@ using namespace std;
 // handle to the current dll itself
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
+// strings corresponding to version numbers
+const char *rbver_strings[RBVER_COUNT] = {
+    "6.5.0", // RBVER_650
+    "5.8.5", // RBVER_585
+};
+
+// global config object
+config_t config;
+
 bool initialize_config()
 {
     // the config file path 
-    string configPath = get_dll_path() + CONFIG_FILENAME;
-
-    
-
-    // open for append, create new or open existing
-    HANDLE hFile = CreateFile(configPath.c_str(), FILE_GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
-    if (hFile == INVALID_HANDLE_VALUE) {
-        error("Failed to open config file %s (%d)", configPath.c_str(), GetLastError());
+    char buf[2048] = { 0 };
+    string configPath = get_dll_path() + "\\config.ini";
+    if (!GetPrivateProfileString("RBSongExporterConfig", "rbox_version", "", buf, sizeof(buf), configPath.c_str())) {
+        error("Failed to load config [%s]: %d", configPath.c_str(), GetLastError());
         return false;
     }
-
-
-
+    // just the version part
+    string rbox_version = buf;
+    // determine numeric version id
+    for (size_t ver = 0; ver < RBVER_COUNT; ver++) {
+        if (rbox_version == rbver_strings[ver]) {
+            config.rbox_version = (rbox_version_t)ver;
+        }
+    }
+    // load use artist config
+    config.use_artist = (bool)GetPrivateProfileInt("RBSongExporterConfig", "use_artist", 0, configPath.c_str());
+    return true;
 }
 
 // path/folder where the module exists

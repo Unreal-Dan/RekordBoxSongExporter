@@ -11,17 +11,6 @@
 
 using namespace std;
 
-// offset of notifyMasterChange from base of rekordbox.exe
-// and the number of bytes to copy out into a trampoline
-#ifdef REKORDBOX_650
-#define PLAY_TRACK_OFFSET               0x908D70
-#define PLAY_TRACK_TRAMPOLINE_LEN       0x13
-#endif
-#ifdef REKORDBOX_585
-#define PLAY_TRACK_OFFSET               0x7A5DE0
-#define PLAY_TRACK_TRAMPOLINE_LEN       0x13
-#endif
-
 // determined that track title is 0x138 bytes into
 struct deck_struct
 {
@@ -92,12 +81,26 @@ void play_track_hook(event_struct *event)
 
 bool hook_event_play_track()
 {
+    // offset of notifyMasterChange from base of rekordbox.exe
+    // and the number of bytes to copy out into a trampoline
+    uint32_t trampoline_len = 0x13;
+    uint32_t func_offset = 0;
+    switch (config.rbox_version) {
+    case RBVER_650:
+        func_offset = 0x908D70;
+        break;
+    case RBVER_585:
+        func_offset = 0x7A5DE0;
+        break;
+    default:
+        error("Unknown version");
+        return false;
+    };
     // determine address of target function to hook
-    uintptr_t ep_addr = (uintptr_t)GetModuleHandle(NULL) + PLAY_TRACK_OFFSET;
+    uintptr_t ep_addr = (uintptr_t)GetModuleHandle(NULL) + func_offset;
     info("event_play_func: %p", ep_addr);
-
-    // install hook on event_play_addr that redirects to play_track_hook
-    if (!install_hook(ep_addr, play_track_hook, PLAY_TRACK_TRAMPOLINE_LEN)) {
+    // install hook on event_play_addr that redirects to play_track_hookerror
+    if (!install_hook(ep_addr, play_track_hook, trampoline_len)) {
         error("Failed to install hook on event play");
         return false;
     }

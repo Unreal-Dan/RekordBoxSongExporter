@@ -141,24 +141,44 @@ void update_output_files(string track, string artist)
         // concatenate the tracks into a single string
         string tracks_str;
         for (auto it = tracks.begin(); it != tracks.end(); it++) {
-            tracks_str.append(it->artist).append(" - ").append(it->track).append("\r\n");
+            if (config.use_artist) {
+                tracks_str += string(it->artist) + " - ";
+            }
+            tracks_str += string(it->track) + "\r\n";
         }
         // rewrite the tracks file with all of the lines at once
-        if (!rewrite(get_cur_tracks_file(), tracks_str.c_str())) {
+        if (!rewrite(get_cur_tracks_file(), tracks_str)) {
             error("Failed to write to tracks file");
         }
 
         // rewrite the current track file with only the current track
-        if (!rewrite(get_cur_track_file(), tracks.at(0).track)) {
+        string cur_track;
+        if (config.use_artist) {
+            cur_track += string(tracks.at(0).artist) + " - ";
+        }
+        cur_track.append(tracks.at(0).track);
+        if (!rewrite(get_cur_track_file(), cur_track)) {
             error("Failed to append to current track file");
         }
     }
     // rewrite the last track file with the previous track
-    if (tracks.size() > 1 && !rewrite(get_last_track_file(), tracks.at(1).track)) {
-        error("Failed to write last track file");
+    if (tracks.size() > 1) {
+        string last_track;
+        if (config.use_artist) {
+            last_track += string(tracks.at(1).artist) + " - ";
+        }
+        last_track += tracks.at(1).track;
+        if (!rewrite(get_last_track_file(), last_track)) {
+            error("Failed to write last track file");
+        }
     }
 
     // append the artist and track to the global log
+    string log_entry;
+    if (config.use_artist) {
+        log_entry += artist + " - ";
+    }
+    log_entry += track + "\r\n";
     if (!append(get_log_file(), artist + " - " + track + "\r\n")) {
         error("Failed to log track to global log");
     }

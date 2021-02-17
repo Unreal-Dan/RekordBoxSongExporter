@@ -16,6 +16,10 @@ DWORD mainThread(void *param)
     if (!initialize_log()) {
         return 1;
     }
+    // load the configuration ini file
+    if (!initialize_config()) {
+        return 1;
+    }
     // setup the output files
     if (!initialize_output_files()) {
         return 1;

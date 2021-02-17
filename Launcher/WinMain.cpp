@@ -1,123 +1,278 @@
 #include <Windows.h>
-#include <shlwapi.h>
+#include <uxtheme.h>
+#include <CommCtrl.h>
 #include <inttypes.h>
+#include <CommCtrl.h>
 
 #include <string>
 
-#define REKORDBOX_585
+#include "Injector.h"
+#include "resource.h"
 
-#pragma comment(lib, "Shlwapi.lib")
+#pragma comment(lib, "Comctl32.lib")
 #pragma comment(lib, "Winmm.lib")
+#pragma comment(lib, "UxTheme.lib")
 
-// the folder of rekordbox
-#ifdef REKORDBOX_650
-#define RBOX_PATH "C:\\Program Files\\Pioneer\\rekordbox 6.5.0\\"
-#endif
-#ifdef REKORDBOX_585
-#define RBOX_PATH "C:\\Program Files\\Pioneer\\rekordbox 5.8.5\\"
-#endif
+using namespace std;
 
-// rekordbox binary itself
-#define RBOX_EXE   RBOX_PATH "rekordbox.exe"
-
-// write a string into a remote process
-void *inject_string(HANDLE hProc, const char *str)
+struct version_path
 {
-    size_t size = strlen(str) + 1;
-    void *remoteMem = VirtualAllocEx(hProc, NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-    if (!remoteMem) {
-        MessageBox(NULL, "Failed to allocate memory for string", "Error", 0);
-        return NULL;
+    const char *name;
+    const char *path;
+};
+
+// list of supported versions
+version_path versions[] = {
+    // Friendly name     Default installation path
+    { "Rekordbox 6.5.0", "C:\\Program Files\\Pioneer\\rekordbox 6.5.0\\rekordbox.exe" },
+    { "Rekordbox 5.8.5", "C:\\Program Files\\Pioneer\\rekordbox 5.8.5\\rekordbox.exe" },
+};
+
+// the number of versions in table above
+#define NUM_VERSIONS    (sizeof(versions) / sizeof(versions[0]))
+
+// module base
+EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+HINSTANCE imageBase = (HINSTANCE)&__ImageBase;
+
+#define COMBOBOX_ID 1000
+#define CHECKBOX_ID 1001
+#define BUTTON_ID   1002
+#define EDIT_ID     1003
+
+HWND hwndComboBox;
+HWND hwndCheckBox;
+HWND hwndButton;
+HWND hwndEdit;
+HBRUSH back;
+HBRUSH comboBack;
+
+LRESULT CALLBACK comboProc(HWND hwnd, UINT msg, WPARAM wParam,
+    LPARAM lParam, UINT_PTR uIdSubClass, DWORD_PTR)
+{
+    if (msg != WM_PAINT) {
+        return DefSubclassProc(hwnd, msg, wParam, lParam);
     }
-    SIZE_T out = 0;
-    if (!WriteProcessMemory(hProc, remoteMem, str, size, &out)) {
-        MessageBox(NULL, "Failed to write string", "Error", 0);
-        return NULL;
+
+    RECT rc;
+    GetClientRect(hwnd, &rc);
+
+    PAINTSTRUCT ps;
+    auto hdc = BeginPaint(hwnd, &ps);
+
+    auto bkcolor = RGB(25, 25, 25);
+    auto brush = CreateSolidBrush(bkcolor);
+    auto oldbrush = SelectObject(hdc, brush);
+    auto pen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
+    auto oldpen = SelectObject(hdc, pen);
+
+
+    SelectObject(hdc, (HFONT)SendMessage(hwnd, WM_GETFONT, 0, 0));
+    SetBkColor(hdc, bkcolor);
+    SetTextColor(hdc, RGB(255, 255, 255));
+
+    Rectangle(hdc, 0, 0, rc.right, rc.bottom);
+    //Rectangle(hdc, 1, 1, rc.right - 1, rc.bottom - 1);
+    Rectangle(hdc, rc.right - 25, rc.top + 2, rc.right - 24, rc.bottom - 2);
+
+    SelectObject(hdc, oldbrush);
+    SelectObject(hdc, oldpen);
+    DeleteObject(brush);
+    DeleteObject(pen);
+
+    pen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
+    oldpen = SelectObject(hdc, pen);
+    bkcolor = RGB(200, 200, 200);
+    brush = CreateSolidBrush(bkcolor);
+    oldbrush = SelectObject(hdc, brush);
+
+    POINT vertices[] = { {123, 7}, {133, 7}, {128, 15} };
+    SetPolyFillMode(hdc, ALTERNATE);
+    Polygon(hdc, vertices, sizeof(vertices) / sizeof(vertices[0]));
+
+    SelectObject(hdc, oldbrush);
+    DeleteObject(brush);
+    SelectObject(hdc, oldpen);
+    DeleteObject(pen);
+
+    if (GetFocus() == hwnd) {
+        RECT temp = rc;
+        InflateRect(&temp, -2, -2);
+        DrawFocusRect(hdc, &temp);
     }
-    return remoteMem;
+
+    int index = (int)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+    if (index >= 0) {
+        size_t buflen = (size_t)SendMessage(hwnd, CB_GETLBTEXTLEN, index, 0);
+        char *buf = new char[(buflen + 1)];
+        SendMessage(hwnd, CB_GETLBTEXT, index, (LPARAM)buf);
+        rc.left += 5;
+        DrawText(hdc, buf, -1, &rc, DT_EDITCONTROL | DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        delete[] buf;
+    }
+    return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
 
-// look for the rekordbox window and open it
-HANDLE find_rekordbox_window()
+void doCreate(HWND hwnd)
 {
-    HWND hWnd = NULL;
-    DWORD procID = 0;
-    uint32_t i = 0;
-    do {
-        if (i > 0) {
-            Sleep(3000);
+    // set icon
+    HICON hIcon = LoadIcon(imageBase, MAKEINTRESOURCE(IDI_ICON1));
+    SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+
+    back = CreateSolidBrush(0x282828);
+    comboBack = CreateSolidBrush(0x191919);
+
+    // create the path entry text box
+    hwndEdit = CreateWindow(WC_EDIT, "PathEntry", 
+        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL, 
+        12, 46, 376, 21, hwnd, (HMENU)EDIT_ID, NULL, NULL);
+
+    // set the version path in the text box
+    SetWindowText(hwndEdit, versions[0].path);
+
+    // create the dropdown box
+    hwndComboBox = CreateWindow(WC_COMBOBOX, "VersionSelect",
+        CBS_SIMPLE | CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
+        12, 16, 140, 400, hwnd, (HMENU)COMBOBOX_ID, NULL, NULL);
+    if (!hwnd) {
+        MessageBox(NULL, "Failed to open window", "Error", 0);
+        return;
+    }
+    // populate the dropdown box with versions
+    for (size_t i = 0; i < NUM_VERSIONS; i++) {
+        // Add string to combobox.
+        SendMessage(hwndComboBox, CB_ADDSTRING, NULL, (LPARAM)versions[i].name);
+    }
+    // Send the CB_SETCURSEL message to display an initial item in the selection field  
+    SendMessage(hwndComboBox, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
+
+    // for overriding background colors of dropdown
+    SetWindowSubclass(hwndComboBox, comboProc, 0, 0);
+
+    // create the artist checkbox
+    hwndCheckBox = CreateWindow(WC_BUTTON, "Include Artist", 
+        WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX,
+        17, 80, 115, 16, hwnd, (HMENU)CHECKBOX_ID, NULL, NULL);
+
+    // create the launch button
+    hwndButton = CreateWindow(WC_BUTTON, "Launch",
+        WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+        290, 80, 100, 40, hwnd, (HMENU)BUTTON_ID, NULL, NULL);
+}
+
+void doDestroy(HWND hwnd)
+{
+    DeleteObject(back);
+    DeleteObject(comboBack);
+}
+
+void doPaint(HWND hwnd)
+{
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hwnd, &ps);
+    FillRect(hdc, &ps.rcPaint, (HBRUSH)back);
+    EndPaint(hwnd, &ps);
+}
+
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    HDC hdc;
+    LPDRAWITEMSTRUCT draw_item = NULL;
+    char buf[2048] = {0};
+    switch (uMsg) {
+    case WM_DRAWITEM:
+        draw_item = (LPDRAWITEMSTRUCT)lParam;
+        break;
+    case WM_COMMAND:
+        if (HIWORD(wParam) == BN_CLICKED) {
+            if (LOWORD(wParam) == BUTTON_ID) {
+                GetWindowText(hwndEdit, buf, sizeof(buf));
+                int sel = (int)SendMessageW(hwndComboBox, CB_GETCURSEL, NULL, NULL);
+                bool use_artist = (bool)SendMessage(hwndCheckBox, BM_GETCHECK, 0, 0);
+                if (!inject(buf, versions[sel].name, use_artist)) {
+                    string msg = string("Failed to inject into ") + buf;
+                    MessageBox(NULL, msg.c_str(), "Error", 0);
+                }
+            }
         }
-        hWnd = FindWindowA(NULL, "rekordbox");
-        i++;
-    } while (hWnd == NULL && i < 15);
-    if (!hWnd) {
-        MessageBox(NULL, "Failed to find window", "Error", 0);
-        return NULL;
-    }
-    if (!GetWindowThreadProcessId(hWnd, &procID)) {
-        MessageBox(NULL, "Failed to resolve process id", "Error", 0);
-        return NULL;
-    }
-    return OpenProcess(PROCESS_ALL_ACCESS, false, procID);
-}
+        if (LOWORD(wParam) == COMBOBOX_ID) {
+            if (HIWORD(wParam) == CBN_SELCHANGE) {
+                int sel = (int)SendMessageW(hwndComboBox, CB_GETCURSEL, NULL, NULL);
+                SetWindowText(hwndEdit, versions[sel].path);
+            }
+        }
+        break;
+    case WM_INITDIALOG:
+        break;
+    case WM_CREATE:
+        doCreate(hwnd);
+        break;
+    case WM_DESTROY:
+        doDestroy(hwnd);
+        PostQuitMessage(0);
+        break;
+    case WM_PAINT:
+        doPaint(hwnd);
+        return 0;
+    case WM_CTLCOLORBTN:
+    case WM_CTLCOLORLISTBOX:
+    case WM_CTLCOLOREDIT:
+    case WM_CTLCOLORSTATIC:
+        hdc = (HDC)wParam;
+        SetBkColor(hdc, RGB(25, 25, 25));
+        SetTextColor(hdc, RGB(220, 220, 220));
+        if (lParam == (LPARAM)hwndButton) {
+            return (LRESULT)comboBack;
+        }
 
-// launch rekordbox
-bool launch_rekordbox()
-{
-    STARTUPINFOA si;
-    PROCESS_INFORMATION pi;
-    memset(&si, 0, sizeof(si));
-    memset(&pi, 0, sizeof(pi));
-    if (!CreateProcessA(RBOX_EXE, NULL, NULL, NULL, false, 0, NULL, RBOX_PATH, &si, &pi)) {
-        MessageBox(NULL, "Failed to launch rekordbox", "Error", 0);
-        return false;
+        if (lParam == (LPARAM)hwndComboBox) {
+            return (LRESULT)comboBack;
+        }
+        if (lParam == (LPARAM)hwndCheckBox) {
+            SetBkMode(hdc, TRANSPARENT);
+            return (LRESULT)back;
+        }
+        return (LRESULT)comboBack;
+    default:
+        break;
     }
-    return true;
-}
-
-// inject the module dll into remote proc
-bool inject_module(HANDLE hProc)
-{
-    char buffer[MAX_PATH] = { 0 };
-    // grab path of current executable
-    DWORD len = GetModuleFileName(NULL, buffer, MAX_PATH);
-    // strip off the filename
-    if (!len || !PathRemoveFileSpec(buffer)) {
-        return false;
-    }
-    // append the module name, it should fit
-    strncat_s(buffer, "\\Module.dll", sizeof(buffer) - strlen(buffer));
-    DWORD remoteThreadID = 0;
-    // allocate and write the string containing the path of the dll to rekordbox
-    void *remoteString = inject_string(hProc, buffer);
-    if (!remoteString) {
-        return false;
-    }
-    // spawn a thread on LoadLibrary(dllPath) in rekordbox
-    HANDLE hRemoteThread = CreateRemoteThread(hProc, NULL, 0, (LPTHREAD_START_ROUTINE)LoadLibraryA, remoteString, 0, &remoteThreadID);
-    if (!hRemoteThread || WaitForSingleObject(hRemoteThread, INFINITE) != WAIT_OBJECT_0) {
-        MessageBoxA(NULL, "Failed to inject module", "Error", 0);
-        return false;
-    }
-    return true;
+    return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow)
 {
-    // spawn rekordbox
-    if (!launch_rekordbox()) {
-        return 1;
+    WNDCLASS wc;
+    HWND hwnd;
+    MSG msg;
+
+    memset(&msg, 0, sizeof(msg));
+    memset(&wc, 0, sizeof(wc));
+    wc.lpfnWndProc = WindowProc;
+    wc.hInstance = hInstance;
+    wc.lpszClassName = "RekordBoxSongExporter";
+    RegisterClass(&wc);
+
+    RECT desktop;
+    GetClientRect(GetDesktopWindow(), &desktop);
+
+    // create the window
+    hwnd = CreateWindow(wc.lpszClassName, "Rekordbox Song Exporter",
+        WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, 
+        (desktop.right/2) - 240, (desktop.bottom/2) - 84, 
+        420, 169, NULL, NULL, hInstance, NULL);
+    if (!hwnd) {
+        MessageBox(NULL, "Failed to open window", "Error", 0);
+        return 0;
     }
-    // open rekordbox so we can modify it
-    HANDLE hProc = find_rekordbox_window();
-    if (!hProc) {
-        return 1;
+
+    // main message loop
+    ShowWindow(hwnd, nCmdShow);
+    while (GetMessage(&msg, NULL, 0, 0)) {
+        if (!IsDialogMessage(hwnd, &msg)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
     }
-    // inject the dll module
-    if (!inject_module(hProc)) {
-        return 1;
-    }
-    // success
-    //PlaySound("MouseClick", NULL, SND_SYNC);
+
     return 0;
 }
