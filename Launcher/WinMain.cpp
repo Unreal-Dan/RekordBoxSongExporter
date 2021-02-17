@@ -44,8 +44,33 @@ HWND hwndComboBox;
 HWND hwndCheckBox;
 HWND hwndButton;
 HWND hwndEdit;
-HBRUSH back;
-HBRUSH comboBack;
+HBRUSH bkbrush;
+HBRUSH bkbrush2;
+HBRUSH arrowbrush;
+HPEN borderpen;
+HPEN arrowpen;
+
+COLORREF bkcolor = RGB(40, 40, 40);
+COLORREF bkcolor2 = RGB(25, 25, 25);
+COLORREF textcolor = RGB(220, 220, 220);
+COLORREF arrowcolor = RGB(200, 200, 200);
+
+void drawComboText(HWND hwnd, HDC hdc, RECT rc)
+{
+    // select font and text color
+    SelectObject(hdc, (HFONT)SendMessage(hwnd, WM_GETFONT, 0, 0));
+    SetTextColor(hdc, textcolor);
+    // need to redraw the text as long as the dropdown is open, win32 sucks
+    int index = (int)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+    if (index >= 0) {
+        size_t buflen = (size_t)SendMessage(hwnd, CB_GETLBTEXTLEN, index, 0);
+        char *buf = new char[(buflen + 1)];
+        SendMessage(hwnd, CB_GETLBTEXT, index, (LPARAM)buf);
+        rc.left += 4;
+        DrawText(hdc, buf, -1, &rc, DT_EDITCONTROL | DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        delete[] buf;
+    }
+}
 
 LRESULT CALLBACK comboProc(HWND hwnd, UINT msg, WPARAM wParam,
     LPARAM lParam, UINT_PTR uIdSubClass, DWORD_PTR)
@@ -53,58 +78,42 @@ LRESULT CALLBACK comboProc(HWND hwnd, UINT msg, WPARAM wParam,
     if (msg != WM_PAINT) {
         return DefSubclassProc(hwnd, msg, wParam, lParam);
     }
-
-    COLORREF bkcolor = RGB(25, 25, 25);
-    COLORREF textcolor = RGB(255, 255, 255);
-    COLORREF arrowcolor = RGB(200, 200, 200);
-
+    // the vertices for the dropdown triangle
+    static const POINT vertices[] = { 
+        {122, 10}, {132, 10}, {127, 15} 
+    };
+    HGDIOBJ oldbrush;
+    HGDIOBJ oldpen;
     PAINTSTRUCT ps;
-    HDC hdc = BeginPaint(hwnd, &ps);
-
+    HDC hdc;
     RECT rc;
+
+    hdc = BeginPaint(hwnd, &ps);
     GetClientRect(hwnd, &rc);
 
-    HBRUSH brush = CreateSolidBrush(bkcolor);
-    HGDIOBJ oldbrush = SelectObject(hdc, brush);
-    HPEN pen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
-    HGDIOBJ oldpen = SelectObject(hdc, pen);
-
-    SelectObject(hdc, (HFONT)SendMessage(hwnd, WM_GETFONT, 0, 0));
-    SetBkColor(hdc, bkcolor);
-    SetTextColor(hdc, textcolor);
+    // set background brush and border pen
+    oldbrush = SelectObject(hdc, bkbrush2);
+    oldpen = SelectObject(hdc, borderpen);
+    // set background color
+    SetBkColor(hdc, bkcolor2);
 
     // draw the two rectangles
     Rectangle(hdc, 0, 0, rc.right, rc.bottom);
-
-    // need to redraw the text as long as the dropdown is open, win32 sucks
-    int index = (int)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
-    if (index >= 0) {
-        size_t buflen = (size_t)SendMessage(hwnd, CB_GETLBTEXTLEN, index, 0);
-        char *buf = new char[(buflen + 1)];
-        SendMessage(hwnd, CB_GETLBTEXT, index, (LPARAM)buf);
-        rc.left += 5;
-        DrawText(hdc, buf, -1, &rc, DT_EDITCONTROL | DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-        delete[] buf;
-    }
-
+    // redraw the text 
+    drawComboText(hwnd, hdc, rc);
+    // draw the box around the dropdown button part
     Rectangle(hdc, rc.right - 25, rc.top + 2, rc.right - 24, rc.bottom - 2);
 
-    DeleteObject(brush);
-    DeleteObject(pen);
-
-    pen = CreatePen(PS_SOLID, 1, arrowcolor);
-    brush = CreateSolidBrush(arrowcolor);
-    SelectObject(hdc, brush);
-    SelectObject(hdc, pen);
-
-    POINT vertices[] = { {123, 7}, {133, 7}, {128, 15} };
+    // select pen and brush for drawing down arrow
+    SelectObject(hdc, arrowbrush);
+    SelectObject(hdc, arrowpen);
+    // draw the down arrow
     SetPolyFillMode(hdc, ALTERNATE);
     Polygon(hdc, vertices, sizeof(vertices) / sizeof(vertices[0]));
 
+    // restore old brush and pen
     SelectObject(hdc, oldbrush);
-    DeleteObject(brush);
     SelectObject(hdc, oldpen);
-    DeleteObject(pen);
 
     return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
@@ -115,8 +124,11 @@ void doCreate(HWND hwnd)
     HICON hIcon = LoadIcon(imageBase, MAKEINTRESOURCE(IDI_ICON1));
     SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
 
-    back = CreateSolidBrush(0x282828);
-    comboBack = CreateSolidBrush(0x191919);
+    bkbrush = CreateSolidBrush(bkcolor);
+    bkbrush2 = CreateSolidBrush(bkcolor2);
+    arrowbrush = CreateSolidBrush(arrowcolor);
+    borderpen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
+    arrowpen = CreatePen(PS_SOLID, 1, arrowcolor);
 
     // create the path entry text box
     hwndEdit = CreateWindow(WC_EDIT, "PathEntry", 
@@ -158,44 +170,71 @@ void doCreate(HWND hwnd)
 
 void doDestroy(HWND hwnd)
 {
-    DeleteObject(back);
-    DeleteObject(comboBack);
+    DeleteObject(bkbrush);
+    DeleteObject(bkbrush2);
+    DeleteObject(arrowbrush);
+    DeleteObject(borderpen);
+    DeleteObject(arrowpen);
 }
 
 void doPaint(HWND hwnd)
 {
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(hwnd, &ps);
-    FillRect(hdc, &ps.rcPaint, (HBRUSH)back);
+    FillRect(hdc, &ps.rcPaint, (HBRUSH)bkbrush);
     EndPaint(hwnd, &ps);
+}
+
+LRESULT doButtonPaint(WPARAM wParam, LPARAM lParam)
+{
+    HDC hdc = (HDC)wParam;
+    SetBkColor(hdc, bkcolor2);
+    SetTextColor(hdc, textcolor);
+    if (lParam == (LPARAM)hwndButton) {
+        return (LRESULT)bkbrush2;
+    }
+
+    if (lParam == (LPARAM)hwndComboBox) {
+        return (LRESULT)bkbrush2;
+    }
+    if (lParam == (LPARAM)hwndCheckBox) {
+        SetBkMode(hdc, TRANSPARENT);
+        return (LRESULT)bkbrush;
+    }
+    return (LRESULT)bkbrush2;
+}
+
+void doInject()
+{
+    char buf[2048] = {0};
+    GetWindowText(hwndEdit, buf, sizeof(buf));
+    int sel = (int)SendMessageW(hwndComboBox, CB_GETCURSEL, NULL, NULL);
+    bool use_artist = (bool)SendMessage(hwndCheckBox, BM_GETCHECK, 0, 0);
+    if (!inject(buf, versions[sel].name, use_artist)) {
+        string msg = string("Failed to inject into ") + buf;
+        MessageBox(NULL, msg.c_str(), "Error", 0);
+    }
+}
+
+void updatePathEditBox()
+{
+    int sel = (int)SendMessageW(hwndComboBox, CB_GETCURSEL, NULL, NULL);
+    SetWindowText(hwndEdit, versions[sel].path);
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    HDC hdc;
-    LPDRAWITEMSTRUCT draw_item = NULL;
-    char buf[2048] = {0};
     switch (uMsg) {
-    case WM_DRAWITEM:
-        draw_item = (LPDRAWITEMSTRUCT)lParam;
-        break;
     case WM_COMMAND:
-        if (HIWORD(wParam) == BN_CLICKED) {
-            if (LOWORD(wParam) == BUTTON_ID) {
-                GetWindowText(hwndEdit, buf, sizeof(buf));
-                int sel = (int)SendMessageW(hwndComboBox, CB_GETCURSEL, NULL, NULL);
-                bool use_artist = (bool)SendMessage(hwndCheckBox, BM_GETCHECK, 0, 0);
-                if (!inject(buf, versions[sel].name, use_artist)) {
-                    string msg = string("Failed to inject into ") + buf;
-                    MessageBox(NULL, msg.c_str(), "Error", 0);
-                }
-            }
+        // when button clicked inject the module
+        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == BUTTON_ID) {
+            doInject();
+            break;
         }
-        if (LOWORD(wParam) == COMBOBOX_ID) {
-            if (HIWORD(wParam) == CBN_SELCHANGE) {
-                int sel = (int)SendMessageW(hwndComboBox, CB_GETCURSEL, NULL, NULL);
-                SetWindowText(hwndEdit, versions[sel].path);
-            }
+        // when combobox changes update the text box
+        if (LOWORD(wParam) == COMBOBOX_ID && HIWORD(wParam) == CBN_SELCHANGE) {
+            updatePathEditBox();
+            break;
         }
         break;
     case WM_INITDIALOG:
@@ -214,21 +253,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_CTLCOLORLISTBOX:
     case WM_CTLCOLOREDIT:
     case WM_CTLCOLORSTATIC:
-        hdc = (HDC)wParam;
-        SetBkColor(hdc, RGB(25, 25, 25));
-        SetTextColor(hdc, RGB(220, 220, 220));
-        if (lParam == (LPARAM)hwndButton) {
-            return (LRESULT)comboBack;
-        }
-
-        if (lParam == (LPARAM)hwndComboBox) {
-            return (LRESULT)comboBack;
-        }
-        if (lParam == (LPARAM)hwndCheckBox) {
-            SetBkMode(hdc, TRANSPARENT);
-            return (LRESULT)back;
-        }
-        return (LRESULT)comboBack;
+        return doButtonPaint(wParam, lParam);
     default:
         break;
     }
@@ -237,10 +262,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow)
 {
+    RECT desktop;
     WNDCLASS wc;
     HWND hwnd;
     MSG msg;
 
+    // class registration
     memset(&msg, 0, sizeof(msg));
     memset(&wc, 0, sizeof(wc));
     wc.lpfnWndProc = WindowProc;
@@ -248,7 +275,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, 
     wc.lpszClassName = "RekordBoxSongExporter";
     RegisterClass(&wc);
 
-    RECT desktop;
+    // get desktop rect so we can center the window
     GetClientRect(GetDesktopWindow(), &desktop);
 
     // create the window
