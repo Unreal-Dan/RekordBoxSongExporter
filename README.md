@@ -9,7 +9,7 @@ Tested on Win10 and Win8.1
 This will export played tracks for integration with OBS or any system that can
 consume the track names from a file.
 
-This does **NOT** poll the Recordbox database, this directly hooks Recordbox which 
+This does **NOT** poll the Rekordbox database, this directly hooks Rekordbox which 
 means the output files update instantaneously when you fade into another track.
 
 The module offers a variety of configuration options to control how it outputs
@@ -17,9 +17,9 @@ the track information along with other unique options.
 
 ## How does it work
 
-The Launcher will optionally launch Recordbox and inject a module which hooks two 
+The Launcher will optionally launch Rekordbox and inject a module which hooks two 
 functions, one function is called when the play/cue button is pressed on a deck, and 
-the other function is called anytime the 'master' deck switches in Recordbox.
+the other function is called anytime the 'master' deck switches in Rekordbox.
 
 The play/cue hook will cache each song that is played on any deck into an internal
 storage of the hack itself.
@@ -40,7 +40,7 @@ This works with either two or four decks.
 
 Ensure the Loader and Module are both in the same folder.
 
-You can run Rekordbox beforehand or just use the launcher to start Recordbox for you. 
+You can run Rekordbox beforehand or just use the launcher to start Rekordbox for you. 
 
 You may close the launcher once the module has been injected into Rekordbox.
 
@@ -73,10 +73,10 @@ So if you want to save your played_tracks.txt file inbetween sessions then be su
 The UI offers configurations for:
 
 ### Version
-The version of rekordbox being launched/hooked (only 6.5.0 and 5.8.5 at the moment)
+The version of Rekordbox being launched/hooked (only 6.5.0 and 5.8.5 at the moment)
 
 ### Specific Path
-The path of rekordbox can be overridden to any location, the version dropdown is still important
+The path of Rekordbox can be overridden to any location, the version dropdown is still important
 
 ### Output Format
 The format of output lines for all four files, this doesn't include the timestamp prepended for played_tracks.txt lines.
