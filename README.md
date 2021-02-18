@@ -80,7 +80,7 @@ The path of Rekordbox can be overridden to any location, the version dropdown is
 The path is not important if you are running Rekordbox before pressing the Launch button.
 
 ### Output Format
-The format of output lines for all four files, this doesn't include the timestamp prepended for played_tracks.txt lines.
+The format of each line that is logged to all four files.
 
 The available placeholders in the output format include (so far):
 ```
@@ -89,15 +89,20 @@ The available placeholders in the output format include (so far):
    %time%       The current timestamp (hh:mm:ss)
 ```
 
+The 'Timestamps' checkbox option (described below) controls built-in timestamps *only* on the played_tracks.txt file.
+If you use the ```%time%``` placeholder and 'Timestamps' is enabled you will end up with two timestamps in played_tracks.txt
+
 ### Cur Tracks Count
-The number of lines in the current_tracks.txt file, ths file will always be truncated to this number of lines and the track list will be rotated through it.
+The number of lines to cap the current_tracks.txt file, ths file will always be truncated to this number of lines and the track list will be rotated through it.
 
 This is useful for OBS 'chatlog' mode with GDI text object because OBS requires a 'lines' count and will not read the file if the line count goes beyond the limit.
 
 Setting this to for example 10 would allow you to list the 'last 10 tracks' played at any given time.
 
 ### Timestamps
-This toggles a built-in timestamp on each line of played_tracks.txt, this timer starts when the first song is played and doesn't ever stop.
+This toggles a built-in timestamp on each line of played_tracks.txt.  
+The timer starts when the first song is played and doesn't ever stop.
+This doesn't have any control over the ```%time%``` placeholder.
 
 ## OBS Integration
 
