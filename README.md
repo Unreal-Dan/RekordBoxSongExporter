@@ -77,6 +77,7 @@ The version of Rekordbox being launched/hooked (only 6.5.0 and 5.8.5 at the mome
 
 ### Specific Path
 The path of Rekordbox can be overridden to any location, the version dropdown is still important because the module works differently for each version.
+The path is not important if you are running Rekordbox before pressing the Launch button.
 
 ### Output Format
 The format of output lines for all four files, this doesn't include the timestamp prepended for played_tracks.txt lines.
