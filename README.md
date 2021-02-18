@@ -31,8 +31,8 @@ So the expected flow is to load a track, play/cue it, then eventually fade into
 the track. When you fade from one deck into the other Rekordbox will update the 
 'master', this will trigger the hack to log the new track title and artist.
 
-There is also edge-case support for when you load a new track onto the master deck.
-This would probably sound horrible, but the song will still be logged correctly.
+There is also edge-case support for when you load a new track onto the master deck while one is already playing there.
+F for your terrible transition, but rest assured the song will still be logged correctly.
 
 This works with either two or four decks.
 
