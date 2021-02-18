@@ -47,14 +47,13 @@ Each of these output files will be cleared when you first inject the hack into
 Rekordbox, so if you want to save your played_tracks.txt file inbetween sessions
 then be sure to make a copy before launching the hack again.
 
-If you tick the 'Include Artist' checkbox then all tracks will be logged as:
+The UI offers configurations for:
 
-```
-    artist - track name
-```
-
-Otherwise if the 'Include Artist' checkbox is left unchecked the only track names
-will be logged.
+   - the version of rekordbox being launched/hooked
+   - the path of rekordbox (can be overridden)
+   - the format of output lines
+   - the number of lines in the current_tracks.txt file
+   - whether to include an (hh:mm:ss) timestamp on each line of played_tracks.txt
 
 The trick to integrating with OBS is to create a Text GDI object and select the 
 'read from file' option.
