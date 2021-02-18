@@ -44,7 +44,7 @@ You can run Rekordbox beforehand or just use the launcher to start Recordbox for
 
 You may close the launcher once the module has been injected into Rekordbox.
 
-Once the hack is loaded four output files that will appear in the folder of the Loader
+Once the hack is loaded four output files will appear in the folder of the Loader
 and Module, these files will be dynamically updated in different ways with different
 information.
 
