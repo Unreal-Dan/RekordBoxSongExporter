@@ -9,7 +9,7 @@ Tested on Win10 and Win8.1
 This will export played tracks for integration with OBS or any system that can
 consume the track names from a file.
 
-This does **NOT** poll the rekordbox database, this directly hooks rekordbox which 
+This does **NOT** poll the Recordbox database, this directly hooks Recordbox which 
 means the output files update instantaneously when you fade into another track.
 
 The module offers a variety of configuration options to control how it outputs
@@ -17,9 +17,9 @@ the track information along with other unique options.
 
 ## How does it work
 
-The Launcher will optionally launch RekordBox and inject a module which hooks two 
+The Launcher will optionally launch Recordbox and inject a module which hooks two 
 functions, one function is called when the play/cue button is pressed on a deck, and 
-the other function is called anytime the 'master' deck switches in Rekordbox.
+the other function is called anytime the 'master' deck switches in Recordbox.
 
 The play/cue hook will cache each song that is played on any deck into an internal
 storage of the hack itself.
@@ -40,7 +40,7 @@ This works with either two or four decks.
 
 Ensure the Loader and Module are both in the same folder.
 
-You can run Rekordbox beforehand or just use the launcher to start rekordbox for you. 
+You can run Rekordbox beforehand or just use the launcher to start Recordbox for you. 
 
 You may close the launcher once the module has been injected into Rekordbox.
 
