@@ -48,20 +48,21 @@ Once the hack is loaded four output files will appear in the folder of the Loade
 and Module, these files will be dynamically updated in different ways with different
 information.
 
-```                    
-   current_track.txt - This file contains one line with the current track playing, nothing else.
+### current_track.txt
+This file contains one line with the current track playing, nothing else.
 
-      last_track.txt - This file is also one line with only the last track to play, nothing else.
+### last_track.txt
+This file is also one line with only the last track to play, nothing else.
 
-  current_tracks.txt - This contains a rotating list of tracks capped to a maximum number of lines. 
-                       The newest track is at the top and oldest is at the bottom.
-                       The number of lines is configurable in the launcher.
+### current_tracks.txt
+This contains a rotating list of tracks capped to a maximum number of lines. 
+The newest track is at the top and oldest is at the bottom.
+The number of lines is configurable in the launcher.
 
-   played_tracks.txt - This is a full log of all tracks played for the entire session.
-                       The oldest track will be at the top and newest at bottom. 
-                       This file can include (hh:mm:ss) timestamp prefixes if 'Timestamps' is enabled.
-   
-```                    
+### played_tracks.txt
+This is a full log of all tracks played for the entire session.
+The oldest track will be at the top and newest at bottom. 
+This file can include (hh:mm:ss) timestamp prefixes if 'Timestamps' is enabled.
 
 #### NOTE: All output files are wiped when the module is injected
 
