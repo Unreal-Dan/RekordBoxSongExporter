@@ -33,7 +33,7 @@ the track. When you fade from one deck into the other Rekordbox will update the
 
 There is also edge-case support for when you load a new track onto the master deck 
 while one is already playing there. F in chat for your terrible transition, but rest 
-assured the song will still be logged correctly.
+assured the song will still be logged correctly.  
 
 This works with either two or four decks.
 
@@ -59,15 +59,15 @@ This file is also one line with only the last track to play, nothing else.
 
 ### current_tracks.txt
 
-This contains a rotating list of tracks capped to a maximum number of lines. 
-The newest track is at the top and oldest is at the bottom.
-The number of lines is configurable in the launcher.
+This contains a rotating list of tracks capped to a maximum number of lines.  
+The newest track is at the top and oldest is at the bottom.  
+The number of lines is configurable in the launcher.  
 
 ### played_tracks.txt
 
-This is a full log of all tracks played for the entire session.
-The oldest track will be at the top and newest at bottom. 
-This file can include (hh:mm:ss) timestamp prefixes if 'Timestamps' is enabled.
+This is a full log of all tracks played for the entire session.  
+The oldest track will be at the top and newest at bottom.  
+This file can include (hh:mm:ss) timestamp prefixes if 'Timestamps' is enabled.  
 
 #### NOTE: All output files are wiped when the module is injected
 
@@ -118,8 +118,8 @@ at any given time.
 ### Timestamps
 
 This toggles a built-in timestamp on each line of played_tracks.txt.  
-The timer starts when the first song is played and doesn't ever stop.
-This doesn't have any control over the ```%time%``` placeholder.
+The timer starts when the first song is played and doesn't ever stop.  
+This doesn't have any control over the ```%time%``` placeholder. 
 
 ## OBS Integration
 
