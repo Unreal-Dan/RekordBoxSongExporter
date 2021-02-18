@@ -127,19 +127,6 @@ static bool replace(string& str, const string& from, const string& to)
     return true;
 }
 
-// helper to build output line based on configured output format
-static string build_output(track_entry *entry)
-{
-    // start with out format
-    string out = config.out_format;
-    // replace various fields
-    replace(out, "%artist%", entry->artist);
-    replace(out, "%track%", entry->track);
-    // maybe soon:
-    //replace(out, "%genre%", entry->genre);
-    return out;
-}
-
 // calc time since the first time this was called
 static string get_timestamp_since_start()
 {
@@ -164,6 +151,20 @@ static string get_timestamp_since_start()
         return string("(00:00:00)");
     }
     return string(buf);
+}
+
+// helper to build output line based on configured output format
+static string build_output(track_entry *entry)
+{
+    // start with out format
+    string out = config.out_format;
+    // replace various fields
+    replace(out, "%artist%", entry->artist);
+    replace(out, "%track%", entry->track);
+    replace(out, "%time%", get_timestamp_since_start());
+    // maybe soon:
+    //replace(out, "%genre%", entry->genre);
+    return out;
 }
 
 // updates the last_track, current_track, and current_tracks files

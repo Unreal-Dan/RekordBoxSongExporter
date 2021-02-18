@@ -28,7 +28,7 @@ void *inject_string(HANDLE hProc, const char *str)
 }
 
 // look for the rekordbox window and open it
-HANDLE find_rekordbox_window()
+HANDLE find_rekordbox_window(uint32_t retry_count)
 {
     HWND hwnd = NULL;
     DWORD procID = 0;
@@ -39,9 +39,9 @@ HANDLE find_rekordbox_window()
         }
         hwnd = FindWindowA(NULL, "rekordbox");
         i++;
-    } while (hwnd == NULL && i < 15);
+    } while (hwnd == NULL && i < retry_count);
     if (!hwnd) {
-        MessageBox(NULL, "Failed to find window", "Error", 0);
+        // not found
         return NULL;
     }
     if (!GetWindowThreadProcessId(hwnd, &procID)) {
@@ -77,6 +77,7 @@ bool inject_module(HANDLE hProc)
     DWORD len = GetModuleFileName(NULL, buffer, MAX_PATH);
     // strip off the filename
     if (!len || !PathRemoveFileSpec(buffer)) {
+        MessageBoxA(NULL, "Failed to resolve module path", "Error", 0);
         return false;
     }
     // append the module name, it should fit
@@ -96,14 +97,19 @@ bool inject_module(HANDLE hProc)
     return true;
 }
 
+// optionally load rekordbox and inject the module then play an annoying sound
 bool inject(string rekordbox)
 {
-    // spawn rekordbox
-    if (!launch_rekordbox(rekordbox)) {
-        return false;
+    // see if rekordbox is already running, only check once no retries
+    HANDLE hProc = find_rekordbox_window(0);
+    if (!hProc) {
+        // if not try to launch rekordbox
+        if (!launch_rekordbox(rekordbox)) {
+            return false;
+        }
     }
-    // open rekordbox so we can modify it
-    HANDLE hProc = find_rekordbox_window();
+    // retry 15 times to see if we can find rekordbox window now
+    hProc = find_rekordbox_window(15);
     if (!hProc) {
         return false;
     }
@@ -111,8 +117,12 @@ bool inject(string rekordbox)
     if (!inject_module(hProc)) {
         return false;
     }
-    // success
+
+    // this ding is driving me nuts debugging so it's a release only feature now
+#ifndef _DEBUG
+    // give them a success ding so they feel like something happened
     PlaySound("MouseClick", NULL, SND_SYNC);
+#endif
     return true;
 }
 
