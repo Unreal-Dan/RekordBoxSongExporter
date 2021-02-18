@@ -29,7 +29,7 @@ bool initialize_config()
     char buf[2048] = { 0 };
     string configPath = get_dll_path() + "\\config.ini";
     if (!GetPrivateProfileString("RBSongExporterConfig", "rbox_version", "", buf, sizeof(buf), configPath.c_str())) {
-        error("Failed to load config [%s]: %d", configPath.c_str(), GetLastError());
+        error("Failed to load rbox version from [%s]: %d", configPath.c_str(), GetLastError());
         return false;
     }
     // just the version part
@@ -40,8 +40,28 @@ bool initialize_config()
             config.rbox_version = (rbox_version_t)ver;
         }
     }
-    // load use artist config
-    config.use_artist = (bool)GetPrivateProfileInt("RBSongExporterConfig", "use_artist", 0, configPath.c_str());
+
+    // the output version
+    if (!GetPrivateProfileString("RBSongExporterConfig", "out_format", "", buf, sizeof(buf), configPath.c_str())) {
+        error("Failed to load out_format from [%s]: %d", configPath.c_str(), GetLastError());
+        return false;
+    }
+    config.out_format = buf;
+
+    // the num lines in cur tracks
+    if (!GetPrivateProfileString("RBSongExporterConfig", "cur_tracks_count", "", buf, sizeof(buf), configPath.c_str())) {
+        error("Failed to load out_format from [%s]: %d", configPath.c_str(), GetLastError());
+        return false;
+    }
+    config.max_tracks = strtoul(buf, NULL, 10);
+
+    // whether to use timestamps in global log
+    if (!GetPrivateProfileString("RBSongExporterConfig", "use_timestamps", "", buf, sizeof(buf), configPath.c_str())) {
+        error("Failed to load out_format from [%s]: %d", configPath.c_str(), GetLastError());
+        return false;
+    }
+    config.use_timestamps = (strtoul(buf, NULL, 10) != 0);
+
     return true;
 }
 

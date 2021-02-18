@@ -10,7 +10,7 @@
 
 using namespace std;
 
-// This is the file containing the last MAX_TRACKS songs
+// This is the file containing the last config.max_tracks songs
 #define CUR_TRACKS_FILE "current_tracks.txt"
 // This file contains the current track only
 #define CUR_TRACK_FILE  "current_track.txt"
@@ -116,6 +116,56 @@ void run_log_listener()
     }
 }
 
+// helper for in-place replacements
+static bool replace(string& str, const string& from, const string& to) 
+{
+    size_t start_pos = str.find(from);
+    if (start_pos == std::string::npos) {
+        return false;
+    }
+    str.replace(start_pos, from.length(), to);
+    return true;
+}
+
+// helper to build output line based on configured output format
+static string build_output(track_entry *entry)
+{
+    // start with out format
+    string out = config.out_format;
+    // replace various fields
+    replace(out, "%artist%", entry->artist);
+    replace(out, "%track%", entry->track);
+    // maybe soon:
+    //replace(out, "%genre%", entry->genre);
+    return out;
+}
+
+// calc time since the first time this was called
+static string get_timestamp_since_start()
+{
+    static DWORD start_timestamp = 0;
+    if (!start_timestamp) {
+        start_timestamp = GetTickCount();
+        return string("(00:00:00)");
+    }
+    DWORD elapsed = GetTickCount() - start_timestamp;
+    // grab hours
+    DWORD hr = elapsed / 3600000;
+    elapsed -= (3600000 * hr);
+    // grab minutes
+    DWORD min = elapsed / 60000;
+    elapsed -= (60000 * min);
+    // grab seconds
+    DWORD sec = elapsed / 1000;
+    elapsed -= (1000 * sec);
+    // return the timestamp
+    char buf[256] = { 0 };
+    if (snprintf(buf, sizeof(buf), "(%02u:%02u:%02u)", hr, min, sec) < 1) {
+        return string("(00:00:00)");
+    }
+    return string(buf);
+}
+
 // updates the last_track, current_track, and current_tracks files
 // this can be called from any thread safely
 void update_output_files(string track, string artist)
@@ -130,8 +180,8 @@ void update_output_files(string track, string artist)
 
     // prepend this new track to the list
     tracks.push_front(track_entry(track, artist, ""));
-    // make sure the list doesn't go beyond MAX_TRACKS
-    if (tracks.size() > MAX_TRACKS) {
+    // make sure the list doesn't go beyond config.max_tracks
+    if (tracks.size() > config.max_tracks) {
         // remove from the end
         tracks.pop_back();
     }
@@ -141,10 +191,7 @@ void update_output_files(string track, string artist)
         // concatenate the tracks into a single string
         string tracks_str;
         for (auto it = tracks.begin(); it != tracks.end(); it++) {
-            if (config.use_artist) {
-                tracks_str += string(it->artist) + " - ";
-            }
-            tracks_str += string(it->track) + "\r\n";
+            tracks_str += build_output(&it[0]) + "\r\n";
         }
         // rewrite the tracks file with all of the lines at once
         if (!rewrite(get_cur_tracks_file(), tracks_str)) {
@@ -152,34 +199,26 @@ void update_output_files(string track, string artist)
         }
 
         // rewrite the current track file with only the current track
-        string cur_track;
-        if (config.use_artist) {
-            cur_track += string(tracks.at(0).artist) + " - ";
-        }
-        cur_track.append(tracks.at(0).track);
-        if (!rewrite(get_cur_track_file(), cur_track)) {
+        if (!rewrite(get_cur_track_file(), build_output(&tracks.at(0)))) {
             error("Failed to append to current track file");
         }
     }
     // rewrite the last track file with the previous track
     if (tracks.size() > 1) {
-        string last_track;
-        if (config.use_artist) {
-            last_track += string(tracks.at(1).artist) + " - ";
-        }
-        last_track += tracks.at(1).track;
-        if (!rewrite(get_last_track_file(), last_track)) {
+        if (!rewrite(get_last_track_file(), build_output(&tracks.at(1)))) {
             error("Failed to write last track file");
         }
     }
 
     // append the artist and track to the global log
     string log_entry;
-    if (config.use_artist) {
-        log_entry += artist + " - ";
+    if (config.use_timestamps) {
+        // timestamp with a space after it
+        log_entry += get_timestamp_since_start() + " ";
     }
-    log_entry += track + "\r\n";
-    if (!append(get_log_file(), artist + " - " + track + "\r\n")) {
+    // the rest of the current track output
+    log_entry += build_output(&tracks.front()) + "\r\n";
+    if (!append(get_log_file(), log_entry)) {
         error("Failed to log track to global log");
     }
 

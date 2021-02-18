@@ -8,10 +8,11 @@
 
 #include "Injector.h"
 #include "resource.h"
+#include "Config.h"
 
 #pragma comment(lib, "Comctl32.lib")
-#pragma comment(lib, "Winmm.lib")
 #pragma comment(lib, "UxTheme.lib")
+#pragma comment(lib, "Winmm.lib")
 
 using namespace std;
 
@@ -31,19 +32,22 @@ version_path versions[] = {
 // the number of versions in table above
 #define NUM_VERSIONS    (sizeof(versions) / sizeof(versions[0]))
 
-// module base
-EXTERN_C IMAGE_DOS_HEADER __ImageBase;
-HINSTANCE imageBase = (HINSTANCE)&__ImageBase;
+#define COMBOBOX_ID     1000
+#define CHECKBOX_ID     1001
+#define BUTTON_ID       1002
+#define PATHEDIT_ID     1003
+#define LABEL_ID        1004
+#define FMTEDIT_ID      1005
+#define COUNTEDIT_ID    1006
 
-#define COMBOBOX_ID 1000
-#define CHECKBOX_ID 1001
-#define BUTTON_ID   1002
-#define EDIT_ID     1003
-
+HWND hwndTimestampCheckbox;
 HWND hwndComboBox;
-HWND hwndCheckBox;
 HWND hwndButton;
-HWND hwndEdit;
+HWND hwndPathEdit;
+HWND hwndCountLabel;
+HWND hwndFmtLabel;
+HWND hwndFmtEdit;
+HWND hwndCountEdit;
 HBRUSH bkbrush;
 HBRUSH bkbrush2;
 HBRUSH arrowbrush;
@@ -131,41 +135,73 @@ void doCreate(HWND hwnd)
     arrowpen = CreatePen(PS_SOLID, 1, arrowcolor);
 
     // create the path entry text box
-    hwndEdit = CreateWindow(WC_EDIT, "PathEntry", 
+    hwndPathEdit = CreateWindow(WC_EDIT, "", 
         WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL, 
-        12, 46, 376, 21, hwnd, (HMENU)EDIT_ID, NULL, NULL);
+        12, 42, 378, 21, hwnd, (HMENU)PATHEDIT_ID, NULL, NULL);
 
     // set the version path in the text box
-    SetWindowText(hwndEdit, versions[0].path);
+    SetWindowText(hwndPathEdit, versions[0].path);
 
     // create the dropdown box
     hwndComboBox = CreateWindow(WC_COMBOBOX, "VersionSelect",
         CBS_SIMPLE | CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
-        12, 16, 140, 400, hwnd, (HMENU)COMBOBOX_ID, NULL, NULL);
+        12, 12, 140, 400, hwnd, (HMENU)COMBOBOX_ID, NULL, NULL);
     if (!hwnd) {
         MessageBox(NULL, "Failed to open window", "Error", 0);
         return;
     }
+    size_t cur_sel = 0;
+    string conf_version = conf_load_version();
     // populate the dropdown box with versions
     for (size_t i = 0; i < NUM_VERSIONS; i++) {
         // Add string to combobox.
         SendMessage(hwndComboBox, CB_ADDSTRING, NULL, (LPARAM)versions[i].name);
+        if (conf_version == versions[i].name) {
+            cur_sel = i;
+        }
     }
     // Send the CB_SETCURSEL message to display an initial item in the selection field  
-    SendMessage(hwndComboBox, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
+    SendMessage(hwndComboBox, CB_SETCURSEL, (WPARAM)cur_sel, (LPARAM)0);
 
     // for overriding background colors of dropdown
     SetWindowSubclass(hwndComboBox, comboProc, 0, 0);
 
+    // Create the label using CreateWindowEx
+    hwndFmtLabel = CreateWindowEx(WS_EX_TRANSPARENT, WC_STATIC, "", 
+        WS_CHILD | WS_VISIBLE | SS_LEFT | WS_SYSMENU, 
+        12, 72, 52, 16, hwnd, NULL, NULL, NULL);
+    SendMessage(hwndFmtLabel, WM_SETTEXT, NULL, (LPARAM)"Format:");
+
+    // the output format entry box
+    string format = conf_load_out_format();
+    hwndFmtEdit  = CreateWindow(WC_EDIT, format.c_str(), 
+        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL, 
+        70, 70, 210, 21, hwnd, (HMENU)FMTEDIT_ID, NULL, NULL);
+
+    // Create the label using CreateWindowEx
+    hwndCountLabel = CreateWindowEx(WS_EX_TRANSPARENT, WC_STATIC, "", 
+        WS_CHILD | WS_VISIBLE | SS_LEFT | WS_SYSMENU, 
+        12, 100, 118, 16, hwnd, NULL, NULL, NULL);
+    SendMessage(hwndCountLabel, WM_SETTEXT, NULL, (LPARAM)"Cur Tracks Count:");
+
+    // the cur tracks count entry box
+    string num_out = conf_load_cur_tracks_count();
+    hwndCountEdit  = CreateWindow(WC_EDIT, num_out.c_str(), 
+        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_NUMBER, 
+        130, 98, 30, 20, hwnd, (HMENU)COUNTEDIT_ID, NULL, NULL);
+
     // create the artist checkbox
-    hwndCheckBox = CreateWindow(WC_BUTTON, "Include Artist", 
+    hwndTimestampCheckbox = CreateWindow(WC_BUTTON, "Timestamps", 
         WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX,
-        17, 80, 115, 16, hwnd, (HMENU)CHECKBOX_ID, NULL, NULL);
+        170, 100, 115, 16, hwnd, (HMENU)CHECKBOX_ID, NULL, NULL);
+    if (conf_load_use_timestamps()) {
+        SendMessage(hwndTimestampCheckbox, BM_SETCHECK, BST_CHECKED, 0);
+    }
 
     // create the launch button
     hwndButton = CreateWindow(WC_BUTTON, "Launch",
         WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-        290, 80, 100, 40, hwnd, (HMENU)BUTTON_ID, NULL, NULL);
+        290, 70, 100, 48, hwnd, (HMENU)BUTTON_ID, NULL, NULL);
 }
 
 void doDestroy(HWND hwnd)
@@ -197,29 +233,59 @@ LRESULT doButtonPaint(WPARAM wParam, LPARAM lParam)
     if (lParam == (LPARAM)hwndComboBox) {
         return (LRESULT)bkbrush2;
     }
-    if (lParam == (LPARAM)hwndCheckBox) {
+    if (lParam == (LPARAM)hwndCountLabel || 
+        lParam == (LPARAM)hwndTimestampCheckbox ||
+        lParam == (LPARAM)hwndFmtLabel) {
         SetBkMode(hdc, TRANSPARENT);
         return (LRESULT)bkbrush;
     }
     return (LRESULT)bkbrush2;
 }
 
+// save the config file from current gui settings
+void saveConfig()
+{
+    char buf[2048] = {0};
+
+    // the version selection
+    int sel = (int)SendMessageW(hwndComboBox, CB_GETCURSEL, NULL, NULL);
+    // only save the part after the word "Rekordbox " (the version number)
+    conf_save_version(versions[sel].name + sizeof("Rekordbox"));
+
+    // the path
+    GetWindowText(hwndPathEdit, buf, sizeof(buf));
+    conf_save_path(buf);
+
+    // the format
+    GetWindowText(hwndFmtEdit, buf, sizeof(buf));
+    conf_save_out_format(buf);
+
+    // the num lines in cur tracks
+    GetWindowText(hwndCountEdit, buf, sizeof(buf));
+    conf_save_cur_tracks_count(buf);
+
+    // the use timestamps checkbox
+    conf_save_use_timestamps((bool)SendMessage(hwndTimestampCheckbox, BM_GETCHECK, 0, 0));
+}
+
+// inject into the path specified in gui
 void doInject()
 {
     char buf[2048] = {0};
-    GetWindowText(hwndEdit, buf, sizeof(buf));
-    int sel = (int)SendMessageW(hwndComboBox, CB_GETCURSEL, NULL, NULL);
-    bool use_artist = (bool)SendMessage(hwndCheckBox, BM_GETCHECK, 0, 0);
-    if (!inject(buf, versions[sel].name, use_artist)) {
+    GetWindowText(hwndPathEdit, buf, sizeof(buf));
+    string rbox_path = buf;
+    // inject the dll
+    if (!inject(rbox_path)) {
         string msg = string("Failed to inject into ") + buf;
         MessageBox(NULL, msg.c_str(), "Error", 0);
     }
 }
 
+// update the path text box when the combo selection changes
 void updatePathEditBox()
 {
     int sel = (int)SendMessageW(hwndComboBox, CB_GETCURSEL, NULL, NULL);
-    SetWindowText(hwndEdit, versions[sel].path);
+    SetWindowText(hwndPathEdit, versions[sel].path);
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -228,6 +294,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_COMMAND:
         // when button clicked inject the module
         if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == BUTTON_ID) {
+            saveConfig();
             doInject();
             break;
         }

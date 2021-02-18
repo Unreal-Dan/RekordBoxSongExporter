@@ -96,28 +96,8 @@ bool inject_module(HANDLE hProc)
     return true;
 }
 
-bool write_config(string version, bool use_artist)
+bool inject(string rekordbox)
 {
-    char path[MAX_PATH] = {0};
-    GetModuleFileName(GetModuleHandle(NULL), path, MAX_PATH);
-    PathRemoveFileSpec(path);
-    string configPath = path;
-    configPath += "\\config.ini";
-    string raw_version = version.substr(version.find_last_of(" ") + 1);
-    if (!WritePrivateProfileString("RBSongExporterConfig", "rbox_version", raw_version.c_str(), configPath.c_str()) ||
-        !WritePrivateProfileString("RBSongExporterConfig", "use_artist", use_artist ? "1" : "0", configPath.c_str())) {
-        MessageBoxA(NULL, "Failed to write config", "Error", 0);
-        return false;
-    }
-    return true;
-}
-
-bool inject(string rekordbox, string version, bool use_artist)
-{
-    // write out the config file
-    if (!write_config(version, use_artist)) {
-        return false;
-    }
     // spawn rekordbox
     if (!launch_rekordbox(rekordbox)) {
         return false;

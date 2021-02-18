@@ -51,6 +51,11 @@ void play_track_hook(event_struct *event)
     // grab the current deck we have pressed play on
     deck_struct *new_track_deck = &track_info->decks[deck_idx];
 
+    // we need at least a title... 
+    if (!*new_track_deck->track_title) {
+        return;
+    }
+
     info("Playing track on %u: %s - %s", deck_idx,
         new_track_deck->track_title, new_track_deck->track_artist);
 

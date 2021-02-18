@@ -1,9 +1,6 @@
 #pragma once
 #include <string>
 
-// This is the number of songs that will be kept in current_tracks.txt
-#define MAX_TRACKS       3
-
 // enum of versions we support
 typedef enum rbox_version_enum
 {
@@ -20,8 +17,15 @@ typedef struct config_struct
 {
     // the version loaded from config
     rbox_version_t rbox_version;
-    // whether to use artist in output
-    bool use_artist;
+
+    // the output format
+    std::string out_format;
+
+    // the max tracks to log in current tracks
+    uint32_t max_tracks;
+
+    // whether to use timestamps in global log
+    bool use_timestamps;
 } config_t;
 
 // global config object
