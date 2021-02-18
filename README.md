@@ -49,17 +49,21 @@ and Module, these files will be dynamically updated in different ways with diffe
 information.
 
 ### current_track.txt
+
 This file contains one line with the current track playing, nothing else.
 
 ### last_track.txt
+
 This file is also one line with only the last track to play, nothing else.
 
 ### current_tracks.txt
+
 This contains a rotating list of tracks capped to a maximum number of lines. 
 The newest track is at the top and oldest is at the bottom.
 The number of lines is configurable in the launcher.
 
 ### played_tracks.txt
+
 This is a full log of all tracks played for the entire session.
 The oldest track will be at the top and newest at bottom. 
 This file can include (hh:mm:ss) timestamp prefixes if 'Timestamps' is enabled.
@@ -73,13 +77,16 @@ So if you want to save your played_tracks.txt file inbetween sessions then be su
 The UI offers configurations for:
 
 ### Version
+
 The version of Rekordbox being launched/hooked (only 6.5.0 and 5.8.5 at the moment)
 
 ### Specific Path
+
 The path of Rekordbox can be overridden to any location, the version dropdown is still important because the module works differently for each version.
 The path is not important if you are running Rekordbox before pressing the Launch button.
 
 ### Output Format
+
 The format of each line that is logged to all four files.
 
 The available placeholders in the output format include (so far):
@@ -93,6 +100,7 @@ The 'Timestamps' checkbox option (described below) controls built-in timestamps 
 If you use the ```%time%``` placeholder and 'Timestamps' is enabled you will end up with two timestamps in played_tracks.txt
 
 ### Cur Tracks Count
+
 The number of lines to cap the current_tracks.txt file, ths file will always be truncated to this number of lines and the track list will be rotated through it.
 
 This is useful for OBS 'chatlog' mode with GDI text object because OBS requires a 'lines' count and will not read the file if the line count goes beyond the limit.
@@ -100,6 +108,7 @@ This is useful for OBS 'chatlog' mode with GDI text object because OBS requires 
 Setting this to for example 10 would allow you to list the 'last 10 tracks' played at any given time.
 
 ### Timestamps
+
 This toggles a built-in timestamp on each line of played_tracks.txt.  
 The timer starts when the first song is played and doesn't ever stop.
 This doesn't have any control over the ```%time%``` placeholder.
