@@ -1,6 +1,7 @@
 #include <Windows.h>
 
 #include <string>
+#include <map>
 
 #include "LastTrackStorage.h"
 
@@ -9,10 +10,34 @@ using namespace std;
 class track_info
 {
 public:
-    track_info() : last_track(), last_artist(), is_logged(false) {}
-    // some globals to share stuff between the hooks
-    string last_track;
-    string last_artist;
+    track_info() : 
+        stringTrackInfo(),
+        uintTrackInfo(),
+        floatTrackInfo(),
+        is_logged(false) {}
+
+    // all strings are in here, expect:
+    //  title 
+    //  artist
+    //  album
+    //  genre
+    //  label
+    //  key
+    //  origArtist
+    //  remixer
+    //  composer
+    //  comment
+    //  mixName
+    //  lyricist
+    //  dateCreated
+    //  dateAdded
+    map<string, string> stringTrackInfo;
+    // all uints are in here, expect:
+    //  trackNumber
+    map<string, uint32_t> uintTrackInfo;
+    // all floats are in here, expect:
+    //  bpm
+    map<string, float> floatTrackInfo;
     // this will be set to true once this artist/track has been logged
     bool is_logged;
 };
@@ -42,25 +67,39 @@ bool initialize_last_track_storage()
     return true;
 }
 
-// store info in global threadsafe storage
-void set_last_track(string track, uint32_t deck)
+// cache uint info
+void set_string_info(uint32_t deck, string key, string value)
 {
     if (deck >= NUM_DECKS) {
         return;
     }
     EnterCriticalSection(&last_track_critsec);
-    decks[deck].last_track = track;
+    decks[deck].stringTrackInfo[key] = value;
     LeaveCriticalSection(&last_track_critsec);
 }
-void set_last_artist(string artist, uint32_t deck)
+
+// cache uint info
+void set_uint_info(uint32_t deck, string key, uint32_t value)
 {
     if (deck >= NUM_DECKS) {
         return;
     }
     EnterCriticalSection(&last_track_critsec);
-    decks[deck].last_artist = artist;
+    decks[deck].uintTrackInfo[key] = value;
     LeaveCriticalSection(&last_track_critsec);
 }
+
+// cache float info
+void set_float_info(uint32_t deck, string key, float value)
+{
+    if (deck >= NUM_DECKS) {
+        return;
+    }
+    EnterCriticalSection(&last_track_critsec);
+    decks[deck].floatTrackInfo[key] = value;
+    LeaveCriticalSection(&last_track_critsec);
+}
+
 void set_logged(uint32_t deck, bool logged)
 {
     if (deck >= NUM_DECKS) {
@@ -71,29 +110,46 @@ void set_logged(uint32_t deck, bool logged)
     LeaveCriticalSection(&last_track_critsec);
 }
 
-// grab info out of global threadsafe storage
-string get_last_track(uint32_t deck)
+
+// get cached string info
+string get_string_info(uint32_t deck, string key)
 {
     string result;
     if (deck >= NUM_DECKS) {
         return result;
     }
     EnterCriticalSection(&last_track_critsec);
-    result = decks[deck].last_track;
+    result = decks[deck].stringTrackInfo[key];
     LeaveCriticalSection(&last_track_critsec);
     return result;
 }
-string get_last_artist(uint32_t deck)
+
+// get cached uint info
+uint32_t get_uint_info(uint32_t deck, string key)
 {
-    string result;
+    uint32_t result = 0;
     if (deck >= NUM_DECKS) {
         return result;
     }
     EnterCriticalSection(&last_track_critsec);
-    result = decks[deck].last_artist;
+    result = decks[deck].uintTrackInfo[key];
     LeaveCriticalSection(&last_track_critsec);
     return result;
 }
+
+// get cached float info
+float get_float_info(uint32_t deck, string key)
+{
+    float result = 0.0f;
+    if (deck >= NUM_DECKS) {
+        return result;
+    }
+    EnterCriticalSection(&last_track_critsec);
+    result = decks[deck].floatTrackInfo[key];
+    LeaveCriticalSection(&last_track_critsec);
+    return result;
+}
+
 bool get_logged(uint32_t deck)
 {
     if (deck >= NUM_DECKS) {

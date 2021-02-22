@@ -39,6 +39,9 @@
     <ClCompile Include="OutputFiles.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="OnLoadedTrackChangeHook.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NotifyMasterChangeHook.h">
@@ -60,6 +63,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="OutputFiles.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OnLoadedTrackChangeHook.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

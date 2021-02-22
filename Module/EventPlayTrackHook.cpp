@@ -19,7 +19,12 @@ struct deck_struct
     char *track_title; 
     char *track_artist; 
     char *track_genre; 
-    uint8_t pad2[0x90];
+    void *unkown1;
+    void *unkown2;
+    char *track_composer; 
+    char *track_lyricist; 
+    char *track_label; 
+    uint8_t pad2[0x68];
 };
 
 // structure reversed out of rekordbox that appears to
@@ -60,15 +65,17 @@ void play_track_hook(event_struct *event)
         new_track_deck->track_title, new_track_deck->track_artist);
 
     // if we are playing a new song
-    if (get_last_track(deck_idx) != new_track_deck->track_title ||
+    if (get_last_title(deck_idx) != new_track_deck->track_title ||
         get_last_artist(deck_idx) != new_track_deck->track_artist) {
 
         // if we're loading the new song onto the same deck then
         // notifyMasterChange will not be called because this deck
         // is already the master -- so we must log it ourselves
         if (get_master() == deck_idx) {
+            set_last_title(deck_idx, new_track_deck->track_title);
+            set_last_artist(deck_idx, new_track_deck->track_artist);
             // log it to our track list
-            update_output_files(new_track_deck->track_title, new_track_deck->track_artist);
+            update_output_files(deck_idx);
             // we logged this track now
             set_logged(deck_idx, true);
         } else {
@@ -80,8 +87,8 @@ void play_track_hook(event_struct *event)
 
     // set the last track + artist in global storage so that the
     // notifyMasterChange hook can pull it from here
-    set_last_track(new_track_deck->track_title, deck_idx);
-    set_last_artist(new_track_deck->track_artist, deck_idx);
+    set_last_title(deck_idx, new_track_deck->track_title, deck_idx);
+    set_last_artist(deck_idx, new_track_deck->track_artist);
 }
 
 bool hook_event_play_track()
@@ -106,7 +113,7 @@ bool hook_event_play_track()
     info("event_play_func: %p", ep_addr);
     // install hook on event_play_addr that redirects to play_track_hookerror
     if (!install_hook(ep_addr, play_track_hook, trampoline_len)) {
-        error("Failed to install hook on event play");
+        error("Failed to hook eventPlay");
         return false;
     }
     return true;

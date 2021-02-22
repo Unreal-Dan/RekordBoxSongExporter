@@ -4,6 +4,7 @@
 #include <deque>
 #include <queue>
 
+#include "LastTrackStorage.h"
 #include "OutputFiles.h"
 #include "Config.h"
 #include "Log.h"
@@ -19,37 +20,65 @@ using namespace std;
 // this is the logfile for all songs played
 #define TRACK_LOG_FILE  "played_tracks.txt"
 
-// tell logger thread to clear a file
-static bool clear(string filename);
-// tell logger thread to append a line to a file
-static bool append(string filename, string data);
-// tell logger thread to rewrite a file with data
-static bool rewrite(string filename, string data);
-// truncate a single file, only call this from the main thread
-static bool clear_file(string filename);
-// append data to a file, only call this from the main thread
-static bool append_file(string filename, string data);
-
 // simple local class for entries in the track deque
 class track_entry
 {
 public:
-    track_entry(string track, string artist, string genre) :
-        track(track), artist(artist), genre(genre) {}
-    string track;
+    track_entry(uint32_t deckIdx) :
+        idx(deckIdx),
+        title(get_last_title(deckIdx)),
+        artist(get_last_artist(deckIdx)),
+        album(get_last_album(deckIdx)),
+        genre(get_last_genre(deckIdx)),
+        label(get_last_label(deckIdx)),
+        key(get_last_key(deckIdx)),
+        orig_artist(get_last_orig_artist(deckIdx)),
+        remixer(get_last_remixer(deckIdx)),
+        composer(get_last_composer(deckIdx)),
+        comment(get_last_comment(deckIdx)),
+        mix_name(get_last_mix_name(deckIdx)),
+        lyricist(get_last_lyricist(deckIdx)),
+        date_created(get_last_date_created(deckIdx)),
+        date_added(get_last_date_added(deckIdx)),
+        track_number(get_last_track_number(deckIdx)),
+        bpm(get_last_bpm(deckIdx)) {}
+
+    uint32_t idx;
+    string title;
     string artist;
+    string album;
     string genre;
+    string label;
+    string key;
+    string orig_artist;
+    string remixer;
+    string composer;
+    string comment;
+    string mix_name;
+    string lyricist;
+    string date_created;
+    string date_added;
+    uint32_t track_number;
+    float bpm;
 };
+
+// helper for in-place replacements
+static bool replace(string &str, const string &from, const string &to);
+// calc time since the first time this was called
+static string get_timestamp_since_start();
+// custom float to string that limits to .2f without any C++ stream funny business
+static string float_to_string(float f);
+// helper to build output line based on configured output format
+static string build_output(track_entry *entry);
+// truncate a single file, only call this from the logger thread
+static bool clear_file(string filename);
+// append data to a file, only call this from the logger thread
+static bool append_file(string filename, string data);
+// tell logger thread to rewrite a file with data
+static bool rewrite_file(string filename, string data);
 
 // deque of tracks, deque instead of queue for iteration
 deque<track_entry> tracks;
-
-// queue of filenames and messages
-queue<string> fileNames;
-queue<string> messages;
-
-// filenames to clear
-queue<string> clearFileNames;
 
 // critical section to protect track queue
 CRITICAL_SECTION track_list_critsec;
@@ -95,25 +124,109 @@ void run_log_listener()
     // doesn't like when we call CreateFile inside the threads that we hook so 
     // we use a threadsafe queue of messages to clear and append to output files 
     while (WaitForSingleObject(hLogSem, INFINITE) == WAIT_OBJECT_0) {
-        // if the clearFileNames has entries then we need to clear those files
-        if (clearFileNames.size() > 0) {
-            if (!clear_file(clearFileNames.front())) {
-                error("Failed to clear file %s", clearFileNames.front().c_str());
+        EnterCriticalSection(&track_list_critsec);
+
+        track_entry *entry = &tracks.at(0);
+        info("Logging deck %u:", entry->idx);
+        info("\ttitle: %s", entry->title.c_str());
+        info("\tartist: %s", entry->artist.c_str());
+        info("\talbum: %s", entry->album.c_str());
+        info("\tgenre: %s", entry->genre.c_str());
+        info("\tlabel: %s", entry->label.c_str());
+        info("\tkey: %s", entry->key.c_str());
+        info("\torig artist: %s", entry->orig_artist.c_str());
+        info("\tremixer: %s", entry->remixer.c_str());
+        info("\tcomposer: %s", entry->composer.c_str());
+        info("\tcomment: %s", entry->comment.c_str());
+        info("\tmix name: %s", entry->mix_name.c_str());
+        info("\tlyricist: %s", entry->lyricist.c_str());
+        info("\tdate created: %s", entry->date_created.c_str());
+        info("\tdate added: %s", entry->date_added.c_str());
+        info("\ttrack number: %u", entry->track_number);
+        info("\tbpm: %.2f", entry->bpm);
+
+        // update the last x file by iterating track_queue and writing
+        if (tracks.size() > 0) {
+            // concatenate the tracks into a single string
+            string tracks_str;
+            for (auto it = tracks.begin(); it != tracks.end(); it++) {
+                tracks_str += build_output(&it[0]) + "\r\n";
             }
-            clearFileNames.pop();
-            continue;
+            // rewrite the tracks file with all of the lines at once
+            if (!rewrite_file(get_cur_tracks_file(), tracks_str)) {
+                error("Failed to write to tracks file");
+            }
+
+            // rewrite the current track file with only the current track
+            if (!rewrite_file(get_cur_track_file(), build_output(&tracks.at(0)))) {
+                error("Failed to append to current track file");
+            }
         }
-        // make sure there's filenames and messages to log
-        if (!fileNames.size() || !messages.size()) {
-            continue;
+        // rewrite the last track file with the previous track
+        if (tracks.size() > 1) {
+            if (!rewrite_file(get_last_track_file(), build_output(&tracks.at(1)))) {
+                error("Failed to write last track file");
+            }
         }
-        if (!append_file(fileNames.front(), messages.front())) {
-            error("Failed to append [%s] to %s", messages.front().c_str(), 
-                fileNames.front().c_str());
+        // append the artist and track to the global log
+        string log_entry;
+        if (config.use_timestamps) {
+            // timestamp with a space after it
+            log_entry += get_timestamp_since_start() + " ";
         }
-        fileNames.pop();
-        messages.pop();
+        // the rest of the current track output
+        log_entry += build_output(&tracks.front()) + "\r\n";
+        if (!append_file(get_log_file(), log_entry)) {
+            error("Failed to log track to global log");
+        }
+        // end of atomic operations
+        LeaveCriticalSection(&track_list_critsec);
     }
+}
+
+// updates the last_track, current_track, and current_tracks files
+// this can be called from any thread safely
+void update_output_files(uint32_t deckIdx)
+{
+    // make sure no two threads can simultaneously access the 
+    // tracks global or any other globals, also make sure all 
+    // the operations in this function are atomic so that all
+    // of the output files stay in sync
+    EnterCriticalSection(&track_list_critsec);
+
+    // prepend this new track to the list
+    tracks.push_front(track_entry(deckIdx));
+    // make sure the list doesn't go beyond config.max_tracks
+    if (tracks.size() > config.max_tracks) {
+        // remove from the end
+        tracks.pop_back();
+    }
+
+    // increment the semaphore to say we have a track to log
+    ReleaseSemaphore(hLogSem, 1, NULL);
+ 
+    // end of atomic operations
+    LeaveCriticalSection(&track_list_critsec);
+}
+
+string get_log_file()
+{
+    return get_dll_path() + "\\" TRACK_LOG_FILE;
+}
+
+string get_cur_track_file()
+{
+    return get_dll_path() + "\\" CUR_TRACK_FILE;
+}
+
+string get_last_track_file()
+{
+    return get_dll_path() + "\\" LAST_TRACK_FILE;
+}
+
+string get_cur_tracks_file()
+{
+    return get_dll_path() + "\\" CUR_TRACKS_FILE;
 }
 
 // helper for in-place replacements
@@ -153,121 +266,38 @@ static string get_timestamp_since_start()
     return string(buf);
 }
 
+// custom float to string that limits to .2f without any C++ stream funny business
+static string float_to_string(float f)
+{
+    char buf[32] = { 0 };
+    snprintf(buf, sizeof(buf), "%.2f", f);
+    return string(buf);
+}
+
 // helper to build output line based on configured output format
 static string build_output(track_entry *entry)
 {
     // start with out format
     string out = config.out_format;
     // replace various fields
+    replace(out, "%title%", entry->title);
     replace(out, "%artist%", entry->artist);
-    replace(out, "%track%", entry->track);
+    replace(out, "%album%", entry->album);
+    replace(out, "%genre%", entry->genre);
+    replace(out, "%label%", entry->label);
+    replace(out, "%key%", entry->key);
+    replace(out, "%orig_artist%", entry->orig_artist);
+    replace(out, "%remixer%", entry->remixer);
+    replace(out, "%composer%", entry->composer);
+    replace(out, "%comment%", entry->comment);
+    replace(out, "%mix_name%", entry->mix_name);
+    replace(out, "%lyricist%", entry->lyricist);
+    replace(out, "%date_created%", entry->date_created);
+    replace(out, "%date_added%", entry->date_added);
+    replace(out, "%track_number%", to_string(entry->track_number));
+    replace(out, "%bpm%", float_to_string(entry->bpm));
     replace(out, "%time%", get_timestamp_since_start());
-    // maybe soon:
-    //replace(out, "%genre%", entry->genre);
     return out;
-}
-
-// updates the last_track, current_track, and current_tracks files
-// this can be called from any thread safely
-void update_output_files(string track, string artist)
-{
-    // make sure no two threads can simultaneously access the 
-    // tracks global or any other globals, also make sure all 
-    // the operations in this function are atomic so that all
-    // of the output files stay in sync
-    EnterCriticalSection(&track_list_critsec);
-
-    info("Logging [%s]", track.c_str());
-
-    // prepend this new track to the list
-    tracks.push_front(track_entry(track, artist, ""));
-    // make sure the list doesn't go beyond config.max_tracks
-    if (tracks.size() > config.max_tracks) {
-        // remove from the end
-        tracks.pop_back();
-    }
- 
-    // update the last x file by iterating track_queue and writing
-    if (tracks.size() > 0) {
-        // concatenate the tracks into a single string
-        string tracks_str;
-        for (auto it = tracks.begin(); it != tracks.end(); it++) {
-            tracks_str += build_output(&it[0]) + "\r\n";
-        }
-        // rewrite the tracks file with all of the lines at once
-        if (!rewrite(get_cur_tracks_file(), tracks_str)) {
-            error("Failed to write to tracks file");
-        }
-
-        // rewrite the current track file with only the current track
-        if (!rewrite(get_cur_track_file(), build_output(&tracks.at(0)))) {
-            error("Failed to append to current track file");
-        }
-    }
-    // rewrite the last track file with the previous track
-    if (tracks.size() > 1) {
-        if (!rewrite(get_last_track_file(), build_output(&tracks.at(1)))) {
-            error("Failed to write last track file");
-        }
-    }
-
-    // append the artist and track to the global log
-    string log_entry;
-    if (config.use_timestamps) {
-        // timestamp with a space after it
-        log_entry += get_timestamp_since_start() + " ";
-    }
-    // the rest of the current track output
-    log_entry += build_output(&tracks.front()) + "\r\n";
-    if (!append(get_log_file(), log_entry)) {
-        error("Failed to log track to global log");
-    }
-
-    // end of atomic operations
-    LeaveCriticalSection(&track_list_critsec);
-}
-
-string get_log_file()
-{
-    return get_dll_path() + "\\" TRACK_LOG_FILE;
-}
-
-string get_cur_track_file()
-{
-    return get_dll_path() + "\\" CUR_TRACK_FILE;
-}
-
-string get_last_track_file()
-{
-    return get_dll_path() + "\\" LAST_TRACK_FILE;
-}
-
-string get_cur_tracks_file()
-{
-    return get_dll_path() + "\\" CUR_TRACKS_FILE;
-}
-
-// tell logger thread to clear a file
-static bool clear(string filename)
-{
-    clearFileNames.push(filename);
-    ReleaseSemaphore(hLogSem, 1, NULL);
-    return true;
-}
-
-// tell logger thread to append a line to a file
-static bool append(string filename, string data)
-{
-    fileNames.push(filename);
-    messages.push(data);
-    ReleaseSemaphore(hLogSem, 1, NULL);
-    return true;
-}
-
-// tell logger thread to rewrite a file with data
-static bool rewrite(string filename, string data)
-{
-    return clear(filename) && append(filename, data);
 }
 
 // truncate a single file, only call this from the logger thread
@@ -302,3 +332,11 @@ static bool append_file(string filename, string data)
     CloseHandle(hFile);
     return true;
 }
+
+// tell logger thread to rewrite a file with data
+static bool rewrite_file(string filename, string data)
+{
+    return clear_file(filename) && append_file(filename, data);
+}
+
+

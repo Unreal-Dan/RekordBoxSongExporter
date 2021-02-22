@@ -113,7 +113,7 @@ void notify_master_change_hook(sync_manager *syncManager)
     // grab the master id we switched to
     uint32_t master_id = syncManager->get_master_id();
     // grab the cached track for that id
-    string last_track = get_last_track(master_id);
+    string last_track = get_last_title(master_id);
     string last_artist = get_last_artist(master_id);
     if (!last_track.length() && !last_artist.length()) {
         return;
@@ -126,7 +126,7 @@ void notify_master_change_hook(sync_manager *syncManager)
     // only if this deck hasn't been logged yet
     if (!get_logged(master_id)) {
         // log it to our track list
-        update_output_files(last_track, last_artist);
+        update_output_files(master_id);
         // we logged this deck now, must wait for a
         // new song to be loaded to unset this
         set_logged(master_id, true);
@@ -157,7 +157,7 @@ bool hook_notify_master_change()
 
     // install hook on event_play_addr that redirects to play_track_hook
     if (!install_hook(nmc_addr, notify_master_change_hook, trampoline_len)) {
-        error("Failed to install hook on event play");
+        error("Failed to hook notifyMasterChange");
         return false;
     }
     return true;

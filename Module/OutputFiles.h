@@ -5,7 +5,7 @@
 bool initialize_output_files();
 
 // updates the last_track, current_track, and current_tracks files
-void update_output_files(std::string track, std::string artist);
+void update_output_files(uint32_t deckIdx);
 
 // run the log listener loop which waits for messages to clear files or write to files
 void run_log_listener();

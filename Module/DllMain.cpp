@@ -2,6 +2,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 
+#include "OnLoadedTrackChangeHook.h"
 #include "NotifyMasterChangeHook.h"
 #include "EventPlayTrackHook.h"
 #include "LastTrackStorage.h"
@@ -29,12 +30,16 @@ DWORD mainThread(void *param)
         return 1;
     }
 
+
     // hook when we press the play/cue button and a new track has been loaded
-    if (!hook_event_play_track()) {
-        return 1;
-    }
+    //if (!hook_event_play_track()) {
+    //    return 1;
+    //}
     // hook when the master changes
     if (!hook_notify_master_change()) {
+        return 1;
+    }
+    if (!hook_on_loaded_track_change()) {
         return 1;
     }
 

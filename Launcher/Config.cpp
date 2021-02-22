@@ -41,9 +41,19 @@ string conf_load_path()
 string conf_load_out_format()
 {
     char buf[2048] = { 0 };
-    GetPrivateProfileString("RBSongExporterConfig", "out_format", "%artist% - %track%", 
+    GetPrivateProfileString("RBSongExporterConfig", "out_format", "%artist% - %title%", 
         buf, sizeof(buf), get_config_path().c_str());
-    return string(buf);
+    // return string(buf); // uncomment me later
+    // --------------- 
+    // TODO: Remove this later once nobody is upgrading from old version.
+    // This replaces %track% with %title%
+    string result = string(buf);
+    size_t start_pos = result.find("%track%");
+    if (start_pos != std::string::npos) {
+        result.replace(start_pos, 7, "%title%");
+    }
+    // -------------- end upgrade contingency
+    return result;
 }
 
 string conf_load_cur_tracks_count()
