@@ -6,6 +6,7 @@
 #include "NotifyMasterChangeHook.h"
 #include "LastTrackStorage.h"
 #include "OutputFiles.h"
+#include "UIPlayer.h"
 #include "Config.h"
 #include "Hook.h"
 #include "Log.h"
@@ -17,30 +18,6 @@ using namespace std;
 struct sync_master
 {
     void *idk;
-};
-
-struct sync_manager_650
-{
-    uint8_t pad[0xF0];
-    // the current sync master
-    sync_master *curSyncMaster;
-    // the list of sync masters
-    sync_master **syncMasterList;
-    void *unknown;
-    // the number of sync masters in the list
-    uint32_t numSyncMasters;
-};
-
-struct sync_manager_585
-{
-    uint8_t pad[0xF8];
-    // the current sync master
-    sync_master *curSyncMaster;
-    // the list of sync masters
-    sync_master **syncMasterList;
-    void *unknown;
-    // the number of sync masters in the list
-    uint32_t numSyncMasters;
 };
 
 class sync_manager
@@ -62,6 +39,7 @@ public:
         }
         return 0;
     }
+private:
     sync_master **sync_master_list()
     {
         switch (config.rbox_version) {
@@ -99,6 +77,30 @@ public:
         return 0;
     }
 
+    struct sync_manager_650
+    {
+        uint8_t pad[0xF0];
+        // the current sync master
+        sync_master *curSyncMaster;
+        // the list of sync masters
+        sync_master **syncMasterList;
+        void *unknown;
+        // the number of sync masters in the list
+        uint32_t numSyncMasters;
+    };
+
+    struct sync_manager_585
+    {
+        uint8_t pad[0xF8];
+        // the current sync master
+        sync_master *curSyncMaster;
+        // the list of sync masters
+        sync_master **syncMasterList;
+        void *unknown;
+        // the number of sync masters in the list
+        uint32_t numSyncMasters;
+    };
+
     // anonymous union of sync manager versions
     union
     {
@@ -107,30 +109,41 @@ public:
     };
 };
 
+void get_row_data(uint32_t deck_idx);
 // the actual hook function that notifyMasterChange is redirected to
 void notify_master_change_hook(sync_manager *syncManager)
 {
+    // grab the cached track for that id
+    //string last_track = get_last_title(master_id);
+    //string last_artist = get_last_artist(master_id);
+    //if (!last_track.length() && !last_artist.length()) {
+    //    return;
+    //}
+    // yep they faded into a new song
+    //info("Master Changed to %d: %s - %s",
+    //    master_id, last_track.c_str(), last_artist.c_str());
+
     // grab the master id we switched to
     uint32_t master_id = syncManager->get_master_id();
-    // grab the cached track for that id
-    string last_track = get_last_title(master_id);
-    string last_artist = get_last_artist(master_id);
-    if (!last_track.length() && !last_artist.length()) {
-        return;
+    static uint32_t last_track[NUM_DECKS] = { 0 };
+    if (!get_logged(master_id)) {
+        djplayer_uiplayer *player = lookup_player(master_id);
+        if (last_track[master_id] != player->browserId) {
+            last_track[master_id] = player->browserId;
+            update_output_files(master_id);
+            info("Master Changed to %d", master_id);
+        }
     }
-    // yep they faded into a new song
-    info("Master Changed to %d: %s - %s",
-        master_id, last_track.c_str(), last_artist.c_str());
     // set the new master
     set_master(master_id);
-    // only if this deck hasn't been logged yet
-    if (!get_logged(master_id)) {
-        // log it to our track list
-        update_output_files(master_id);
-        // we logged this deck now, must wait for a
-        // new song to be loaded to unset this
-        set_logged(master_id, true);
-    }
+    //// only if this deck hasn't been logged yet
+    //if (!get_logged(master_id)) {
+    //    // log it to our track list
+    //    update_output_files(master_id);
+    //    // we logged this deck now, must wait for a
+    //    // new song to be loaded to unset this
+    //    set_logged(master_id, true);
+    //}
 }
 
 bool hook_notify_master_change()

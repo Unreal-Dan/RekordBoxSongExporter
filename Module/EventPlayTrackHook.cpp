@@ -5,6 +5,7 @@
 
 #include "LastTrackStorage.h"
 #include "OutputFiles.h"
+#include "UIPlayer.h"
 #include "Config.h"
 #include "hook.h"
 #include "Log.h"
@@ -50,9 +51,28 @@ void play_track_hook(event_struct *event)
     if (!event || !event->event_info || event->deck_idx > 8) {
         return;
     }
-    play_track_event *track_info = event->event_info;
     // the deck index is offset by 1
     uint32_t deck_idx = event->deck_idx - 1;
+    if (deck_idx > NUM_DECKS) {
+        deck_idx = 0;
+    }
+
+    // grab the master id we switched to
+    static uint32_t last_track[NUM_DECKS] = { 0 };
+    djplayer_uiplayer *player = lookup_player(deck_idx);
+    if (get_master() == deck_idx) {
+        if (last_track[deck_idx] != player->browserId) {
+            last_track[deck_idx] = player->browserId;
+            update_output_files(deck_idx);
+            set_logged(deck_idx, true);
+            info("Loaded track on Master %d", deck_idx);
+        }
+    }
+
+    return;
+    play_track_event *track_info = event->event_info;
+
+
     // grab the current deck we have pressed play on
     deck_struct *new_track_deck = &track_info->decks[deck_idx];
 
@@ -63,6 +83,8 @@ void play_track_hook(event_struct *event)
 
     info("Playing track on %u: %s - %s", deck_idx,
         new_track_deck->track_title, new_track_deck->track_artist);
+
+    return;
 
     // if we are playing a new song
     if (get_last_title(deck_idx) != new_track_deck->track_title ||
@@ -87,7 +109,7 @@ void play_track_hook(event_struct *event)
 
     // set the last track + artist in global storage so that the
     // notifyMasterChange hook can pull it from here
-    set_last_title(deck_idx, new_track_deck->track_title, deck_idx);
+    set_last_title(deck_idx, new_track_deck->track_title);
     set_last_artist(deck_idx, new_track_deck->track_artist);
 }
 

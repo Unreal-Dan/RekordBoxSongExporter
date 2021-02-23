@@ -5,6 +5,7 @@
 #include <queue>
 
 #include "LastTrackStorage.h"
+#include "RowDataTrack.h"
 #include "OutputFiles.h"
 #include "Config.h"
 #include "Log.h"
@@ -24,25 +25,34 @@ using namespace std;
 class track_entry
 {
 public:
-    track_entry(uint32_t deckIdx) :
-        idx(deckIdx),
-        title(get_last_title(deckIdx)),
-        artist(get_last_artist(deckIdx)),
-        album(get_last_album(deckIdx)),
-        genre(get_last_genre(deckIdx)),
-        label(get_last_label(deckIdx)),
-        key(get_last_key(deckIdx)),
-        orig_artist(get_last_orig_artist(deckIdx)),
-        remixer(get_last_remixer(deckIdx)),
-        composer(get_last_composer(deckIdx)),
-        comment(get_last_comment(deckIdx)),
-        mix_name(get_last_mix_name(deckIdx)),
-        lyricist(get_last_lyricist(deckIdx)),
-        date_created(get_last_date_created(deckIdx)),
-        date_added(get_last_date_added(deckIdx)),
-        track_number(get_last_track_number(deckIdx)),
-        bpm(get_last_bpm(deckIdx)) {}
-
+    // initialize a new entry with the index of the deck to load
+    // the track information from
+    track_entry(uint32_t deck_idx) : idx(deck_idx), track_number(0), bpm(0.0f)
+    {
+        row_data *rowdata = lookup_row_data(deck_idx);
+        if (!rowdata) {
+            return;
+        }
+        // steal all the track information where possible
+        title = rowdata->title ? rowdata->title : "";
+        artist = rowdata->artist ? rowdata->artist : "";
+        album = rowdata->album ? rowdata->album : "";
+        genre = rowdata->genre ? rowdata->genre : "";
+        label = rowdata->label ? rowdata->label : "";
+        key = rowdata->key ? rowdata->key : "";
+        orig_artist = rowdata->org_artist ? rowdata->org_artist : "";
+        remixer = rowdata->remixer ? rowdata->remixer : "";
+        composer = rowdata->composer ? rowdata->composer : "";
+        comment = rowdata->comment ? rowdata->comment : "";
+        mix_name = rowdata->mix_name ? rowdata->mix_name : "";
+        lyricist = rowdata->lyricist ? rowdata->lyricist : "";
+        date_created = rowdata->date_created ? rowdata->date_created : "";
+        date_added = rowdata->date_added ? rowdata->date_added : "";
+        track_number = rowdata->track_number;
+        // bpm = ?
+        // cleanup the rowdata object we got from rekordbox
+        destroy_row_data(rowdata);
+    }
     uint32_t idx;
     string title;
     string artist;
@@ -80,6 +90,9 @@ static bool rewrite_file(string filename, string data);
 // deque of tracks, deque instead of queue for iteration
 deque<track_entry> tracks;
 
+// index of decks that change
+queue<uint32_t> deck_changes;
+
 // critical section to protect track queue
 CRITICAL_SECTION track_list_critsec;
 HANDLE hLogSem;
@@ -95,6 +108,8 @@ bool initialize_output_files()
         error("Failed to clear output files");
         return false;
     }
+
+    info("func: %p", lookup_row_data);
 
     // log them to the console
     info("log file: %s", get_log_file().c_str());
@@ -126,26 +141,39 @@ void run_log_listener()
     while (WaitForSingleObject(hLogSem, INFINITE) == WAIT_OBJECT_0) {
         EnterCriticalSection(&track_list_critsec);
 
-        track_entry *entry = &tracks.at(0);
-        info("Logging deck %u:", entry->idx);
-        info("\ttitle: %s", entry->title.c_str());
-        info("\tartist: %s", entry->artist.c_str());
-        info("\talbum: %s", entry->album.c_str());
-        info("\tgenre: %s", entry->genre.c_str());
-        info("\tlabel: %s", entry->label.c_str());
-        info("\tkey: %s", entry->key.c_str());
-        info("\torig artist: %s", entry->orig_artist.c_str());
-        info("\tremixer: %s", entry->remixer.c_str());
-        info("\tcomposer: %s", entry->composer.c_str());
-        info("\tcomment: %s", entry->comment.c_str());
-        info("\tmix name: %s", entry->mix_name.c_str());
-        info("\tlyricist: %s", entry->lyricist.c_str());
-        info("\tdate created: %s", entry->date_created.c_str());
-        info("\tdate added: %s", entry->date_added.c_str());
-        info("\ttrack number: %u", entry->track_number);
-        info("\tbpm: %.2f", entry->bpm);
+        // prepend this new track to the list
+        uint32_t deck_idx = deck_changes.front();
+        deck_changes.pop();
 
-        // update the last x file by iterating track_queue and writing
+        // the new track entry
+        track_entry entry(deck_idx);
+        tracks.push_front(entry);
+
+        // make sure the list doesn't go beyond config.max_tracks
+        if (tracks.size() > config.max_tracks) {
+            // remove from the end
+            tracks.pop_back();
+        }
+
+        info("Logging deck %u:", entry.idx);
+        info("\ttitle: %s", entry.title.c_str());
+        info("\tartist: %s", entry.artist.c_str());
+        info("\talbum: %s", entry.album.c_str());
+        info("\tgenre: %s", entry.genre.c_str());
+        info("\tlabel: %s", entry.label.c_str());
+        info("\tkey: %s", entry.key.c_str());
+        info("\torig artist: %s", entry.orig_artist.c_str());
+        info("\tremixer: %s", entry.remixer.c_str());
+        info("\tcomposer: %s", entry.composer.c_str());
+        info("\tcomment: %s", entry.comment.c_str());
+        info("\tmix name: %s", entry.mix_name.c_str());
+        info("\tlyricist: %s", entry.lyricist.c_str());
+        info("\tdate created: %s", entry.date_created.c_str());
+        info("\tdate added: %s", entry.date_added.c_str());
+        info("\ttrack number: %u", entry.track_number);
+        info("\tbpm: %.2f", entry.bpm);
+
+        // update the last x file by iterating tracks and writing
         if (tracks.size() > 0) {
             // concatenate the tracks into a single string
             string tracks_str;
@@ -186,7 +214,7 @@ void run_log_listener()
 
 // updates the last_track, current_track, and current_tracks files
 // this can be called from any thread safely
-void update_output_files(uint32_t deckIdx)
+void update_output_files(uint32_t deck_idx)
 {
     // make sure no two threads can simultaneously access the 
     // tracks global or any other globals, also make sure all 
@@ -195,18 +223,13 @@ void update_output_files(uint32_t deckIdx)
     EnterCriticalSection(&track_list_critsec);
 
     // prepend this new track to the list
-    tracks.push_front(track_entry(deckIdx));
-    // make sure the list doesn't go beyond config.max_tracks
-    if (tracks.size() > config.max_tracks) {
-        // remove from the end
-        tracks.pop_back();
-    }
+    deck_changes.push(deck_idx);
+
+    // end of atomic operations
+    LeaveCriticalSection(&track_list_critsec);
 
     // increment the semaphore to say we have a track to log
     ReleaseSemaphore(hLogSem, 1, NULL);
- 
-    // end of atomic operations
-    LeaveCriticalSection(&track_list_critsec);
 }
 
 string get_log_file()

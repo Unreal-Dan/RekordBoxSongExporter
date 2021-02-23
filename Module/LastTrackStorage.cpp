@@ -4,6 +4,7 @@
 #include <map>
 
 #include "LastTrackStorage.h"
+#include "Config.h"
 
 using namespace std;
 
@@ -41,9 +42,6 @@ public:
     // this will be set to true once this artist/track has been logged
     bool is_logged;
 };
-
-// don't think this can be anything else
-#define NUM_DECKS 4
 
 // support track info for up to 4 decks
 track_info decks[NUM_DECKS];
@@ -119,7 +117,9 @@ string get_string_info(uint32_t deck, string key)
         return result;
     }
     EnterCriticalSection(&last_track_critsec);
-    result = decks[deck].stringTrackInfo[key];
+    if (decks[deck].stringTrackInfo.count(key) > 0) {
+        result = decks[deck].stringTrackInfo[key];
+    }
     LeaveCriticalSection(&last_track_critsec);
     return result;
 }
@@ -132,7 +132,9 @@ uint32_t get_uint_info(uint32_t deck, string key)
         return result;
     }
     EnterCriticalSection(&last_track_critsec);
-    result = decks[deck].uintTrackInfo[key];
+    if (decks[deck].uintTrackInfo.count(key) > 0) {
+        result = decks[deck].uintTrackInfo[key];
+    }
     LeaveCriticalSection(&last_track_critsec);
     return result;
 }
@@ -145,7 +147,9 @@ float get_float_info(uint32_t deck, string key)
         return result;
     }
     EnterCriticalSection(&last_track_critsec);
-    result = decks[deck].floatTrackInfo[key];
+    if (decks[deck].floatTrackInfo.count(key) > 0) {
+        result = decks[deck].floatTrackInfo[key];
+    }
     LeaveCriticalSection(&last_track_critsec);
     return result;
 }

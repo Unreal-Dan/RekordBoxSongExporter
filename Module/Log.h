@@ -1,4 +1,7 @@
 #pragma once
+#ifndef _DEBUG // REMOVEME
+#define _DEBUG
+#endif
 
 #ifdef _DEBUG
 // logging macro functions

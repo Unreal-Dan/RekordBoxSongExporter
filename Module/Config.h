@@ -1,6 +1,10 @@
 #pragma once
 #include <string>
 
+// don't think this can be anything else
+// if you change this things will probably break
+#define NUM_DECKS 4
+
 // enum of versions we support
 typedef enum rbox_version_enum
 {
@@ -35,3 +39,6 @@ bool initialize_config();
 
 // path/folder where the module exists
 std::string get_dll_path();
+
+// rekordbox.exe base address
+uintptr_t rb_base();

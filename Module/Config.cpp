@@ -75,3 +75,10 @@ string get_dll_path()
     }
     return string(path);
 }
+
+// rekordbox.exe base address
+uintptr_t rb_base()
+{
+    static uintptr_t base = (uintptr_t)GetModuleHandle(NULL);
+    return base;
+}
