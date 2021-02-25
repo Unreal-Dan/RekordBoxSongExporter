@@ -6,6 +6,12 @@ You can find prebuilt releases [here](https://github.com/Unreal-Dan/RekordBoxSon
 
 ![Launcher Image](/launcher.png?raw=true "Launcher")
 
+## tl;dr
+
+Use the Launcher to start Rekordbox and then create a GDI text object in OBS and point
+it at the file called current_track.txt which will appear next to the Launcher. Turn
+on chatlog mode on the text object and you're good to go.
+
 ## What does it do
 
 This will export played tracks in realtime for integration with OBS or any system 
