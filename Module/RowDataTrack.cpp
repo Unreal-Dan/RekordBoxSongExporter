@@ -97,7 +97,7 @@ const char *row_data::getTitle()
 {
     switch (config.rbox_version) {
     case RBVER_650: return getString(0x20);
-    case RBVER_585: return getString(0x20);
+    case RBVER_585: return getString(0x18);
     default:        return "";
     }
 }
