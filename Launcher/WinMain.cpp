@@ -139,9 +139,13 @@ void doCreate(HWND hwnd)
         WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL, 
         12, 42, 378, 21, hwnd, (HMENU)PATHEDIT_ID, NULL, NULL);
 
-
     // set the version path in the text box
-    SetWindowText(hwndPathEdit, conf_load_path().c_str());
+    string path = conf_load_path();
+    // default the path if there's no config file
+    if (!path.length()) {
+        path = versions[0].path;
+    }
+    SetWindowText(hwndPathEdit, path.c_str());
 
     // create the dropdown box
     hwndComboBox = CreateWindow(WC_COMBOBOX, "VersionSelect",
@@ -176,7 +180,11 @@ void doCreate(HWND hwnd)
     SendMessage(hwndFmtLabel, WM_SETTEXT, NULL, (LPARAM)"Format:");
 
     // the output format entry box
-    hwndFmtEdit  = CreateWindow(WC_EDIT, conf_load_out_format().c_str(), 
+    string format = conf_load_out_format().c_str();
+    if (!format.length()) {
+        format = "%artist% - %title%";
+    }
+    hwndFmtEdit  = CreateWindow(WC_EDIT, format.c_str(), 
         WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL, 
         70, 70, 210, 21, hwnd, (HMENU)FMTEDIT_ID, NULL, NULL);
 
@@ -187,7 +195,11 @@ void doCreate(HWND hwnd)
     SendMessage(hwndCountLabel, WM_SETTEXT, NULL, (LPARAM)"Cur Tracks Count:");
 
     // the cur tracks count entry box
-    hwndCountEdit  = CreateWindow(WC_EDIT, conf_load_cur_tracks_count().c_str(), 
+    string trackCount = conf_load_cur_tracks_count().c_str();
+    if (!trackCount.length()) {
+        trackCount = "3";
+    }
+    hwndCountEdit  = CreateWindow(WC_EDIT, trackCount.c_str(), 
         WS_VISIBLE | WS_CHILD | WS_BORDER | ES_NUMBER, 
         130, 98, 30, 20, hwnd, (HMENU)COUNTEDIT_ID, NULL, NULL);
 
