@@ -2,10 +2,10 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-#include "OnLoadedTrackChangeHook.h"
 #include "NotifyMasterChangeHook.h"
 #include "EventPlayTrackHook.h"
 #include "LastTrackStorage.h"
+#include "RowDataTrack.h"
 #include "OutputFiles.h"
 #include "Config.h"
 #include "Log.h"
@@ -29,6 +29,10 @@ DWORD mainThread(void *param)
     if (!initialize_last_track_storage()) {
         return 1;
     }
+    // initialize the functions used to lookup rowdata
+    if (!init_row_data_funcs()) {
+        return 1;
+    }
 
     // hook when we press the play/cue button and a new track has been loaded
     if (!hook_event_play_track()) {
@@ -38,17 +42,14 @@ DWORD mainThread(void *param)
     if (!hook_notify_master_change()) {
         return 1;
     }
-    //if (!hook_on_loaded_track_change()) {
-    //    return 1;
-    //}
 
     // success
     success("Success");
 
     // listen for any messages from the hook functions about which tracks
     // to log to the output files, we must do this on the main thread to
-    // avoid crashes on windows 8.1
-    run_log_listener();
+    // avoid crashes and other issues when doing things in the hooks
+    run_listener();
 
     return 0;
 }

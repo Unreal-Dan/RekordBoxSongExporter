@@ -27,33 +27,39 @@ class track_entry
 public:
     // initialize a new entry with the index of the deck to load
     // the track information from
-    track_entry(uint32_t deck_idx) : idx(deck_idx), track_number(0), bpm(0.0f)
+    track_entry(uint32_t deck_idx) : idx(deck_idx)
     {
+        // lookup a rowdata object
         row_data *rowdata = lookup_row_data(deck_idx);
         if (!rowdata) {
             return;
         }
-        // steal all the track information where possible
-        title = rowdata->title ? rowdata->title : "";
-        artist = rowdata->artist ? rowdata->artist : "";
-        album = rowdata->album ? rowdata->album : "";
-        genre = rowdata->genre ? rowdata->genre : "";
-        label = rowdata->label ? rowdata->label : "";
-        key = rowdata->key ? rowdata->key : "";
-        orig_artist = rowdata->org_artist ? rowdata->org_artist : "";
-        remixer = rowdata->remixer ? rowdata->remixer : "";
-        composer = rowdata->composer ? rowdata->composer : "";
-        comment = rowdata->comment ? rowdata->comment : "";
-        mix_name = rowdata->mix_name ? rowdata->mix_name : "";
-        lyricist = rowdata->lyricist ? rowdata->lyricist : "";
-        date_created = rowdata->date_created ? rowdata->date_created : "";
-        date_added = rowdata->date_added ? rowdata->date_added : "";
-        track_number = rowdata->track_number;
-        // bpm = ?
+        // steal all the track information so we have it stored in our own containers
+        title = rowdata->getTitle();
+        artist = rowdata->getArtist();
+        album = rowdata->getAlbum();
+        genre = rowdata->getGenre();
+        label = rowdata->getLabel();
+        key = rowdata->getKey();
+        orig_artist = rowdata->getOrigArtist();
+        remixer = rowdata->getRemixer();
+        composer = rowdata->getComposer();
+        comment = rowdata->getComment();
+        mix_name = rowdata->getMixName();
+        lyricist = rowdata->getLyricist();
+        date_created = rowdata->getDateCreated();
+        date_added = rowdata->getDateAdded();
+        // track number is an integer
+        track_number = to_string(rowdata->getTrackNumber());
+        // the bpm is an integer like 15150 which represents 151.50 bpm
+        bpm = to_string(rowdata->getBpm());
+        // so we just shove a dot in there and it's good
+        bpm.insert(bpm.length() - 2, ".");
         // cleanup the rowdata object we got from rekordbox
+        // so that we can just use our local containers
         destroy_row_data(rowdata);
     }
-    uint32_t idx;
+    uint32_t idx; // the deck index this track is loaded on
     string title;
     string artist;
     string album;
@@ -68,8 +74,8 @@ public:
     string lyricist;
     string date_created;
     string date_added;
-    uint32_t track_number;
-    float bpm;
+    string track_number;
+    string bpm;
 };
 
 // helper for in-place replacements
@@ -86,9 +92,6 @@ static bool clear_file(string filename);
 static bool append_file(string filename, string data);
 // tell logger thread to rewrite a file with data
 static bool rewrite_file(string filename, string data);
-
-// deque of tracks, deque instead of queue for iteration
-deque<track_entry> tracks;
 
 // index of decks that change
 queue<uint32_t> deck_changes;
@@ -108,8 +111,6 @@ bool initialize_output_files()
         error("Failed to clear output files");
         return false;
     }
-
-    info("func: %p", lookup_row_data);
 
     // log them to the console
     info("log file: %s", get_log_file().c_str());
@@ -132,9 +133,12 @@ bool initialize_output_files()
     return true;
 }
 
-// run the log listener loop which waits for messages to clear files or write to files
-void run_log_listener()
+// run the listener loop which waits for messages to update te output files
+void run_listener()
 {
+    // deque of tracks, deque instead of queue for iteration
+    static deque<track_entry> tracks;
+
     // only write to log files in our safe thread, for some reason windows 8.1
     // doesn't like when we call CreateFile inside the threads that we hook so 
     // we use a threadsafe queue of messages to clear and append to output files 
@@ -155,23 +159,25 @@ void run_log_listener()
             tracks.pop_back();
         }
 
+#ifdef _DEBUG
         info("Logging deck %u:", entry.idx);
-        info("\ttitle: %s", entry.title.c_str());
-        info("\tartist: %s", entry.artist.c_str());
-        info("\talbum: %s", entry.album.c_str());
-        info("\tgenre: %s", entry.genre.c_str());
-        info("\tlabel: %s", entry.label.c_str());
-        info("\tkey: %s", entry.key.c_str());
-        info("\torig artist: %s", entry.orig_artist.c_str());
-        info("\tremixer: %s", entry.remixer.c_str());
-        info("\tcomposer: %s", entry.composer.c_str());
-        info("\tcomment: %s", entry.comment.c_str());
-        info("\tmix name: %s", entry.mix_name.c_str());
-        info("\tlyricist: %s", entry.lyricist.c_str());
-        info("\tdate created: %s", entry.date_created.c_str());
-        info("\tdate added: %s", entry.date_added.c_str());
-        info("\ttrack number: %u", entry.track_number);
-        info("\tbpm: %.2f", entry.bpm);
+        if (entry.title.length())        { info("\ttitle: %s", entry.title.c_str()); }
+        if (entry.artist.length())       { info("\tartist: %s", entry.artist.c_str()); }
+        if (entry.album.length())        { info("\talbum: %s", entry.album.c_str()); }
+        if (entry.genre.length())        { info("\tgenre: %s", entry.genre.c_str()); }
+        if (entry.label.length())        { info("\tlabel: %s", entry.label.c_str()); }
+        if (entry.key.length())          { info("\tkey: %s", entry.key.c_str()); }
+        if (entry.orig_artist.length())  { info("\torig artist: %s", entry.orig_artist.c_str()); }
+        if (entry.remixer.length())      { info("\tremixer: %s", entry.remixer.c_str()); }
+        if (entry.composer.length())     { info("\tcomposer: %s", entry.composer.c_str()); }
+        if (entry.comment.length())      { info("\tcomment: %s", entry.comment.c_str()); }
+        if (entry.mix_name.length())     { info("\tmix name: %s", entry.mix_name.c_str()); }
+        if (entry.lyricist.length())     { info("\tlyricist: %s", entry.lyricist.c_str()); }
+        if (entry.date_created.length()) { info("\tdate created: %s", entry.date_created.c_str()); }
+        if (entry.date_added.length())   { info("\tdate added: %s", entry.date_added.c_str()); }
+        if (entry.track_number.length()) { info("\ttrack number: %s", entry.track_number.c_str()); }
+        if (entry.bpm.length())          { info("\tbpm: %s", entry.bpm.c_str()); }
+#endif
 
         // update the last x file by iterating tracks and writing
         if (tracks.size() > 0) {
@@ -289,14 +295,6 @@ static string get_timestamp_since_start()
     return string(buf);
 }
 
-// custom float to string that limits to .2f without any C++ stream funny business
-static string float_to_string(float f)
-{
-    char buf[32] = { 0 };
-    snprintf(buf, sizeof(buf), "%.2f", f);
-    return string(buf);
-}
-
 // helper to build output line based on configured output format
 static string build_output(track_entry *entry)
 {
@@ -317,8 +315,8 @@ static string build_output(track_entry *entry)
     replace(out, "%lyricist%", entry->lyricist);
     replace(out, "%date_created%", entry->date_created);
     replace(out, "%date_added%", entry->date_added);
-    replace(out, "%track_number%", to_string(entry->track_number));
-    replace(out, "%bpm%", float_to_string(entry->bpm));
+    replace(out, "%track_number%", entry->track_number);
+    replace(out, "%bpm%", entry->bpm);
     replace(out, "%time%", get_timestamp_since_start());
     return out;
 }

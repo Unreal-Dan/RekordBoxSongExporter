@@ -8,43 +8,11 @@
 
 using namespace std;
 
-class track_info
-{
-public:
-    track_info() : 
-        stringTrackInfo(),
-        uintTrackInfo(),
-        floatTrackInfo(),
-        is_logged(false) {}
+// whether each deck has been logged
+bool deck_logged[NUM_DECKS] = { false };
 
-    // all strings are in here, expect:
-    //  title 
-    //  artist
-    //  album
-    //  genre
-    //  label
-    //  key
-    //  origArtist
-    //  remixer
-    //  composer
-    //  comment
-    //  mixName
-    //  lyricist
-    //  dateCreated
-    //  dateAdded
-    map<string, string> stringTrackInfo;
-    // all uints are in here, expect:
-    //  trackNumber
-    map<string, uint32_t> uintTrackInfo;
-    // all floats are in here, expect:
-    //  bpm
-    map<string, float> floatTrackInfo;
-    // this will be set to true once this artist/track has been logged
-    bool is_logged;
-};
-
-// support track info for up to 4 decks
-track_info decks[NUM_DECKS];
+// Store one id per deck
+uint32_t deck_track_ids[NUM_DECKS] = { 0 };
 
 // keep track of the current master IDX, initialize to a value that it
 // will never be so we can easily detect if it's not initialized yet
@@ -65,93 +33,14 @@ bool initialize_last_track_storage()
     return true;
 }
 
-// cache uint info
-void set_string_info(uint32_t deck, string key, string value)
-{
-    if (deck >= NUM_DECKS) {
-        return;
-    }
-    EnterCriticalSection(&last_track_critsec);
-    decks[deck].stringTrackInfo[key] = value;
-    LeaveCriticalSection(&last_track_critsec);
-}
-
-// cache uint info
-void set_uint_info(uint32_t deck, string key, uint32_t value)
-{
-    if (deck >= NUM_DECKS) {
-        return;
-    }
-    EnterCriticalSection(&last_track_critsec);
-    decks[deck].uintTrackInfo[key] = value;
-    LeaveCriticalSection(&last_track_critsec);
-}
-
-// cache float info
-void set_float_info(uint32_t deck, string key, float value)
-{
-    if (deck >= NUM_DECKS) {
-        return;
-    }
-    EnterCriticalSection(&last_track_critsec);
-    decks[deck].floatTrackInfo[key] = value;
-    LeaveCriticalSection(&last_track_critsec);
-}
-
 void set_logged(uint32_t deck, bool logged)
 {
     if (deck >= NUM_DECKS) {
         return;
     }
     EnterCriticalSection(&last_track_critsec);
-    decks[deck].is_logged = logged;
+    deck_logged[deck] = logged;
     LeaveCriticalSection(&last_track_critsec);
-}
-
-
-// get cached string info
-string get_string_info(uint32_t deck, string key)
-{
-    string result;
-    if (deck >= NUM_DECKS) {
-        return result;
-    }
-    EnterCriticalSection(&last_track_critsec);
-    if (decks[deck].stringTrackInfo.count(key) > 0) {
-        result = decks[deck].stringTrackInfo[key];
-    }
-    LeaveCriticalSection(&last_track_critsec);
-    return result;
-}
-
-// get cached uint info
-uint32_t get_uint_info(uint32_t deck, string key)
-{
-    uint32_t result = 0;
-    if (deck >= NUM_DECKS) {
-        return result;
-    }
-    EnterCriticalSection(&last_track_critsec);
-    if (decks[deck].uintTrackInfo.count(key) > 0) {
-        result = decks[deck].uintTrackInfo[key];
-    }
-    LeaveCriticalSection(&last_track_critsec);
-    return result;
-}
-
-// get cached float info
-float get_float_info(uint32_t deck, string key)
-{
-    float result = 0.0f;
-    if (deck >= NUM_DECKS) {
-        return result;
-    }
-    EnterCriticalSection(&last_track_critsec);
-    if (decks[deck].floatTrackInfo.count(key) > 0) {
-        result = decks[deck].floatTrackInfo[key];
-    }
-    LeaveCriticalSection(&last_track_critsec);
-    return result;
 }
 
 bool get_logged(uint32_t deck)
@@ -161,7 +50,7 @@ bool get_logged(uint32_t deck)
         return true;
     }
     EnterCriticalSection(&last_track_critsec);
-    bool result = decks[deck].is_logged;
+    bool result = deck_logged[deck];
     LeaveCriticalSection(&last_track_critsec);
     return result;
 }
@@ -180,4 +69,27 @@ uint32_t get_master()
     uint32_t master_idx = current_master_idx;
     LeaveCriticalSection(&last_track_critsec);
     return master_idx;
+}
+
+// the current master index
+void set_track_id(uint32_t deck, uint32_t id)
+{
+    if (deck >= NUM_DECKS) {
+        return;
+    }
+    EnterCriticalSection(&last_track_critsec);
+    deck_track_ids[deck] = id;
+    LeaveCriticalSection(&last_track_critsec);
+}
+
+uint32_t get_track_id(uint32_t deck)
+{
+    if (deck >= NUM_DECKS) {
+        // say it's logged so it doesn't log again
+        return 0;
+    }
+    EnterCriticalSection(&last_track_critsec);
+    uint32_t result = deck_track_ids[deck];
+    LeaveCriticalSection(&last_track_critsec);
+    return result;
 }

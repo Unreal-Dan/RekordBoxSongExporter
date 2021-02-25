@@ -2,11 +2,11 @@
 #include <inttypes.h>
 
 // a deck/player, in code it's a djplay::UIPlayer
-struct djplayer_uiplayer
+class djplayer_uiplayer
 {
-    uint8_t pad3[0x368];
-    // this is the ID we can use to lookup the loaded song in the browser
-    uint32_t browserId; // @0x368
+public:
+    // get the ID of the track which is used for the browser
+    uint32_t getTrackBrowserID();
 };
 
 // lookup a djplayer

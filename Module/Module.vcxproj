@@ -156,7 +156,6 @@
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="NotifyMasterChangeHook.cpp" />
     <ClCompile Include="EventPlayTrackHook.cpp" />
-    <ClCompile Include="OnLoadedTrackChangeHook.cpp" />
     <ClCompile Include="OutputFiles.cpp" />
     <ClCompile Include="RowDataTrack.cpp" />
     <ClCompile Include="UIPlayer.cpp" />
@@ -168,7 +167,6 @@
     <ClInclude Include="Log.h" />
     <ClInclude Include="NotifyMasterChangeHook.h" />
     <ClInclude Include="EventPlayTrackHook.h" />
-    <ClInclude Include="OnLoadedTrackChangeHook.h" />
     <ClInclude Include="OutputFiles.h" />
     <ClInclude Include="RowDataTrack.h" />
     <ClInclude Include="UIPlayer.h" />

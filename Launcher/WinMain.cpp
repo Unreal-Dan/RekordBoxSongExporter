@@ -139,8 +139,9 @@ void doCreate(HWND hwnd)
         WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL, 
         12, 42, 378, 21, hwnd, (HMENU)PATHEDIT_ID, NULL, NULL);
 
+
     // set the version path in the text box
-    SetWindowText(hwndPathEdit, versions[0].path);
+    SetWindowText(hwndPathEdit, conf_load_path().c_str());
 
     // create the dropdown box
     hwndComboBox = CreateWindow(WC_COMBOBOX, "VersionSelect",
@@ -156,7 +157,9 @@ void doCreate(HWND hwnd)
     for (size_t i = 0; i < NUM_VERSIONS; i++) {
         // Add string to combobox.
         SendMessage(hwndComboBox, CB_ADDSTRING, NULL, (LPARAM)versions[i].name);
-        if (conf_version == versions[i].name) {
+        // the versions[i].name has the full "rekordbox 6.5.0" and we
+        // just want to compare the version number so add 10
+        if (conf_version == (versions[i].name + 10)) {
             cur_sel = i;
         }
     }
@@ -173,8 +176,7 @@ void doCreate(HWND hwnd)
     SendMessage(hwndFmtLabel, WM_SETTEXT, NULL, (LPARAM)"Format:");
 
     // the output format entry box
-    string format = conf_load_out_format();
-    hwndFmtEdit  = CreateWindow(WC_EDIT, format.c_str(), 
+    hwndFmtEdit  = CreateWindow(WC_EDIT, conf_load_out_format().c_str(), 
         WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL, 
         70, 70, 210, 21, hwnd, (HMENU)FMTEDIT_ID, NULL, NULL);
 
@@ -185,8 +187,7 @@ void doCreate(HWND hwnd)
     SendMessage(hwndCountLabel, WM_SETTEXT, NULL, (LPARAM)"Cur Tracks Count:");
 
     // the cur tracks count entry box
-    string num_out = conf_load_cur_tracks_count();
-    hwndCountEdit  = CreateWindow(WC_EDIT, num_out.c_str(), 
+    hwndCountEdit  = CreateWindow(WC_EDIT, conf_load_cur_tracks_count().c_str(), 
         WS_VISIBLE | WS_CHILD | WS_BORDER | ES_NUMBER, 
         130, 98, 30, 20, hwnd, (HMENU)COUNTEDIT_ID, NULL, NULL);
 
