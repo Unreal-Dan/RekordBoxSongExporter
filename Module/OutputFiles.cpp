@@ -79,18 +79,16 @@ public:
 };
 
 // helper for in-place replacements
-static bool replace(string &str, const string &from, const string &to);
+static bool replace(string& str, const string& from, const string& to);
 // calc time since the first time this was called
 static string get_timestamp_since_start();
-// custom float to string that limits to .2f without any C++ stream funny business
-static string float_to_string(float f);
 // helper to build output line based on configured output format
 static string build_output(track_entry *entry);
-// truncate a single file, only call this from the logger thread
+// create and truncate a single file, only call this from the logger thread
 static bool clear_file(string filename);
 // append data to a file, only call this from the logger thread
 static bool append_file(string filename, string data);
-// tell logger thread to rewrite a file with data
+// just a wrapper around clear and append
 static bool rewrite_file(string filename, string data);
 
 // index of decks that change
@@ -321,7 +319,7 @@ static string build_output(track_entry *entry)
     return out;
 }
 
-// truncate a single file, only call this from the logger thread
+// create and truncate a single file, only call this from the logger thread
 static bool clear_file(string filename)
 {
     // open with CREATE_ALWAYS to truncate any existing file and create any missing
@@ -337,13 +335,12 @@ static bool clear_file(string filename)
 // append data to a file, only call this from the logger thread
 static bool append_file(string filename, string data)
 {
-    // open for append, create new or open existing
+    // open for append, create new, or open existing
     HANDLE hFile = CreateFile(filename.c_str(), FILE_APPEND_DATA, 0, NULL, CREATE_NEW|OPEN_EXISTING, 0, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
         error("Failed to open file for append %s (%d)", filename.c_str(), GetLastError());
         return false;
     }
-    // write data
     DWORD written = 0;
     if (!WriteFile(hFile, data.c_str(), (DWORD)data.length(), &written, NULL)) {
         error("Failed to write to %s (%d)", filename.c_str(), GetLastError());
@@ -354,7 +351,7 @@ static bool append_file(string filename, string data)
     return true;
 }
 
-// tell logger thread to rewrite a file with data
+// just a wrapper around clear and append
 static bool rewrite_file(string filename, string data)
 {
     return clear_file(filename) && append_file(filename, data);

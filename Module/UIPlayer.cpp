@@ -5,7 +5,8 @@
 #include "Config.h"
 #include "Log.h"
 
-uint32_t djplayer_uiplayer::getTrackBrowserID() {
+uint32_t djplayer_uiplayer::getTrackBrowserID()
+{
     switch (config.rbox_version) {
     case RBVER_650:
         return *(uint32_t *)((uintptr_t)this + 0x368);

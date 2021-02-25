@@ -33,6 +33,7 @@ bool initialize_last_track_storage()
     return true;
 }
 
+// whether the deck has been logged already
 void set_logged(uint32_t deck, bool logged)
 {
     if (deck >= NUM_DECKS) {
@@ -71,7 +72,7 @@ uint32_t get_master()
     return master_idx;
 }
 
-// the current master index
+// the current track id
 void set_track_id(uint32_t deck, uint32_t id)
 {
     if (deck >= NUM_DECKS) {
