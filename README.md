@@ -115,9 +115,12 @@ The available placeholders in the output format include (so far):
     %time%            The current timestamp (hh:mm:ss)
 ```
 
+An example format might be: ```%artist% - %title% (bpm: %bpm%)```
+
 The 'Timestamps' checkbox option (described below) controls built-in timestamps *only* 
-on the played_tracks.txt file.
-If you use the ```%time%``` placeholder and 'Timestamps' is enabled you will end up 
+on the played_tracks.txt file, it does not control the ```%time%``` placeholder.
+
+If you use the ```%time%``` placeholder and enable 'Timestamps' then you will end up 
 with two timestamps in played_tracks.txt
 
 ### Cur Tracks Count
