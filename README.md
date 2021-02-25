@@ -34,8 +34,8 @@ the track. When you fade from one deck into the other Rekordbox will update the
 'master', this will trigger the hack to log the new track title and artist.
 
 There is also edge-case support for when you load a new track onto the master deck 
-while one is already playing there. F in chat for your terrible transition, but rest 
-assured the song will still be logged correctly.  
+while a track is already playing there. F in chat for your terrible transition, but 
+rest assured the song will still be logged correctly.  
 
 This works with either two or four decks.
 
@@ -96,9 +96,23 @@ The format of each line that is logged to all four files.
 
 The available placeholders in the output format include (so far):
 ```
-   %artist%     The artist of the track
-   %track%      The track title
-   %time%       The current timestamp (hh:mm:ss)
+    %title%           The title
+    %artist%          The artist
+    %album%           The album
+    %genre%           The genre
+    %label%           The label
+    %key%             The key
+    %orig_artist%     The original artist
+    %remixer%         The remixer
+    %composer         The composer
+    %comment%         The comment
+    %mix_name%        The mix name
+    %lyricist%        The lyricist
+    %date_created%    The date created
+    %date_added%      The date added
+    %track_number%    The track number
+    %bpm%             The bpm
+    %time%            The current timestamp (hh:mm:ss)
 ```
 
 The 'Timestamps' checkbox option (described below) controls built-in timestamps *only* 
