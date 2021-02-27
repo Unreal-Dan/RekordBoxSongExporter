@@ -46,7 +46,7 @@ bool conf_save_out_format(std::string out_format);
 // save the cur tracks line count
 bool conf_save_cur_tracks_count(std::string num_tracks);
 
-// save the use timestamps boolean
+// whethe to use timestamps
 bool conf_save_use_timestamps(bool use_timestamps);
 
 // whether to use the server
