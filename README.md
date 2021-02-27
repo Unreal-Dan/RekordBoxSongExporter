@@ -23,6 +23,10 @@ means the output files update instantaneously when you fade into another track.
 The module offers a variety of configuration options to control how it outputs
 the track information along with other unique options.
 
+The optional server allows you to send the track information to another PC and
+perform the logging on that pc instead. For situations where Rekordbox may be running
+on a separate PC from OBS.
+
 ## How does it work
 
 The Launcher will optionally launch Rekordbox and inject a module which hooks two 
@@ -47,15 +51,28 @@ This works with either two or four decks.
 
 ## How to use it
 
-Ensure the Loader and Module are both in the same folder.
+ 1. Ensure the Loader and Module are both in the same folder on the same PC as Rekordbox.
 
-You can run Rekordbox beforehand or just use the launcher to start Rekordbox for you. 
+    1a. If you're running Rekordbox and OBS on the same PC you can ignore the Server.
 
-You may close the launcher once the module has been injected into Rekordbox.
+    1b. If you are running Rekordbox and OBS on separate PCs then you need to run the 
+        the Server on the streaming PC first, then enter the stream PC IP into Launcher.
 
-Once the hack is loaded four output files will appear in the folder of the Loader
-and Module, these files will be dynamically updated in different ways with different
-information.
+ 2. You can run Rekordbox beforehand or just use the launcher to start Rekordbox for you. 
+
+ 3. You may close the launcher once the module has been injected into Rekordbox.
+
+ 4. Once the hack is loaded four output files will appear.
+ 
+    4a. If you're running locally the files will appear in the same folder as the module
+    
+    4b. If you're running the Server then the files will appear in the Server folder
+ 
+ 5. Create a GDI text object in OBS and point it at ```current_track.txt```
+ 
+ 6. Make sure to enable chatlog mode on the GDI text object
+
+The four output files are dynamically updated with the latest track in various ways:
 
 ### current_track.txt
 
@@ -165,3 +182,17 @@ at current_tracks.txt
 By using GDI text objects in OBS your track listings will update in realtime in 
 about ~2 seconds, the 2 second delay is from OBS polling the chatlog file, not 
 because this hack is delayed in writing the output.
+
+## Server Mode
+
+If you are running OBS on the same PC as Rekordbox then you don't need the server,
+you can just run the Launcher and leave the server checkbox unchecked.
+
+The server will listen for connections from the module on port ```22345``` (TCP). 
+
+Standard port forwarding rules apply for connections outside of your local network, 
+the connection is not encrypted and this is intended for LAN use.
+
+At the moment the server lacks dynamic configuration capabilities, the only way to
+configure the server is to recompile it with different options. Dynamic configuration
+may come in the future if it's wanted.
