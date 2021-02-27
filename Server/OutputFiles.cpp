@@ -33,7 +33,7 @@ bool init_output_files()
     return true;
 }
 
-// log a song to files
+// log a song to file, stolen straight from the module code
 void log_track(string song)
 {
     // deque of tracks, deque instead of queue for iteration

@@ -25,7 +25,7 @@ int main()
         return 1;
     }
 
-    printf("Listening...\n");
+    printf("Listening on port " DEFAULT_PORT "...\n");
 
     // block till a client connects
     if (!accept_connection()) {
