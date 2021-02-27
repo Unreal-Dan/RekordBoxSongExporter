@@ -39,6 +39,8 @@ version_path versions[] = {
 #define LABEL_ID        1004
 #define FMTEDIT_ID      1005
 #define COUNTEDIT_ID    1006
+#define SERVEREDIT_ID   1007
+#define SERVERCHECK_ID  1008
 
 HWND hwndTimestampCheckbox;
 HWND hwndComboBox;
@@ -48,6 +50,8 @@ HWND hwndCountLabel;
 HWND hwndFmtLabel;
 HWND hwndFmtEdit;
 HWND hwndCountEdit;
+HWND hwndServerEdit;
+HWND hwndServerCheck;
 HBRUSH bkbrush;
 HBRUSH bkbrush2;
 HBRUSH arrowbrush;
@@ -180,7 +184,7 @@ void doCreate(HWND hwnd)
     SendMessage(hwndFmtLabel, WM_SETTEXT, NULL, (LPARAM)"Format:");
 
     // the output format entry box
-    string format = conf_load_out_format().c_str();
+    string format = conf_load_out_format();
     if (!format.length()) {
         format = "%artist% - %title%";
     }
@@ -195,7 +199,7 @@ void doCreate(HWND hwnd)
     SendMessage(hwndCountLabel, WM_SETTEXT, NULL, (LPARAM)"Cur Tracks Count:");
 
     // the cur tracks count entry box
-    string trackCount = conf_load_cur_tracks_count().c_str();
+    string trackCount = conf_load_cur_tracks_count();
     if (!trackCount.length()) {
         trackCount = "3";
     }
@@ -215,6 +219,24 @@ void doCreate(HWND hwnd)
     hwndButton = CreateWindow(WC_BUTTON, "Launch",
         WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
         290, 70, 100, 48, hwnd, (HMENU)BUTTON_ID, NULL, NULL);
+
+    // create server ip entry
+    string serverIp = conf_load_server_ip();
+    hwndServerEdit  = CreateWindow(WC_EDIT, serverIp.c_str(), 
+        WS_VISIBLE | WS_CHILD | WS_BORDER, 
+        270, 14, 120, 20, hwnd, (HMENU)SERVEREDIT_ID, NULL, NULL);
+
+    // create the server checkbox
+    hwndServerCheck = CreateWindow(WC_BUTTON, "Server", 
+        WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX | BS_LEFTTEXT,
+        198, 16, 65, 16, hwnd, (HMENU)SERVERCHECK_ID, NULL, NULL);
+
+    // whether to enable server and edit checkbox
+    if (conf_load_use_server()) {
+        SendMessage(hwndServerCheck, BM_SETCHECK, BST_CHECKED, 0);
+    } else {
+        EnableWindow(hwndServerEdit, false);
+    }
 }
 
 void doDestroy(HWND hwnd)
@@ -248,6 +270,7 @@ LRESULT doButtonPaint(WPARAM wParam, LPARAM lParam)
     }
     if (lParam == (LPARAM)hwndCountLabel || 
         lParam == (LPARAM)hwndTimestampCheckbox ||
+        lParam == (LPARAM)hwndServerCheck ||
         lParam == (LPARAM)hwndFmtLabel) {
         SetBkMode(hdc, TRANSPARENT);
         return (LRESULT)bkbrush;
@@ -279,6 +302,13 @@ void saveConfig()
 
     // the use timestamps checkbox
     conf_save_use_timestamps((bool)SendMessage(hwndTimestampCheckbox, BM_GETCHECK, 0, 0));
+
+    // whether server enabled
+    conf_save_use_server((bool)SendMessage(hwndServerCheck, BM_GETCHECK, 0, 0));
+
+    // save the server ip
+    GetWindowText(hwndServerEdit, buf, sizeof(buf));
+    conf_save_server_ip(buf);
 }
 
 // inject into the path specified in gui
@@ -310,6 +340,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             saveConfig();
             doInject();
             break;
+        }
+        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == SERVERCHECK_ID) {
+            EnableWindow(hwndServerEdit, !IsWindowEnabled(hwndServerEdit));
         }
         // when combobox changes update the text box
         if (LOWORD(wParam) == COMBOBOX_ID && HIWORD(wParam) == CBN_SELCHANGE) {

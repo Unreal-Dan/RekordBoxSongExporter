@@ -12,7 +12,9 @@
 
 using namespace std;
 
-// determined that track title is 0x138 bytes into
+// NOTE: this is unused now, it was the old source of track information
+//       but it only has a few fields. The new source is handled in the
+//       output thread by looking up row track data
 struct deck_struct
 {
     // this appears to be the same size for version 5.8.5 and 6.5.0

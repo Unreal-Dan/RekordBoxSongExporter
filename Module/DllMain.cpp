@@ -5,6 +5,7 @@
 #include "NotifyMasterChangeHook.h"
 #include "EventPlayTrackHook.h"
 #include "LastTrackStorage.h"
+#include "NetworkClient.h"
 #include "RowDataTrack.h"
 #include "OutputFiles.h"
 #include "Config.h"
@@ -34,6 +35,13 @@ DWORD mainThread(void *param)
         return 1;
     }
 
+    // server mode
+    if (config.use_server) {
+        if (!init_network_client()) {
+            return 1;
+        }
+    }
+
     // hook when we press the play/cue button and a new track has been loaded
     if (!hook_event_play_track()) {
         return 1;
@@ -50,6 +58,11 @@ DWORD mainThread(void *param)
     // to log to the output files, we must do this on the main thread to
     // avoid crashes and other issues when doing things in the hooks
     run_listener();
+
+    // network cleanup if in server mode
+    if (config.use_server) {
+        cleanup_network_client();
+    }
 
     return 0;
 }

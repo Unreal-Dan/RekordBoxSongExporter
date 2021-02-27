@@ -5,6 +5,7 @@
 #include <queue>
 
 #include "LastTrackStorage.h"
+#include "NetworkClient.h"
 #include "RowDataTrack.h"
 #include "OutputFiles.h"
 #include "Config.h"
@@ -101,20 +102,22 @@ HANDLE hLogSem;
 // initialize all the output files
 bool initialize_output_files()
 {
-    // clears all the track files
-    if (!clear_file(get_last_track_file()) ||
-        !clear_file(get_cur_tracks_file()) ||
-        !clear_file(get_cur_track_file()) ||
-        !clear_file(get_log_file())) {
-        error("Failed to clear output files");
-        return false;
+    // only clear the output files if we're going to write to them
+    if (!config.use_server) {
+        // clears all the track files
+        if (!clear_file(get_last_track_file()) ||
+            !clear_file(get_cur_tracks_file()) ||
+            !clear_file(get_cur_track_file()) ||
+            !clear_file(get_log_file())) {
+            error("Failed to clear output files");
+            return false;
+        }
+        // log them to the console
+        info("log file: %s", get_log_file().c_str());
+        info("tracks file: %s", get_cur_tracks_file().c_str());
+        info("last track file: %s", get_last_track_file().c_str());
+        info("current track file: %s", get_cur_track_file().c_str());
     }
-
-    // log them to the console
-    info("log file: %s", get_log_file().c_str());
-    info("tracks file: %s", get_cur_tracks_file().c_str());
-    info("last track file: %s", get_last_track_file().c_str());
-    info("current track file: %s", get_cur_track_file().c_str());
 
     // critical section to ensure all output files update together
     InitializeCriticalSection(&track_list_critsec);
@@ -149,13 +152,6 @@ void run_listener()
 
         // the new track entry
         track_entry entry(deck_idx);
-        tracks.push_front(entry);
-
-        // make sure the list doesn't go beyond config.max_tracks
-        if (tracks.size() > config.max_tracks) {
-            // remove from the end
-            tracks.pop_back();
-        }
 
 #ifdef _DEBUG
         info("Logging deck %u:", entry.idx);
@@ -176,6 +172,25 @@ void run_listener()
         if (entry.track_number.length()) { info("\ttrack number: %s", entry.track_number.c_str()); }
         if (entry.bpm.length())          { info("\tbpm: %s", entry.bpm.c_str()); }
 #endif
+
+        // server mode?
+        if (config.use_server) {
+            string track_str = build_output(&entry);
+            info("Sending track [%s] to server %s...", 
+                track_str.c_str(), config.server_ip.c_str());
+            // send the track
+            send_network_message(track_str.c_str());
+            // that's it nothing else in server mode
+            LeaveCriticalSection(&track_list_critsec);
+            continue;
+        }
+
+        // store the track in the tracks list
+        tracks.push_front(entry);
+        // make sure the list doesn't go beyond config.max_tracks
+        if (tracks.size() > config.max_tracks) {
+            tracks.pop_back();
+        }
 
         // update the last x file by iterating tracks and writing
         if (tracks.size() > 0) {

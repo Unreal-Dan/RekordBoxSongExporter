@@ -70,6 +70,20 @@ bool conf_load_use_timestamps()
         get_config_path().c_str());
 }
 
+bool conf_load_use_server()
+{
+    return (bool)GetPrivateProfileInt("RBSongExporterConfig", "use_server", 0,
+        get_config_path().c_str());
+}
+
+string conf_load_server_ip()
+{
+    char buf[2048] = { 0 };
+    GetPrivateProfileString("RBSongExporterConfig", "server_ip", "127.0.0.1", 
+        buf, sizeof(buf), get_config_path().c_str());
+    return string(buf);
+}
+
 // ==========================
 // saving functions
 
@@ -101,4 +115,16 @@ bool conf_save_use_timestamps(bool use_timestamps)
 {
     return (WritePrivateProfileString("RBSongExporterConfig", "use_timestamps",
         use_timestamps ? "1" : "0", get_config_path().c_str()) != 0);
+}
+
+bool conf_save_use_server(bool use_server)
+{
+    return (WritePrivateProfileString("RBSongExporterConfig", "use_server",
+        use_server ? "1" : "0", get_config_path().c_str()) != 0);
+}
+
+bool conf_save_server_ip(string server_ip)
+{
+    return (WritePrivateProfileString("RBSongExporterConfig", "server_ip",
+        server_ip.c_str(), get_config_path().c_str()) != 0);
 }

@@ -41,26 +41,40 @@ bool initialize_config()
         }
     }
 
-    // the output version
+    // the output format
     if (!GetPrivateProfileString("RBSongExporterConfig", "out_format", "", buf, sizeof(buf), configPath.c_str())) {
         error("Failed to load out_format from [%s]: %d", configPath.c_str(), GetLastError());
-        return false;
     }
     config.out_format = buf;
 
     // the num lines in cur tracks
     if (!GetPrivateProfileString("RBSongExporterConfig", "cur_tracks_count", "", buf, sizeof(buf), configPath.c_str())) {
-        error("Failed to load out_format from [%s]: %d", configPath.c_str(), GetLastError());
-        return false;
+        error("Failed to load cur tracks lines from [%s]: %d", configPath.c_str(), GetLastError());
     }
     config.max_tracks = strtoul(buf, NULL, 10);
+    // don't let them shoot themself in the foot
+    if (!config.max_tracks) {
+        config.max_tracks = 1;
+    }
 
     // whether to use timestamps in global log
     if (!GetPrivateProfileString("RBSongExporterConfig", "use_timestamps", "", buf, sizeof(buf), configPath.c_str())) {
-        error("Failed to load out_format from [%s]: %d", configPath.c_str(), GetLastError());
-        return false;
+        error("Failed to load timestamps from [%s]: %d", configPath.c_str(), GetLastError());
     }
     config.use_timestamps = (strtoul(buf, NULL, 10) != 0);
+
+    // whether to use server
+    if (!GetPrivateProfileString("RBSongExporterConfig", "use_server", "", buf, sizeof(buf), configPath.c_str())) {
+        error("Failed to load use_server from [%s]: %d", configPath.c_str(), GetLastError());
+    }
+    config.use_server = (strtoul(buf, NULL, 10) != 0);
+
+    // the server ip
+    if (!GetPrivateProfileString("RBSongExporterConfig", "server_ip", "", buf, sizeof(buf), configPath.c_str())) {
+        error("Failed to load server_ip from [%s]: %d", configPath.c_str(), GetLastError());
+        // don't return false for server ip it's optional
+    }
+    config.server_ip = buf;
 
     return true;
 }

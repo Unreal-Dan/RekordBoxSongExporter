@@ -30,6 +30,12 @@ typedef struct config_struct
 
     // whether to use timestamps in global log
     bool use_timestamps;
+
+    // whether to use server mode
+    bool use_server;
+
+    // a server ip if there is one
+    std::string server_ip;
 } config_t;
 
 // global config object
