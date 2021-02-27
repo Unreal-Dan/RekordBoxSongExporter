@@ -64,6 +64,13 @@ bool init_network_client()
         WSACleanup();
         return false;
     }
+    // turn on non-blocking for the socket so the module cannot
+    // get stuck in the send() call if the server is closed
+    u_long iMode = 1; // 1 = non-blocking mode
+    res = ioctlsocket(sock, FIONBIO, &iMode);
+    if (res != NO_ERROR) {
+        printf("ioctlsocket failed with error: %ld\n", res);
+    }
     info("Connected to server %s", config.server_ip.c_str());
     return true;
 }
@@ -73,6 +80,7 @@ bool send_network_message(string message)
 {
     info("Sending track to server: %s", message.c_str());
     if (send(sock, message.c_str(), (int)message.length(), 0 ) == SOCKET_ERROR) {
+        // most likely server closed
         error("send failed with error: %d", WSAGetLastError());
         return false;
     }
