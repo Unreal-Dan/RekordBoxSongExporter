@@ -8,9 +8,13 @@ You can find prebuilt releases [here](https://github.com/Unreal-Dan/RekordBoxSon
 
 ## tl;dr
 
+If you run Rekordbox and OBS on different PCs then you have to run the Server on the 
+streaming pc first, otherwise ignore the Server.
+
 Use the Launcher to start Rekordbox and then create a GDI text object in OBS and point
-it at the file called current_track.txt which will appear next to the Launcher. Turn
-on chatlog mode on the text object and you're good to go.
+it at the file called current_track.txt. 
+
+Turn on chatlog mode on the GDI text object in OBS and you're good to go.
 
 ## What does it do
 
