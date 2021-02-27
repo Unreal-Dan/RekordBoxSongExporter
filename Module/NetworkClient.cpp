@@ -51,12 +51,15 @@ bool init_network_client()
             WSACleanup();
             return false;
         }
-        if (connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen) != SOCKET_ERROR) {
+        if (connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen) == SOCKET_ERROR) {
+            // try again
             error("Connect failed");
-            break;
+            closesocket(sock);
+            sock = INVALID_SOCKET;
+            continue;
         }
-        closesocket(sock);
-        sock = INVALID_SOCKET;
+        // Success!
+        break;
     }
     freeaddrinfo(addrs);
     if (sock == INVALID_SOCKET) {
@@ -87,6 +90,7 @@ bool send_network_message(string message)
     return true;
 }
 
+// cleanup network stuff
 void cleanup_network_client()
 {
     if (shutdown(sock, SD_SEND) == SOCKET_ERROR) {
