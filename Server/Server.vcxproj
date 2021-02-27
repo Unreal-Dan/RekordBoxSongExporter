@@ -143,7 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="ain.cpp" />
+    <ClCompile Include="Main.cpp" />
     <ClCompile Include="OutputFiles.cpp" />
     <ClCompile Include="Server.cpp" />
   </ItemGroup>
