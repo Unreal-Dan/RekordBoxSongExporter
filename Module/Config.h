@@ -5,6 +5,9 @@
 // if you change this things will probably break
 #define NUM_DECKS 4
 
+// port for network comms
+#define DEFAULT_PORT "22345"
+
 // enum of versions we support
 typedef enum rbox_version_enum
 {

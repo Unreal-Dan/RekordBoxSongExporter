@@ -16,8 +16,6 @@ using namespace std;
 #pragma comment (lib, "Mswsock.lib")
 #pragma comment (lib, "AdvApi32.lib")
 
-#define DEFAULT_PORT "22345"
-
 WSADATA wsaData;
 SOCKET sock = INVALID_SOCKET;
 
