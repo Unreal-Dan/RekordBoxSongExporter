@@ -138,7 +138,7 @@ The available placeholders in the output format include (so far):
     %date_created%    The date created
     %date_added%      The date added
     %track_number%    The track number
-    %bpm%             The bpm
+    %bpm%             The original track bpm (not deck bpm)
     %time%            The current timestamp (hh:mm:ss)
 ```
 
