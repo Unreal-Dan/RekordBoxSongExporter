@@ -16,8 +16,9 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
 // strings corresponding to version numbers
 const char *rbver_strings[RBVER_COUNT] = {
-    "6.5.0", // RBVER_650
     "5.8.5", // RBVER_585
+    "6.5.0", // RBVER_650
+    "6.5.1", // RBVER_651
 };
 
 // global config object

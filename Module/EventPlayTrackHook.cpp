@@ -86,12 +86,16 @@ bool hook_event_play_track()
     // and the number of bytes to copy out into a trampoline
     uint32_t trampoline_len = 0x13;
     uint32_t func_offset = 0;
+    // Search for string 'eventPlayTrack (%d)' to find this
     switch (config.rbox_version) {
+    case RBVER_585:
+        func_offset = 0x7A5DE0;
+        break;
     case RBVER_650:
         func_offset = 0x908D70;
         break;
-    case RBVER_585:
-        func_offset = 0x7A5DE0;
+    case RBVER_651:
+        func_offset = 0x911610;
         break;
     default:
         error("Unknown version");

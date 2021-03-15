@@ -36,28 +36,41 @@ public:
     void **sync_master_list()
     {
         switch (config.rbox_version) {
-        case RBVER_650: return sm_650.syncMasterList;
         case RBVER_585: return sm_585.syncMasterList;
+        case RBVER_650: return sm_650.syncMasterList;
+        case RBVER_651: return sm_651.syncMasterList;
         default:        return NULL;
         }
     }
     void *cur_sync_master()
     {
         switch (config.rbox_version) {
-        case RBVER_650: return sm_650.curSyncMaster;
         case RBVER_585: return sm_585.curSyncMaster;
+        case RBVER_650: return sm_650.curSyncMaster;
+        case RBVER_651: return sm_651.curSyncMaster;
         default:        return NULL;
         }
     }
     uint32_t num_sync_masters() 
     {
         switch (config.rbox_version) {
-        case RBVER_650: return sm_650.numSyncMasters;
         case RBVER_585: return sm_585.numSyncMasters;
+        case RBVER_650: return sm_650.numSyncMasters;
+        case RBVER_651: return sm_651.numSyncMasters;
         default:        return 0;
         }
     }
 private:
+
+    struct sync_manager_585
+    {
+        // this pad size is really the only difference
+        uint8_t pad[0xF8];
+        void *curSyncMaster;
+        void **syncMasterList;
+        void *unknown;
+        uint32_t numSyncMasters;
+    };
 
     struct sync_manager_650
     {
@@ -71,21 +84,24 @@ private:
         uint32_t numSyncMasters;
     };
 
-    struct sync_manager_585
+    struct sync_manager_651
     {
-        // this pad size is really the only difference
-        uint8_t pad[0xF8];
+        uint8_t pad[0xF0];
+        // the current sync master
         void *curSyncMaster;
+        // the list of sync masters
         void **syncMasterList;
         void *unknown;
+        // the number of sync masters in the list
         uint32_t numSyncMasters;
     };
 
     // anonymous union of sync manager versions
     union
     {
-        sync_manager_650 sm_650;
         sync_manager_585 sm_585;
+        sync_manager_650 sm_650;
+        sync_manager_651 sm_651;
     };
 };
 
@@ -111,12 +127,17 @@ bool hook_notify_master_change()
     // and the number of bytes to copy out into a trampoline
     uint32_t trampoline_len = 0x10;
     uint32_t func_offset = 0;
+    // sig for functions in 6.5.0:
+    // 40 53 48 83 EC 30 48 8B D9 48 8B 89 40 01 00 00 48 85 C9 0F 84 65 01 00 00 F6 C1 03 0F 85 5C 01
     switch (config.rbox_version) {
+    case RBVER_585:
+        func_offset = 0x14CEF80;
+        break;
     case RBVER_650:
         func_offset = 0x1772d70;
         break;
-    case RBVER_585:
-        func_offset = 0x14CEF80;
+    case RBVER_651:
+        func_offset = 0x179E840;
         break;
     default:
         error("Unknown version");
