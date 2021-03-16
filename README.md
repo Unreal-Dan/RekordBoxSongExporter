@@ -152,8 +152,10 @@ with two timestamps in played_tracks.txt
 
 ### Cur Tracks Count
 
-The number of lines to cap the current_tracks.txt file, ths file will always be 
-truncated to this number of lines and the track list will be rotated through it.
+The number of lines to cap the current_tracks.txt file.
+
+The file is truncated to the configured number of lines as the track list rotates 
+through it.
 
 This is useful for OBS 'chatlog' mode with GDI text object because OBS requires a 
 'lines' count and will not read the file if the line count goes beyond the limit.
