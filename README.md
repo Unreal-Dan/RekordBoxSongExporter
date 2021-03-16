@@ -109,7 +109,7 @@ The UI offers configurations for:
 
 ### Version
 
-The version of Rekordbox being launched/hooked (only 6.5.0 and 5.8.5 at the moment)
+The version of Rekordbox being launched/hooked (only 6.5.x and 5.8.5 at the moment)
 
 ### Specific Path
 
