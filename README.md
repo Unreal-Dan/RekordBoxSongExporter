@@ -35,8 +35,8 @@ on a separate PC from OBS.
 ## How does it work
 
 The Launcher will optionally launch Rekordbox and inject a module which hooks two 
-functions, one function is called when the play/cue button is pressed on a deck, and 
-the other function is called anytime the 'master' deck switches in Rekordbox.
+of Rekordbox's functions: one function is called when the play/cue button is pressed
+on a deck, and the other function is called when the 'master' deck switches.
 
 The play/cue hook will cache each song that is played on any deck into an internal
 storage of the hack itself.
