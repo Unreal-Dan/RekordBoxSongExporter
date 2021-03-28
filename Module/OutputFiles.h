@@ -1,15 +1,6 @@
 #pragma once
 #include <string>
 
-// initialize all the output files
-bool initialize_output_files();
-
-// updates the last_track, current_track, and current_tracks files
-void update_output_files(uint32_t deckIdx);
-
-// run the listener loop which waits for messages to update te output files
-void run_listener();
-
 // global log file path
 std::string get_log_file();
 
@@ -21,3 +12,13 @@ std::string get_last_track_file();
 
 // current tracks file path
 std::string get_cur_tracks_file();
+
+// initialize all the output files
+bool initialize_output_files();
+
+// Push the index of a deck which has changed into the queue 
+// for the logging thread to log the track of that deck
+void push_deck_update(uint32_t deck_idx);
+
+// run the listener loop which waits for messages to update te output files
+void run_listener();

@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <iostream>
+#include <sstream>
 #include <string>
 #include <deque>
 
@@ -20,28 +22,55 @@ int main()
 
     printf("Successfully Initialized Server\n");
 
-    // start listening
-    if (!start_listen()) {
-        return 1;
-    }
+    // reuse the server if the client disconnects
+    while (1) {
+        // start listening
+        if (!start_listen()) {
+            break;
+        }
 
-    printf("Listening on port " DEFAULT_PORT "...\n");
+        printf("-----------------------------------------\n");
+        printf("Listening on port " DEFAULT_PORT "...\n");
 
-    // block till a client connects
-    if (!accept_connection()) {
-        return 1;
-    }
+        // block till a client connects and clear the output files
+        if (!accept_connection() || !init_output_files()) {
+            break;
+        }
 
-    printf("Received connection!\n");
+        printf("Received connection!\n");
 
-    string message;
-    // each message received will get passed into the logging system
-    while (receive_message(message)) {
-        log_track(message);
+        string config_str;
+        if (!receive_message(config_str)) {
+            printf("Failed to receive config\n");
+            break;
+        }
+
+        // quickly parse out the first message which is always the config
+        istringstream config_ss(config_str);
+        string token;
+        getline(config_ss, token, '|');
+        config_use_timestamps = (strtoul(token.c_str(), NULL, 10) == 1);
+        getline(config_ss, token, '|');
+        config_max_tracks = strtoul(token.c_str(), NULL, 10);
+
+        // dump config to console
+        printf("Timestamps are %s\n", config_use_timestamps ? "enabled" : "disabled");
+        printf("Max track count is %zu\n", config_max_tracks);
+
+        string track;
+        // each message received will get passed into the logging system
+        while (receive_message(track)) {
+            printf("Logging track [%s]\n", track.c_str());
+            log_track(track);
+        }
+
+        printf("Connection closed\n");
     }
 
     // done
     cleanup_server();
+
+    system("pause");
 
     return 0;
 }

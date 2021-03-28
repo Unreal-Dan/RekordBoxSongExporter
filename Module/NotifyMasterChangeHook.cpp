@@ -117,7 +117,7 @@ void notify_master_change_hook(sync_manager *syncManager)
     if (get_logged(master_id)) {
         return;
     }
-    update_output_files(master_id);
+    push_deck_update(master_id);
     set_logged(master_id, true);
 }
 

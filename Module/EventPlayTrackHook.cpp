@@ -67,7 +67,7 @@ void play_track_hook(event_struct *event)
     // if we're playing/cueing a new track on the master deck
     if (get_master() == deck_idx) {
         // Then we need to update the output files because notifyMasterChange isn't called
-        update_output_files(deck_idx);
+        push_deck_update(deck_idx);
         // we mark this deck as logged so notifyMasterChange doesn't log this track again
         set_logged(deck_idx, true);
         // the edge case where we loaded a track onto the master

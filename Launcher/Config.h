@@ -35,16 +35,16 @@ std::string conf_load_server_ip();
 // saving functions
 
 // save the version
-bool conf_save_version(std::string version);
+bool conf_save_version(const std::string &version);
 
 // save the rbox path
-bool conf_save_path(std::string path);
+bool conf_save_path(const std::string &path);
 
 // save the output format
-bool conf_save_out_format(std::string out_format);
+bool conf_save_out_format(const std::string &out_format);
 
 // save the cur tracks line count
-bool conf_save_cur_tracks_count(std::string num_tracks);
+bool conf_save_cur_tracks_count(const std::string &num_tracks);
 
 // whethe to use timestamps
 bool conf_save_use_timestamps(bool use_timestamps);
@@ -53,5 +53,5 @@ bool conf_save_use_timestamps(bool use_timestamps);
 bool conf_save_use_server(bool use_server);
 
 // save the server ip string
-bool conf_save_server_ip(std::string server_ip);
+bool conf_save_server_ip(const std::string &server_ip);
 

@@ -8,15 +8,19 @@
 using namespace std;
 
 // create and truncate a single file, only call this from the logger thread
-static bool clear_file(string filename);
+static bool clear_file(const string &filename);
 // append data to a file, only call this from the logger thread
-static bool append_file(string filename, string data);
+static bool append_file(const string &filename, const string &data);
 // just a wrapper around clear and append
-static bool rewrite_file(string filename, string data);
+static bool rewrite_file(const string &filename, const string &data);
 // helper for in-place replacements
 static bool replace(string& str, const string& from, const string& to) ;
 // calc time since the first time this was called
 static string get_timestamp_since_start();
+
+// These come from the client over the network
+size_t config_max_tracks = 0;
+bool config_use_timestamps = false;
 
 // initialize the output files
 bool init_output_files()
@@ -34,7 +38,7 @@ bool init_output_files()
 }
 
 // log a song to file, stolen straight from the module code
-void log_track(string song)
+void log_track(const string &song)
 {
     // deque of tracks, deque instead of queue for iteration
     static deque<string> tracks;
@@ -42,7 +46,7 @@ void log_track(string song)
     // store the track in the tracks list
     tracks.push_front(song);
     // make sure the list doesn't go beyond config.max_tracks
-    if (tracks.size() > MAX_TRACKS) {
+    if (tracks.size() > config_max_tracks) {
         tracks.pop_back();
     }
 
@@ -71,7 +75,7 @@ void log_track(string song)
     }
     // append the artist and track to the global log
     string log_entry;
-    if (USE_TIMESTAMPS) {
+    if (config_use_timestamps) {
         // timestamp with a space after it
         log_entry += get_timestamp_since_start() + " ";
     }
@@ -83,7 +87,7 @@ void log_track(string song)
 }
 
 // create and truncate a single file, only call this from the logger thread
-static bool clear_file(string filename)
+static bool clear_file(const string &filename)
 {
     // open with CREATE_ALWAYS to truncate any existing file and create any missing
     HANDLE hFile = CreateFile(filename.c_str(), GENERIC_READ|GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
@@ -96,7 +100,7 @@ static bool clear_file(string filename)
 }
 
 // append data to a file, only call this from the logger thread
-static bool append_file(string filename, string data)
+static bool append_file(const string &filename, const string &data)
 {
     // open for append, create new, or open existing
     HANDLE hFile = CreateFile(filename.c_str(), FILE_APPEND_DATA, 0, NULL, CREATE_NEW|OPEN_EXISTING, 0, NULL);
@@ -115,7 +119,7 @@ static bool append_file(string filename, string data)
 }
 
 // just a wrapper around clear and append
-static bool rewrite_file(string filename, string data)
+static bool rewrite_file(const string &filename, const string &data)
 {
     return clear_file(filename) && append_file(filename, data);
 }

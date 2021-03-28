@@ -6,7 +6,7 @@
 bool init_network_client();
 
 // send a message
-bool send_network_message(std::string message);
+bool send_network_message(const std::string &message);
 
 // cleanup network stuff
 void cleanup_network_client();

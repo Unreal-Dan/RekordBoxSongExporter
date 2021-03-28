@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "NetworkClient.h"
 #include "Config.h"
 #include "Log.h"
 
@@ -72,16 +73,28 @@ bool init_network_client()
     u_long iMode = 1; // 1 = non-blocking mode
     res = ioctlsocket(sock, FIONBIO, &iMode);
     if (res != NO_ERROR) {
-        printf("ioctlsocket failed with error: %ld\n", res);
+        error("ioctlsocket failed with error: %d", res);
+        closesocket(sock);
+        WSACleanup();
+        return false;
     }
     info("Connected to server %s", config.server_ip.c_str());
+    // Config is: use_timestamps|max_tracks
+    string config_str = to_string(config.use_timestamps) + "|" +
+                        to_string(config.max_tracks);
+    // send that config to the server
+    if (!send_network_message(config_str)) {
+        error("Failed to send config");
+        closesocket(sock);
+        WSACleanup();
+        return false;
+    }
     return true;
 }
 
 // send a message
-bool send_network_message(string message)
+bool send_network_message(const string &message)
 {
-    info("Sending track to server: %s", message.c_str());
     if (send(sock, message.c_str(), (int)message.length(), 0 ) == SOCKET_ERROR) {
         // most likely server closed
         error("send failed with error: %d", WSAGetLastError());

@@ -54,14 +54,13 @@ bool init_server()
 
     // Setup the TCP listening socket
     res = bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen);
+    freeaddrinfo(result);
     if (res == SOCKET_ERROR) {
         printf("bind failed with error: %d\n", WSAGetLastError());
-        freeaddrinfo(result);
         closesocket(ListenSocket);
         WSACleanup();
         return false;
     }
-    freeaddrinfo(result);
     return true;
 }
 
@@ -70,8 +69,6 @@ bool start_listen()
 {
     if (listen(ListenSocket, SOMAXCONN) == SOCKET_ERROR) {
         printf("listen failed with error: %d\n", WSAGetLastError());
-        closesocket(ListenSocket);
-        WSACleanup();
         return false;
     }
     return true;
@@ -84,12 +81,8 @@ bool accept_connection()
     ClientSocket = accept(ListenSocket, NULL, NULL);
     if (ClientSocket == INVALID_SOCKET) {
         printf("accept failed with error: %d\n", WSAGetLastError());
-        closesocket(ListenSocket);
-        WSACleanup();
         return 1;
     }
-    // No longer need server socket
-    closesocket(ListenSocket);
     return true;
 }
 
@@ -100,7 +93,6 @@ bool receive_message(string &out_message)
     memset(recvbuf, 0, sizeof(recvbuf));
     int res = recv(ClientSocket, recvbuf, sizeof(recvbuf), 0);
     if (res > 0) {
-        printf("Received: \n%s\n", recvbuf);
         out_message = recvbuf;
         return true;
     }

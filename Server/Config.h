@@ -10,8 +10,6 @@
 #define TRACK_LOG_FILE  "played_tracks.txt"
 
 // hardcoded configurations
-#define MAX_TRACKS      3
-#define USE_TIMESTAMPS  1
 #define DEFAULT_PORT    "22345"
 
 

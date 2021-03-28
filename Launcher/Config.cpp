@@ -87,25 +87,25 @@ string conf_load_server_ip()
 // ==========================
 // saving functions
 
-bool conf_save_version(string version)
+bool conf_save_version(const string &version)
 {
     return (WritePrivateProfileString("RBSongExporterConfig", "rbox_version",
         version.c_str(), get_config_path().c_str()) != 0);
 }
 
-bool conf_save_path(string path)
+bool conf_save_path(const string &path)
 {
     return (WritePrivateProfileString("RBSongExporterConfig", "rbox_path",
         path.c_str(), get_config_path().c_str()) != 0);
 }
 
-bool conf_save_out_format(string out_format)
+bool conf_save_out_format(const string &out_format)
 {
     return (WritePrivateProfileString("RBSongExporterConfig", "out_format",
         out_format.c_str(), get_config_path().c_str()) != 0);
 }
 
-bool conf_save_cur_tracks_count(string num_tracks)
+bool conf_save_cur_tracks_count(const string &num_tracks)
 {
     return (WritePrivateProfileString("RBSongExporterConfig", "cur_tracks_count",
         num_tracks.c_str(), get_config_path().c_str()) != 0);
@@ -123,7 +123,7 @@ bool conf_save_use_server(bool use_server)
         use_server ? "1" : "0", get_config_path().c_str()) != 0);
 }
 
-bool conf_save_server_ip(string server_ip)
+bool conf_save_server_ip(const string &server_ip)
 {
     return (WritePrivateProfileString("RBSongExporterConfig", "server_ip",
         server_ip.c_str(), get_config_path().c_str()) != 0);
