@@ -2,7 +2,7 @@
 A hack for Rekordbox 6.5.1, 6.5.0 or 5.8.5 on Windows 64bit only.  
 Tested on Win10 and Win8.1
 
-You can find prebuilt releases [here](https://github.com/Unreal-Dan/RekordBoxSongExporter/releases)
+### You can find prebuilt releases [here](https://github.com/Unreal-Dan/RekordBoxSongExporter/releases)
 
 ![Launcher Image](/launcher.png?raw=true "Launcher")
 
