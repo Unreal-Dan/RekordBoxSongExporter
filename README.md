@@ -22,7 +22,8 @@ This will export played tracks in realtime for integration with OBS or any syste
 that can consume the track names from a file.
 
 This does **NOT** poll the Rekordbox database, this directly hooks Rekordbox which 
-means the output files update instantaneously when you fade into another track.
+means there is no added risk of database corruption, and no delay when the output 
+files update.
 
 The module offers a variety of configuration options to control how it outputs
 the track information along with other unique options.
