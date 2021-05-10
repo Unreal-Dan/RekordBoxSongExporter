@@ -1,7 +1,10 @@
 #include <Windows.h>
 #include <shlwapi.h>
 
+#include <vector>
 #include <string>
+
+#include "Config.h"
 
 #pragma comment(lib, "Shlwapi.lib")
 

@@ -149,11 +149,13 @@
   <ItemGroup>
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="Injector.cpp" />
+    <ClCompile Include="OutputFiles.cpp" />
     <ClCompile Include="WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Config.h" />
     <ClInclude Include="Injector.h" />
+    <ClInclude Include="OutputFiles.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

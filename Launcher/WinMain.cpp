@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 
+#include "OutputFiles.h"
 #include "Injector.h"
 #include "resource.h"
 #include "Config.h"
@@ -32,85 +33,73 @@ version_path versions[] = {
     { "Rekordbox 5.8.5", "C:\\Program Files\\Pioneer\\rekordbox 5.8.5\\rekordbox.exe" },
 };
 
-enum output_mode
-{
-    MODE_REPLACE = 0,
-    MODE_APPEND = 1,
-    MODE_PREPEND = 2
-};
-
-struct output_file
-{
-    string name;
-    string format;
-    output_mode mode;
-    bool wipe_on_start;
-    uint32_t max_lines;
-};
-
-vector<output_file> outputFiles;
-
 // the number of versions in table above
 #define NUM_VERSIONS    (sizeof(versions) / sizeof(versions[0]))
 
-#define COMBOBOX_ID         1000
-#define CHECKBOX_ID         1001
-#define LAUNCHBUTTON_ID     1002
-#define PATHEDIT_ID         1003
-#define LABEL_ID            1004
-#define FMTEDIT_ID          1005
-#define COUNTEDIT_ID        1006
-#define SERVEREDIT_ID       1007
-#define SERVERCHECK_ID      1008
-#define LISTBOX_ID          1009
-#define ADDBUTTON_ID        1010
-#define DELBUTTON_ID        1011
-#define OUTFILENAME_ID      1012
-#define OUTFILEFORMAT_ID    1013
-#define OUTFILETYPE_ID      1014
-#define REPLACERADIO_ID     1015
-#define APPENDRADIO_ID      1016
-#define PREPENDRADIO_ID     1017
-
-// checkbox for timestamps being enabled
-HWND hwndTimestampCheckbox;
 // version select combobox
-HWND hwndComboBox;
-// launch button
-HWND hwndButton;
-// rekordbox path textbox
-HWND hwndPathEdit;
-// "Cur tracks count" label
-HWND hwndCountLabel;
-// Cur tracks count edit box
-HWND hwndCountEdit;
-// "Format:" label
-HWND hwndFmtLabel;
-// Format edit textbox
-HWND hwndFmtEdit;
-// server ip edit box
-HWND hwndServerEdit;
+HWND hwndVersionCombo;
+#define VERSION_COMBO_ID        1000
+
 // server checkbox
 HWND hwndServerCheck;
+#define SERVER_CHECK_ID         1001
+
+// server ip edit box
+HWND hwndServerEdit;
+#define SERVER_EDIT_ID          1002
+
+// rekordbox path textbox
+HWND hwndPathEdit;
+#define PATH_EDIT_ID            1003
 
 // the listbox of output files
-HWND hwndListBox;
-// the add output file button
-HWND hwndAddFileButton;
+HWND hwndOutfilesList;
+#define OUTFILES_LIST_ID        1004
+
 // the delete output file button
 HWND hwndDelFileButton;
+#define DEL_BUTTON_ID           1005
+
+// the add output file button
+HWND hwndAddFileButton;
+#define ADD_BUTTON_ID           1006
+
 // output filename edit textbox
 HWND hwndOutfileNameEdit;
+#define OUTFILENAME_EDIT_ID     1007
+
 // output file format edit textbox
 HWND hwndOutfileFormatEdit;
-// group for radio buttons
-HWND hwndRadioGroup;
+#define OUTFILEFORMAT_EDIT_ID   1008
+
 // output file replace mode radio
 HWND hwndReplaceModeRadio;
+#define REPLACE_RADIO_ID        1009
+
 // output file append mode radio
 HWND hwndAppendModeRadio;
+#define APPEND_RADIO_ID         1010
+
 // output file prepend mode radio
 HWND hwndPrependModeRadio;
+#define PREPEND_RADIO_ID        1011
+
+// "Offset:" label (don't need ID)
+HWND hwndOffsetLabel;
+// Offset edit box
+HWND hwndOffsetEdit;
+#define OFFSET_EDIT_ID          1012
+
+// "Max Lines:" label (don't need ID)
+HWND hwndMaxLinesLabel;
+// Max lines edit box
+HWND hwndMaxLinesEdit;
+#define MAXLINES_EDIT_ID        1013
+
+// launch button
+HWND hwndButton;
+#define LAUNCH_BUTTON_ID        1014
+
 
 // background color brush 1
 HBRUSH bkbrush;
@@ -207,16 +196,16 @@ void doCreate(HWND hwnd)
     borderpen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
     arrowpen = CreatePen(PS_SOLID, 1, arrowcolor);
 
-    // create the dropdown box
-    hwndComboBox = CreateWindow(WC_COMBOBOX, "VersionSelect",
+    // create the version select dropdown box
+    hwndVersionCombo = CreateWindow(WC_COMBOBOX, "VersionSelect",
         CBS_SIMPLE | CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE | WS_TABSTOP,
-        12, 12, 140, 400, hwnd, (HMENU)COMBOBOX_ID, NULL, NULL);
+        12, 12, 140, 400, hwnd, (HMENU)VERSION_COMBO_ID, NULL, NULL);
     size_t cur_sel = 0;
     string conf_version = conf_load_version();
     // populate the dropdown box with versions
     for (size_t i = 0; i < NUM_VERSIONS; i++) {
         // Add string to combobox.
-        SendMessage(hwndComboBox, CB_ADDSTRING, NULL, (LPARAM)versions[i].name);
+        SendMessage(hwndVersionCombo, CB_ADDSTRING, NULL, (LPARAM)versions[i].name);
         // the versions[i].name has the full "rekordbox 6.5.0" and we
         // just want to compare the version number so add 10
         if (conf_version == (versions[i].name + 10)) {
@@ -224,14 +213,14 @@ void doCreate(HWND hwnd)
         }
     }
     // Send the CB_SETCURSEL message to display an initial item in the selection field  
-    SendMessage(hwndComboBox, CB_SETCURSEL, (WPARAM)cur_sel, (LPARAM)0);
+    SendMessage(hwndVersionCombo, CB_SETCURSEL, (WPARAM)cur_sel, (LPARAM)0);
     // for overriding background colors of dropdown
-    SetWindowSubclass(hwndComboBox, comboProc, 0, 0);
+    SetWindowSubclass(hwndVersionCombo, comboProc, 0, 0);
 
-    // create the server checkbox
+    // create the server checkbox and ip textbox
     hwndServerCheck = CreateWindow(WC_BUTTON, "Server", 
         WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX | BS_LEFTTEXT | WS_TABSTOP,
-        198, 16, 65, 16, hwnd, (HMENU)SERVERCHECK_ID, NULL, NULL);
+        198, 16, 65, 16, hwnd, (HMENU)SERVER_CHECK_ID, NULL, NULL);
 
     // whether to enable server and edit checkbox
     if (conf_load_use_server()) {
@@ -244,12 +233,12 @@ void doCreate(HWND hwnd)
     string serverIp = conf_load_server_ip();
     hwndServerEdit  = CreateWindow(WC_EDIT, serverIp.c_str(), 
         WS_VISIBLE | WS_CHILD | WS_BORDER | WS_TABSTOP,
-        270, 14, 120, 20, hwnd, (HMENU)SERVEREDIT_ID, NULL, NULL);
+        270, 14, 120, 20, hwnd, (HMENU)SERVER_EDIT_ID, NULL, NULL);
 
-    // create the path entry text box
+    // create the install path entry text box
     hwndPathEdit = CreateWindow(WC_EDIT, "", 
         WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP, 
-        12, 42, 378, 21, hwnd, (HMENU)PATHEDIT_ID, NULL, NULL);
+        12, 42, 378, 21, hwnd, (HMENU)PATH_EDIT_ID, NULL, NULL);
 
     // set the version path in the text box
     string path = conf_load_path();
@@ -259,138 +248,108 @@ void doCreate(HWND hwnd)
     }
     SetWindowText(hwndPathEdit, path.c_str());
 
-/*
-    // Create the label using CreateWindowEx
-    hwndFmtLabel = CreateWindowEx(WS_EX_TRANSPARENT, WC_STATIC, "", 
-        WS_CHILD | WS_VISIBLE | SS_LEFT | WS_SYSMENU, 
-        12, 72, 52, 16, hwnd, NULL, NULL, NULL);
-    SendMessage(hwndFmtLabel, WM_SETTEXT, NULL, (LPARAM)"Format:");
+    //  end global configs
+    // =============================
+    //  begin output file configs
 
-    // the output format entry box
-    string format = conf_load_out_format();
-    if (!format.length()) {
-        format = "%artist% - %title%";
+    // load the outputfiles from the config
+    loadOutputFiles();
+
+    // Create listbox of output files
+    hwndOutfilesList = CreateWindow(WC_LISTBOX, NULL, 
+        WS_VISIBLE | WS_CHILD | WS_BORDER | WS_VSCROLL | LBS_NOTIFY | WS_TABSTOP,
+        12, 70, 140, 128, hwnd, (HMENU)OUTFILES_LIST_ID, NULL, NULL);
+
+    // populate the listbox with names, when an item is
+    // selected the rest of the fields will be populated
+    for (int i = 0; i < outputFiles.size(); ++i) {
+        ListBox_InsertString(hwndOutfilesList, i, outputFiles[i].name.c_str());
     }
-    hwndFmtEdit  = CreateWindow(WC_EDIT, format.c_str(), 
-        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL, 
-        70, 70, 210, 21, hwnd, (HMENU)FMTEDIT_ID, NULL, NULL);
-
-    // Create the label using CreateWindowEx
-    hwndCountLabel = CreateWindowEx(WS_EX_TRANSPARENT, WC_STATIC, "", 
-        WS_CHILD | WS_VISIBLE | SS_LEFT | WS_SYSMENU, 
-        12, 100, 118, 16, hwnd, NULL, NULL, NULL);
-    SendMessage(hwndCountLabel, WM_SETTEXT, NULL, (LPARAM)"Cur Tracks Count:");
-
-    // the cur tracks count entry box
-    string trackCount = conf_load_cur_tracks_count();
-    if (!trackCount.length()) {
-        trackCount = "3";
-    }
-    hwndCountEdit  = CreateWindow(WC_EDIT, trackCount.c_str(), 
-        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_NUMBER, 
-        130, 98, 30, 20, hwnd, (HMENU)COUNTEDIT_ID, NULL, NULL);
-
-    // create the artist checkbox
-    hwndTimestampCheckbox = CreateWindow(WC_BUTTON, "Timestamps", 
-        WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX,
-        170, 100, 115, 16, hwnd, (HMENU)CHECKBOX_ID, NULL, NULL);
-    if (conf_load_use_timestamps()) {
-        SendMessage(hwndTimestampCheckbox, BM_SETCHECK, BST_CHECKED, 0);
-    }
-
-    */
-
-    // ==================
-
-    // Listbox of output files
-    hwndListBox = CreateWindow(WC_LISTBOX, NULL, 
-        WS_CHILD | WS_BORDER | WS_VSCROLL | WS_VISIBLE | WS_TABSTOP,
-        12, 70, 140, 128, hwnd, NULL, NULL, NULL);
-
-    // Base output files
-    ListBox_InsertString(hwndListBox, 0, "TrackName");
-    ListBox_InsertString(hwndListBox, 1, "TrackArtist");
-    ListBox_InsertString(hwndListBox, 2, "LastTrackName");
-    ListBox_InsertString(hwndListBox, 3, "LastTrackArtist");
-    ListBox_InsertString(hwndListBox, 4, "TrackList");
-
-    ListBox_SetCurSel(hwndListBox, 0);
 
     // Button to delete entries from listbox
     hwndDelFileButton = CreateWindow(WC_BUTTON, "Delete",
         WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON | WS_TABSTOP,
-        12, 192, 69, 28, hwnd, (HMENU)DELBUTTON_ID, NULL, NULL);
+        12, 192, 69, 28, hwnd, (HMENU)DEL_BUTTON_ID, NULL, NULL);
 
     // Button to add new entries to listbox
     hwndAddFileButton = CreateWindow(WC_BUTTON, "Add",
         WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON | WS_TABSTOP,
-        83, 192, 69, 28, hwnd, (HMENU)ADDBUTTON_ID, NULL, NULL);
+        83, 192, 69, 28, hwnd, (HMENU)ADD_BUTTON_ID, NULL, NULL);
 
     // Output file name edit textbox
-    hwndOutfileNameEdit = CreateWindow(WC_EDIT, "TrackName", 
+    hwndOutfileNameEdit = CreateWindow(WC_EDIT, "", 
         WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP, 
-        160, 70, 230, 20, hwnd, (HMENU)OUTFILENAME_ID, NULL, NULL);
+        160, 70, 230, 20, hwnd, (HMENU)OUTFILENAME_EDIT_ID, NULL, NULL);
+    EnableWindow(hwndOutfileNameEdit, false);
+
+    // limit the output file names to 64 letters each
+    SendMessage(hwndOutfileNameEdit, EM_LIMITTEXT, (WPARAM)MAX_OUTFILE_NAME_LEN, NULL);
 
     // Output file format edit textbox
-    hwndOutfileFormatEdit = CreateWindow(WC_EDIT, "%title%", 
+    hwndOutfileFormatEdit = CreateWindow(WC_EDIT, "", 
         WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP, 
-        160, 95, 230, 20, hwnd, (HMENU)OUTFILEFORMAT_ID, NULL, NULL);
+        160, 96, 230, 20, hwnd, (HMENU)OUTFILEFORMAT_EDIT_ID, NULL, NULL);
+    EnableWindow(hwndOutfileFormatEdit, false);
 
-    //hwndRadioGroup = CreateWindow(WC_BUTTON, "group",
-    //    WS_VISIBLE | WS_CHILD | BS_GROUPBOX,
-    //    160, 120, 120, 30, hwnd, NULL, NULL, NULL);
+    // limit the output file formats to 512 letters each
+    SendMessage(hwndOutfileFormatEdit, EM_LIMITTEXT, (WPARAM)512, NULL);
 
     // Output file replace mode radio
     hwndReplaceModeRadio = CreateWindow(WC_BUTTON, "Replace",
         WS_VISIBLE | WS_CHILD | BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP, // begin group
-        160, 120, 75, 24, hwnd, (HMENU)REPLACERADIO_ID, NULL, NULL);
+        160, 120, 75, 24, hwnd, (HMENU)REPLACE_RADIO_ID, NULL, NULL);
+    EnableWindow(hwndReplaceModeRadio, false);
 
     // Output file append mode radio
     hwndAppendModeRadio = CreateWindow(WC_BUTTON, "Append",
         WS_VISIBLE | WS_CHILD | BS_AUTORADIOBUTTON,
-        240, 120, 70, 24, hwnd, (HMENU)APPENDRADIO_ID, NULL, NULL);
+        240, 120, 70, 24, hwnd, (HMENU)APPEND_RADIO_ID, NULL, NULL);
+    EnableWindow(hwndAppendModeRadio, false);
 
     // Output file prepend mode radio
     hwndPrependModeRadio = CreateWindow(WC_BUTTON, "Prepend",
         WS_VISIBLE | WS_CHILD | BS_AUTORADIOBUTTON,
-        315, 120, 75, 24, hwnd, (HMENU)PREPENDRADIO_ID, NULL, NULL);
+        315, 120, 75, 24, hwnd, (HMENU)PREPEND_RADIO_ID, NULL, NULL);
+    EnableWindow(hwndPrependModeRadio, false);
 
-    // create the artist checkbox
-    //hwndTimestampCheckbox = CreateWindow(WC_BUTTON, "Insert Timestamps", 
-    //    WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX | WS_GROUP, // end group
-    //    250, 123, 140, 16, hwnd, (HMENU)CHECKBOX_ID, NULL, NULL);
-        
-    CheckRadioButton(hwnd, REPLACERADIO_ID, PREPENDRADIO_ID, REPLACERADIO_ID);
-
-    // create the artist checkbox
-    hwndTimestampCheckbox = CreateWindow(WC_BUTTON, "Clear on Start", 
-        WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX | WS_TABSTOP,
-        162, 150, 115, 16, hwnd, (HMENU)CHECKBOX_ID, NULL, NULL);
-    if (conf_load_use_timestamps()) {
-        SendMessage(hwndTimestampCheckbox, BM_SETCHECK, BST_CHECKED, 0);
-    }
-
-    // Create the label using CreateWindowEx
-    hwndCountLabel = CreateWindowEx(WS_EX_TRANSPARENT, WC_STATIC, "Max Lines:", 
+    // Create the offset label
+    hwndOffsetLabel = CreateWindowEx(WS_EX_TRANSPARENT, WC_STATIC, "Offset:", 
         WS_CHILD | WS_VISIBLE | SS_LEFT | WS_SYSMENU, 
-        284, 150, 76, 16, hwnd, NULL, NULL, NULL);
+        162, 150, 46, 16, hwnd, NULL, NULL, NULL);
 
-    // the cur tracks count entry box
-    string trackCount = conf_load_cur_tracks_count();
-    if (!trackCount.length()) {
-        trackCount = "3";
-    }
-    hwndCountEdit  = CreateWindow(WC_EDIT, trackCount.c_str(), 
+    // Create the offset text box
+    hwndOffsetEdit = CreateWindow(WC_EDIT, "", 
         WS_VISIBLE | WS_CHILD | WS_BORDER | ES_NUMBER | WS_TABSTOP, 
-        360, 148, 30, 20, hwnd, (HMENU)COUNTEDIT_ID, NULL, NULL);
+        210, 148, 40, 20, hwnd, (HMENU)OFFSET_EDIT_ID, NULL, NULL);
+    EnableWindow(hwndOffsetEdit, false);
 
-    EnableWindow(hwndCountEdit, false);
+    // Create the max lines label
+    hwndMaxLinesLabel = CreateWindowEx(WS_EX_TRANSPARENT, WC_STATIC, "Max Lines:", 
+        WS_CHILD | WS_VISIBLE | SS_LEFT | WS_SYSMENU, 
+        272, 150, 76, 16, hwnd, NULL, NULL, NULL);
+
+    // Create the max lines text box
+    hwndMaxLinesEdit = CreateWindow(WC_EDIT, "", 
+        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_NUMBER | WS_TABSTOP, 
+        350, 148, 40, 20, hwnd, (HMENU)MAXLINES_EDIT_ID, NULL, NULL);
+    EnableWindow(hwndMaxLinesEdit, false);
 
     // create the launch button
     hwndButton = CreateWindow(WC_BUTTON, "Launch",
         WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON | WS_TABSTOP,
-        160, 180, 230, 42, hwnd, (HMENU)LAUNCHBUTTON_ID, NULL, NULL);
+        160, 180, 230, 42, hwnd, (HMENU)LAUNCH_BUTTON_ID, NULL, NULL);
 
+    // -----------------------------------------------------
+    // after everything is created send a message to select 
+    // the first entry in the listbox if there is one
+    if (outputFiles.size() > 0) {
+        ListBox_SetCurSel(hwndOutfilesList, 0);
+        // SetCurSel won't trigger the LBN_SELCHANGE event so we
+        // just send it ourselves to trigger the selection
+        SendMessage(hwnd, WM_COMMAND, 
+            MAKEWPARAM(OUTFILES_LIST_ID, LBN_SELCHANGE), 
+            (LPARAM)hwndOutfilesList);
+    }
 }
 
 void doDestroy(HWND hwnd)
@@ -419,16 +378,16 @@ LRESULT doButtonPaint(WPARAM wParam, LPARAM lParam)
         return (LRESULT)bkbrush2;
     }
 
-    if (lParam == (LPARAM)hwndComboBox) {
+    if (lParam == (LPARAM)hwndVersionCombo) {
         return (LRESULT)bkbrush2;
     }
-    if (lParam == (LPARAM)hwndCountLabel || 
-        lParam == (LPARAM)hwndTimestampCheckbox ||
+    if (lParam == (LPARAM)hwndOffsetLabel || 
+        lParam == (LPARAM)hwndMaxLinesLabel || 
         lParam == (LPARAM)hwndReplaceModeRadio ||
         lParam == (LPARAM)hwndAppendModeRadio ||
         lParam == (LPARAM)hwndPrependModeRadio ||
-        lParam == (LPARAM)hwndServerCheck ||
-        lParam == (LPARAM)hwndFmtLabel) {
+        lParam == (LPARAM)hwndServerCheck
+        ) {
         SetBkMode(hdc, TRANSPARENT);
         return (LRESULT)bkbrush;
     }
@@ -441,7 +400,7 @@ void saveConfig()
     char buf[2048] = {0};
 
     // the version selection
-    int sel = (int)SendMessageW(hwndComboBox, CB_GETCURSEL, NULL, NULL);
+    int sel = (int)SendMessageW(hwndVersionCombo, CB_GETCURSEL, NULL, NULL);
     // only save the part after the word "Rekordbox " (the version number)
     conf_save_version(versions[sel].name + sizeof("Rekordbox"));
 
@@ -450,15 +409,12 @@ void saveConfig()
     conf_save_path(buf);
 
     // the format
-    GetWindowText(hwndFmtEdit, buf, sizeof(buf));
-    conf_save_out_format(buf);
+    //GetWindowText(hwndFmtEdit, buf, sizeof(buf));
+    //conf_save_out_format(buf);
 
     // the num lines in cur tracks
-    GetWindowText(hwndCountEdit, buf, sizeof(buf));
-    conf_save_cur_tracks_count(buf);
-
-    // the use timestamps checkbox
-    conf_save_use_timestamps((bool)SendMessage(hwndTimestampCheckbox, BM_GETCHECK, 0, 0));
+    //GetWindowText(hwndCountEdit, buf, sizeof(buf));
+    //conf_save_cur_tracks_count(buf);
 
     // whether server enabled
     conf_save_use_server((bool)SendMessage(hwndServerCheck, BM_GETCHECK, 0, 0));
@@ -484,7 +440,7 @@ void doInject()
 // update the path text box when the combo selection changes
 void updatePathEditBox()
 {
-    int sel = (int)SendMessageW(hwndComboBox, CB_GETCURSEL, NULL, NULL);
+    int sel = (int)SendMessageW(hwndVersionCombo, CB_GETCURSEL, NULL, NULL);
     SetWindowText(hwndPathEdit, versions[sel].path);
 }
 
@@ -493,46 +449,91 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     switch (uMsg) {
     case WM_COMMAND:
         // when button clicked inject the module
-        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == LAUNCHBUTTON_ID) {
+        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == LAUNCH_BUTTON_ID) {
             saveConfig();
             doInject();
             break;
         }
-        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == ADDBUTTON_ID) {
+        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == ADD_BUTTON_ID) {
             // add 1 to the current selection so that the new item appears
             // below the current selection -- unless the current selection
             // is -1 then it just adds to the bottom
-            int sel = ListBox_GetCurSel(hwndListBox);
+            int sel = ListBox_GetCurSel(hwndOutfilesList);
             if (sel >= 0) {
                 sel += 1;
             }
+            outputFiles.push_back(output_file("OutputFile"));
             // TODO: generate new output file name
-            ListBox_InsertString(hwndListBox, sel, "OutputFile");
-            ListBox_SetCurSel(hwndListBox, sel);
+            ListBox_InsertString(hwndOutfilesList, sel, "OutputFile");
+            ListBox_SetCurSel(hwndOutfilesList, ((sel == -1) ? 0 : sel));
+            // SetCurSel won't trigger the LBN_SELCHANGE event so we
+            // just send it ourselves to trigger the selection
+            SendMessage(hwnd, WM_COMMAND,
+                MAKEWPARAM(OUTFILES_LIST_ID, LBN_SELCHANGE),
+                (LPARAM)hwndOutfilesList);
             break;
         }
-        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == DELBUTTON_ID) {
+        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == DEL_BUTTON_ID) {
             // grab the currently selected entry, -1 means no selection
-            int sel = ListBox_GetCurSel(hwndListBox);
+            int sel = ListBox_GetCurSel(hwndOutfilesList);
             if (sel == -1) {
                 break;
             }
             // delete the entry at the selected spot
-            ListBox_DeleteString(hwndListBox, sel);
+            ListBox_DeleteString(hwndOutfilesList, sel);
             // try to re-select the same spot
-            ListBox_SetCurSel(hwndListBox, sel);
+            ListBox_SetCurSel(hwndOutfilesList, sel);
             // if it didn't work
-            if (ListBox_GetCurSel(hwndListBox) == -1 && sel > 0) {
+            if (ListBox_GetCurSel(hwndOutfilesList) == -1 && sel > 0) {
                 // try to select the one above
-                ListBox_SetCurSel(hwndListBox, (sel > 0 ? sel - 1 : sel));
+                ListBox_SetCurSel(hwndOutfilesList, (sel > 0 ? sel - 1 : sel));
             }
+            // SetCurSel won't trigger the LBN_SELCHANGE event so we
+            // just send it ourselves to trigger the selection
+            SendMessage(hwnd, WM_COMMAND,
+                MAKEWPARAM(OUTFILES_LIST_ID, LBN_SELCHANGE),
+                (LPARAM)hwndOutfilesList);
             break;
         }
-        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == SERVERCHECK_ID) {
+        if (HIWORD(wParam) == LBN_SELCHANGE && LOWORD(wParam) == OUTFILES_LIST_ID) {
+            int sel = ListBox_GetCurSel(hwndOutfilesList);
+            EnableWindow(hwndOutfileNameEdit, true);
+            Edit_SetText(hwndOutfileNameEdit, outputFiles[sel].name.c_str());
+
+            EnableWindow(hwndOutfileFormatEdit, true);
+            Edit_SetText(hwndOutfileFormatEdit, outputFiles[sel].format.c_str());
+
+            EnableWindow(hwndReplaceModeRadio, true);
+            EnableWindow(hwndAppendModeRadio, true);
+            EnableWindow(hwndPrependModeRadio, true);
+            CheckRadioButton(hwnd, REPLACE_RADIO_ID, PREPEND_RADIO_ID, 
+                REPLACE_RADIO_ID + (int)outputFiles[sel].mode);
+
+            EnableWindow(hwndOffsetEdit, true);
+            EnableWindow(hwndMaxLinesEdit, true);
+            break;
+        }
+        if (HIWORD(wParam) == EN_CHANGE && LOWORD(wParam) == OUTFILENAME_EDIT_ID) {
+            int sel = ListBox_GetCurSel(hwndOutfilesList);
+            char name[MAX_OUTFILE_NAME_LEN] = {0};
+            Edit_GetText(hwndOutfileNameEdit, name, sizeof(name) - 1);
+            ListBox_DeleteString(hwndOutfilesList, sel);
+            ListBox_InsertString(hwndOutfilesList, sel, name);
+            ListBox_SetCurSel(hwndOutfilesList, sel);
+            outputFiles[sel].name = name;
+        }
+        if (HIWORD(wParam) == EN_CHANGE && LOWORD(wParam) == OUTFILEFORMAT_EDIT_ID) {
+            int sel = ListBox_GetCurSel(hwndOutfilesList);
+            char format[MAX_OUTFILE_FORMAT_LEN] = {0};
+            Edit_GetText(hwndOutfileFormatEdit, format, sizeof(format) - 1);
+            outputFiles[sel].format = format;
+        }
+        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == SERVER_CHECK_ID) {
             EnableWindow(hwndServerEdit, !IsWindowEnabled(hwndServerEdit));
+            break;
         }
         // when combobox changes update the text box
-        if (LOWORD(wParam) == COMBOBOX_ID && HIWORD(wParam) == CBN_SELCHANGE) {
+        if (LOWORD(wParam) == VERSION_COMBO_ID && HIWORD(wParam) == CBN_SELCHANGE) {
             updatePathEditBox();
             break;
         }
