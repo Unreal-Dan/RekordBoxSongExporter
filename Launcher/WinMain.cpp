@@ -1,4 +1,5 @@
 #include <Windows.h>
+#include <Windowsx.h>
 #include <uxtheme.h>
 #include <CommCtrl.h>
 #include <inttypes.h>
@@ -33,35 +34,74 @@ version_path versions[] = {
 // the number of versions in table above
 #define NUM_VERSIONS    (sizeof(versions) / sizeof(versions[0]))
 
-#define COMBOBOX_ID     1000
-#define CHECKBOX_ID     1001
-#define BUTTON_ID       1002
-#define PATHEDIT_ID     1003
-#define LABEL_ID        1004
-#define FMTEDIT_ID      1005
-#define COUNTEDIT_ID    1006
-#define SERVEREDIT_ID   1007
-#define SERVERCHECK_ID  1008
+#define COMBOBOX_ID         1000
+#define CHECKBOX_ID         1001
+#define LAUNCHBUTTON_ID     1002
+#define PATHEDIT_ID         1003
+#define LABEL_ID            1004
+#define FMTEDIT_ID          1005
+#define COUNTEDIT_ID        1006
+#define SERVEREDIT_ID       1007
+#define SERVERCHECK_ID      1008
+#define LISTBOX_ID          1009
+#define ADDBUTTON_ID        1010
+#define DELBUTTON_ID        1011
+#define OUTFILENAME_ID      1012
+#define OUTFILEFORMAT_ID    1013
+#define OUTFILETYPE_ID      1014
 
+// checkbox for timestamps being enabled
 HWND hwndTimestampCheckbox;
+// version select combobox
 HWND hwndComboBox;
+// launch button
 HWND hwndButton;
+// rekordbox path textbox
 HWND hwndPathEdit;
+// "Cur tracks count" label
 HWND hwndCountLabel;
-HWND hwndFmtLabel;
-HWND hwndFmtEdit;
+// Cur tracks count edit box
 HWND hwndCountEdit;
+// "Format:" label
+HWND hwndFmtLabel;
+// Format edit textbox
+HWND hwndFmtEdit;
+// server ip edit box
 HWND hwndServerEdit;
+// server checkbox
 HWND hwndServerCheck;
+
+// the listbox of output files
+HWND hwndListBox;
+// the add output file button
+HWND hwndAddFileButton;
+// the delete output file button
+HWND hwndDelFileButton;
+// output filename edit textbox
+HWND hwndOutfileNameEdit;
+// output file format edit textbox
+HWND hwndOutfileFormatEdit;
+// output file type dropdown
+HWND hwndOutfileTypeDropdown;
+
+// background color brush 1
 HBRUSH bkbrush;
+// background color brush 2
 HBRUSH bkbrush2;
+// brush for down arrow in dropdown
 HBRUSH arrowbrush;
+// pen for drawing border on dropdown
 HPEN borderpen;
+// pen for drawing arrow in dropdown
 HPEN arrowpen;
 
+// background color 1
 COLORREF bkcolor = RGB(40, 40, 40);
+// background color 2
 COLORREF bkcolor2 = RGB(25, 25, 25);
+// text color
 COLORREF textcolor = RGB(220, 220, 220);
+// down arrow color in dropdown
 COLORREF arrowcolor = RGB(200, 200, 200);
 
 void drawComboText(HWND hwnd, HDC hdc, RECT rc)
@@ -156,10 +196,6 @@ void doCreate(HWND hwnd)
     hwndComboBox = CreateWindow(WC_COMBOBOX, "VersionSelect",
         CBS_SIMPLE | CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
         12, 12, 140, 400, hwnd, (HMENU)COMBOBOX_ID, NULL, NULL);
-    if (!hwnd) {
-        MessageBox(NULL, "Failed to open window", "Error", 0);
-        return;
-    }
     size_t cur_sel = 0;
     string conf_version = conf_load_version();
     // populate the dropdown box with versions
@@ -177,7 +213,7 @@ void doCreate(HWND hwnd)
 
     // for overriding background colors of dropdown
     SetWindowSubclass(hwndComboBox, comboProc, 0, 0);
-
+/*
     // Create the label using CreateWindowEx
     hwndFmtLabel = CreateWindowEx(WS_EX_TRANSPARENT, WC_STATIC, "", 
         WS_CHILD | WS_VISIBLE | SS_LEFT | WS_SYSMENU, 
@@ -216,10 +252,12 @@ void doCreate(HWND hwnd)
         SendMessage(hwndTimestampCheckbox, BM_SETCHECK, BST_CHECKED, 0);
     }
 
+    */
+
     // create the launch button
     hwndButton = CreateWindow(WC_BUTTON, "Launch",
         WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-        290, 70, 100, 48, hwnd, (HMENU)BUTTON_ID, NULL, NULL);
+        290, 270, 100, 48, hwnd, (HMENU)LAUNCHBUTTON_ID, NULL, NULL);
 
     // create server ip entry
     string serverIp = conf_load_server_ip();
@@ -238,6 +276,45 @@ void doCreate(HWND hwnd)
     } else {
         EnableWindow(hwndServerEdit, false);
     }
+
+    // ==================
+
+    // Listbox of output files
+    hwndListBox = CreateWindow(WC_LISTBOX, NULL, 
+        WS_CHILD | WS_BORDER | WS_VSCROLL | WS_VISIBLE,
+        12, 70, 140, 160, hwnd, NULL, NULL, NULL);
+
+    // Base output files
+    ListBox_InsertString(hwndListBox, 0, "TrackName");
+    ListBox_InsertString(hwndListBox, 1, "TrackArtist");
+    ListBox_InsertString(hwndListBox, 2, "LastTrackName");
+    ListBox_InsertString(hwndListBox, 3, "LastTrackArtist");
+    ListBox_InsertString(hwndListBox, 4, "TrackList");
+
+    // Button to add new entries to listbox
+    hwndAddFileButton = CreateWindow(WC_BUTTON, "Add",
+        WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+        83, 220, 69, 24, hwnd, (HMENU)ADDBUTTON_ID, NULL, NULL);
+
+    // Button to delete entries from listbox
+    hwndDelFileButton = CreateWindow(WC_BUTTON, "Delete",
+        WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+        12, 220, 69, 24, hwnd, (HMENU)DELBUTTON_ID, NULL, NULL);
+
+    // Output file name edit textbox
+    hwndOutfileNameEdit = CreateWindow(WC_EDIT, "OutputFile", 
+        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL, 
+        160, 70, 230, 20, hwnd, (HMENU)SERVEREDIT_ID, NULL, NULL);
+
+    // Output file format edit textbox
+    hwndOutfileFormatEdit = CreateWindow(WC_EDIT, "%title% - %artist%", 
+        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL, 
+        160, 95, 230, 20, hwnd, (HMENU)SERVEREDIT_ID, NULL, NULL);
+
+    // Output file type dropdown
+    hwndOutfileTypeDropdown = CreateWindow(WC_COMBOBOX, "Test",
+        CBS_SIMPLE | CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
+        160, 120, 120, 400, hwnd, (HMENU)COMBOBOX_ID, NULL, NULL);
 }
 
 void doDestroy(HWND hwnd)
@@ -337,9 +414,38 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     switch (uMsg) {
     case WM_COMMAND:
         // when button clicked inject the module
-        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == BUTTON_ID) {
+        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == LAUNCHBUTTON_ID) {
             saveConfig();
             doInject();
+            break;
+        }
+        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == ADDBUTTON_ID) {
+            // add 1 to the current selection so that the new item appears
+            // below the current selection -- unless the current selection
+            // is -1 then it just adds to the bottom
+            int sel = ListBox_GetCurSel(hwndListBox);
+            if (sel >= 0) {
+                sel += 1;
+            }
+            // TODO: generate new output file name
+            ListBox_InsertString(hwndListBox, sel, "OutputFile");
+            break;
+        }
+        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == DELBUTTON_ID) {
+            // grab the currently selected entry, -1 means no selection
+            int sel = ListBox_GetCurSel(hwndListBox);
+            if (sel == -1) {
+                break;
+            }
+            // delete the entry at the selected spot
+            ListBox_DeleteString(hwndListBox, sel);
+            // try to re-select the same spot
+            ListBox_SetCurSel(hwndListBox, sel);
+            // if it didn't work
+            if (ListBox_GetCurSel(hwndListBox) == -1 && sel > 0) {
+                // try to select the one above
+                ListBox_SetCurSel(hwndListBox, (sel > 0 ? sel - 1 : sel));
+            }
             break;
         }
         if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == SERVERCHECK_ID) {
@@ -393,10 +499,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, 
     GetClientRect(GetDesktopWindow(), &desktop);
 
     // create the window
-    hwnd = CreateWindow(wc.lpszClassName, "Rekordbox Song Exporter",
+    hwnd = CreateWindow(wc.lpszClassName, "Rekordbox Song Exporter " RBSE_VERSION,
         WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, 
         (desktop.right/2) - 240, (desktop.bottom/2) - 84, 
-        420, 169, NULL, NULL, hInstance, NULL);
+        420, 369, NULL, NULL, hInstance, NULL);
     if (!hwnd) {
         MessageBox(NULL, "Failed to open window", "Error", 0);
         return 0;

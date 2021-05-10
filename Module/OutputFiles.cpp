@@ -258,12 +258,14 @@ static void update_log_files(const string &track)
     if (tracks.size() > 0) {
         // concatenate the tracks into a single string
         string tracks_str;
-        for (auto it = tracks.begin(); it != tracks.end(); it++) {
-            tracks_str += it[0] + "\r\n";
-        }
-        // rewrite the tracks file with all of the lines at once
-        if (!rewrite_file(get_cur_tracks_file(), tracks_str)) {
-            error("Failed to write to tracks file");
+        if (tracks.size() > 1) {
+            for (auto it = tracks.begin() + 1; it != tracks.end(); it++) {
+                tracks_str += it[0] + "\r\n";
+            }
+            // rewrite the tracks file with all of the lines at once
+            if (!rewrite_file(get_cur_tracks_file(), tracks_str)) {
+                error("Failed to write to tracks file");
+            }
         }
 
         // rewrite the current track file with only the current track

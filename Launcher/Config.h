@@ -4,6 +4,9 @@
 
 #include <string>
 
+// The current version of RBSE that appears in the titlebar
+#define RBSE_VERSION    "3.0"
+
 // the image base for various stuff
 extern HINSTANCE imageBase;
 

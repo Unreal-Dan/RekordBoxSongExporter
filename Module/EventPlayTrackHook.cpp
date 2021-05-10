@@ -104,7 +104,7 @@ bool hook_event_play_track()
     // determine address of target function to hook
     uintptr_t ep_addr = rb_base() + func_offset;
     info("event_play_func: %p", ep_addr);
-    // install hook on event_play_addr that redirects to play_track_hookerror
+    // install hook on event_play_addr that redirects to play_track_hook
     if (!install_hook(ep_addr, play_track_hook, trampoline_len)) {
         error("Failed to hook eventPlay");
         return false;

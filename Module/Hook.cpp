@@ -100,10 +100,10 @@ bool install_hook(uintptr_t target_func, void *hook_func, size_t trampoline_len)
     // write the jmp into the start of the trampoline which jumps to the hook function
     cur_write_pos += write_jump(cur_write_pos, (uintptr_t)hook_func); 
 
-    // pop all registers at start of shellcode because we're paranoid
+    // pop all registers after the call to the hook function
     cur_write_pos += write_pop_registers(cur_write_pos);
 
-    // copy trampoline bytes
+    // copy the opcodes from the target function which we will overwrite with a jmp
     memcpy((void *)cur_write_pos, (void *)target_func, trampoline_len);
     cur_write_pos += trampoline_len;
 
