@@ -337,7 +337,7 @@ void doCreate(HWND hwnd)
     // create the launch button
     hwndButton = CreateWindow(WC_BUTTON, "Launch",
         WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON | WS_TABSTOP,
-        160, 180, 230, 42, hwnd, (HMENU)LAUNCH_BUTTON_ID, NULL, NULL);
+        160, 178, 230, 42, hwnd, (HMENU)LAUNCH_BUTTON_ID, NULL, NULL);
 
     // -----------------------------------------------------
     // after everything is created send a message to select 
@@ -462,7 +462,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if (sel >= 0) {
                 sel += 1;
             }
-            outputFiles.push_back(output_file("OutputFile"));
+            if (sel == -1) {
+                outputFiles.push_back(output_file("OutputFile"));
+            } else {
+                outputFiles.insert(outputFiles.begin() + sel, 1, output_file("OutputFile"));
+            }
             // TODO: generate new output file name
             ListBox_InsertString(hwndOutfilesList, sel, "OutputFile");
             ListBox_SetCurSel(hwndOutfilesList, ((sel == -1) ? 0 : sel));
@@ -488,6 +492,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 // try to select the one above
                 ListBox_SetCurSel(hwndOutfilesList, (sel > 0 ? sel - 1 : sel));
             }
+            // erase the entry from the outputFiles array
+            outputFiles.erase(outputFiles.begin() + sel);
             // SetCurSel won't trigger the LBN_SELCHANGE event so we
             // just send it ourselves to trigger the selection
             SendMessage(hwnd, WM_COMMAND,
@@ -495,8 +501,47 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 (LPARAM)hwndOutfilesList);
             break;
         }
+        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == REPLACE_RADIO_ID) {
+            int sel = ListBox_GetCurSel(hwndOutfilesList);
+            if (sel == -1) {
+                break;
+            }
+            outputFiles[sel].mode = output_mode::MODE_REPLACE;
+            EnableWindow(hwndMaxLinesEdit, false);
+            Edit_SetText(hwndMaxLinesEdit, "N/A");
+        }
+        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == APPEND_RADIO_ID) {
+            int sel = ListBox_GetCurSel(hwndOutfilesList);
+            if (sel == -1) {
+                break;
+            }
+            outputFiles[sel].mode = output_mode::MODE_APPEND;
+            EnableWindow(hwndMaxLinesEdit, false);
+            Edit_SetText(hwndMaxLinesEdit, "N/A");
+        }
+        if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == PREPEND_RADIO_ID) {
+            int sel = ListBox_GetCurSel(hwndOutfilesList);
+            if (sel == -1) {
+                break;
+            }
+            outputFiles[sel].mode = output_mode::MODE_PREPEND;
+            EnableWindow(hwndMaxLinesEdit, true);
+            Edit_SetText(hwndMaxLinesEdit, "3");
+        }
         if (HIWORD(wParam) == LBN_SELCHANGE && LOWORD(wParam) == OUTFILES_LIST_ID) {
             int sel = ListBox_GetCurSel(hwndOutfilesList);
+            if (sel == -1) {
+                EnableWindow(hwndOutfileNameEdit, false);
+                EnableWindow(hwndOutfileFormatEdit, false);
+                EnableWindow(hwndReplaceModeRadio, false);
+                EnableWindow(hwndAppendModeRadio, false);
+                EnableWindow(hwndPrependModeRadio, false);
+                EnableWindow(hwndOffsetEdit, false);
+                EnableWindow(hwndMaxLinesEdit, false);
+                Edit_SetText(hwndOutfileNameEdit, "");
+                Edit_SetText(hwndOutfileFormatEdit, "");
+                break;
+            }
             EnableWindow(hwndOutfileNameEdit, true);
             Edit_SetText(hwndOutfileNameEdit, outputFiles[sel].name.c_str());
 
@@ -509,12 +554,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             CheckRadioButton(hwnd, REPLACE_RADIO_ID, PREPEND_RADIO_ID, 
                 REPLACE_RADIO_ID + (int)outputFiles[sel].mode);
 
+            EnableWindow(hwndMaxLinesEdit, false);
+            Edit_SetText(hwndMaxLinesEdit, "N/A");
+
             EnableWindow(hwndOffsetEdit, true);
-            EnableWindow(hwndMaxLinesEdit, true);
+            Edit_SetText(hwndOffsetEdit, "0");
             break;
         }
         if (HIWORD(wParam) == EN_CHANGE && LOWORD(wParam) == OUTFILENAME_EDIT_ID) {
             int sel = ListBox_GetCurSel(hwndOutfilesList);
+            if (sel == -1) {
+                break;
+            }
             char name[MAX_OUTFILE_NAME_LEN] = {0};
             Edit_GetText(hwndOutfileNameEdit, name, sizeof(name) - 1);
             ListBox_DeleteString(hwndOutfilesList, sel);
@@ -524,6 +575,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         if (HIWORD(wParam) == EN_CHANGE && LOWORD(wParam) == OUTFILEFORMAT_EDIT_ID) {
             int sel = ListBox_GetCurSel(hwndOutfilesList);
+            if (sel == -1) {
+                break;
+            }
             char format[MAX_OUTFILE_FORMAT_LEN] = {0};
             Edit_GetText(hwndOutfileFormatEdit, format, sizeof(format) - 1);
             outputFiles[sel].format = format;
@@ -533,7 +587,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             break;
         }
         // when combobox changes update the text box
-        if (LOWORD(wParam) == VERSION_COMBO_ID && HIWORD(wParam) == CBN_SELCHANGE) {
+        if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == VERSION_COMBO_ID) {
             updatePathEditBox();
             break;
         }
