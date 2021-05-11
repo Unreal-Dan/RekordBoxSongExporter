@@ -7,61 +7,29 @@
 
 // The current version of RBSE that appears in the titlebar
 #define RBSE_VERSION            "3.0"
-
 // maximum length of output file names
 #define MAX_OUTFILE_NAME_LEN    64
-
 // maximum length of output formats
 #define MAX_OUTFILE_FORMAT_LEN  512
 
 // the image base for various stuff
 extern HINSTANCE imageBase;
 
-// the file path of the config.ini file
-std::string get_config_path();
+// describes the contents of the config files
+class Config
+{
+public:
+    std::string version;
+    std::string path;
+    bool use_server;
+    std::string server_ip;
+};
 
-// the version string from config
-std::string conf_load_version();
+// the currently loaded config
+extern Config config; 
 
-// the path of rekordbox from config
-std::string conf_load_path();
+// load the global config from file
+bool configLoad();
 
-// the output format string from config
-std::string conf_load_out_format();
-
-// the number of lines in cur tracks
-std::string conf_load_cur_tracks_count();
-
-// whether to emit timetsamps in global og
-bool conf_load_use_timestamps();
-
-// whether to use the server
-bool conf_load_use_server();
-
-// the remote server ip
-std::string conf_load_server_ip();
-
-// ==========================
-// saving functions
-
-// save the version
-bool conf_save_version(const std::string &version);
-
-// save the rbox path
-bool conf_save_path(const std::string &path);
-
-// save the output format
-bool conf_save_out_format(const std::string &out_format);
-
-// save the cur tracks line count
-bool conf_save_cur_tracks_count(const std::string &num_tracks);
-
-// whethe to use timestamps
-bool conf_save_use_timestamps(bool use_timestamps);
-
-// whether to use the server
-bool conf_save_use_server(bool use_server);
-
-// save the server ip string
-bool conf_save_server_ip(const std::string &server_ip);
-
+// save the global config to file
+bool configSave();

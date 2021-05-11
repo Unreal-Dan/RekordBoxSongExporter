@@ -1,35 +1,41 @@
 #pragma once
 
+#include <iostream>
+#include <fstream>
 #include <vector>
 #include <string>
 
 // the different ways an output file can be written
-enum class output_mode : int
-{
-    MODE_REPLACE = 0,
-    MODE_APPEND = 1,
-    MODE_PREPEND = 2
-};
+#define MODE_REPLACE    0
+#define MODE_APPEND     1
+#define MODE_PREPEND    2
 
 // an output file object
-class output_file
+class outputFile
 {
 public:
-    output_file(std::string name) : 
-        name(name),
-        format("%title%"),
-        mode(output_mode::MODE_REPLACE),
-        offset(0),
-        max_lines(3) {};
+    // construct an output file by parsing a config line
+    outputFile(std::string line); 
+
+    // serialize the output file data to a single config line
+    std::string toLine();
+
+    // public info of output files
     std::string name;
     std::string format;
-    output_mode mode;
+    uint32_t mode;
     uint32_t offset;
     uint32_t max_lines;
 };
 
 // the global list of output files
-extern std::vector<output_file> outputFiles;
+extern std::vector<outputFile> outputFiles;
 
-// load output files from config
-void loadOutputFiles();
+// load in default output files
+void defaultOutputFiles();
+
+// load output files from config stream
+void loadOutputFiles(std::ifstream &in);
+
+// save output files to config stream
+void saveOutputFiles(std::ofstream &out);

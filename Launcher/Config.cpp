@@ -1,9 +1,12 @@
 #include <Windows.h>
 #include <shlwapi.h>
 
+#include <iostream>
+#include <fstream>
 #include <vector>
 #include <string>
 
+#include "OutputFiles.h"
 #include "Config.h"
 
 #pragma comment(lib, "Shlwapi.lib")
@@ -14,7 +17,11 @@ using namespace std;
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 HINSTANCE imageBase = (HINSTANCE)&__ImageBase;
 
-string get_config_path()
+// currently loaded config
+Config config;
+
+// helper to get the config file path
+static string getConfigPath()
 {
     char path[MAX_PATH] = { 0 };
     string configPath;
@@ -25,109 +32,88 @@ string get_config_path()
     return configPath;
 }
 
-string conf_load_version()
+bool configLoad()
 {
-    char buf[2048] = { 0 };
-    GetPrivateProfileString("RBSongExporterConfig", "rbox_version", "", 
-        buf, sizeof(buf), get_config_path().c_str());
-    return string(buf);
-}
-
-string conf_load_path()
-{
-    char buf[2048] = { 0 };
-    GetPrivateProfileString("RBSongExporterConfig", "rbox_path", "", 
-        buf, sizeof(buf), get_config_path().c_str());
-    return string(buf);
-}
-
-string conf_load_out_format()
-{
-    char buf[2048] = { 0 };
-    GetPrivateProfileString("RBSongExporterConfig", "out_format", "%artist% - %title%", 
-        buf, sizeof(buf), get_config_path().c_str());
-    // return string(buf); // uncomment me later
-    // --------------- 
-    // TODO: Remove this later once nobody is upgrading from old version.
-    // This replaces %track% with %title%
-    string result = string(buf);
-    size_t start_pos = result.find("%track%");
-    if (start_pos != std::string::npos) {
-        result.replace(start_pos, 7, "%title%");
+    ifstream in(getConfigPath());
+    string line;
+    bool is_legacy_config = false;
+    while (getline(in, line)) {
+        if (line[0] == '[') {
+            string heading = line.substr(1, line.find_first_of("]") - 1);
+            // Detect legacy config file
+            if (heading == "RBSongExporterConfig") {
+                is_legacy_config = true;
+            } 
+            // start of output filessection
+            if (heading == "Output Files") {
+                break;
+            }
+            continue;
+        }
+        size_t pos = line.find_first_of("=");
+        string key = line.substr(0, pos);
+        string value = line.substr(pos + 1);
+        if (key == "rbox_version") {
+            config.version = value;
+        } else if (key == "rbox_path") {
+            config.path = value;
+        } else if (key == "use_server") {
+            config.use_server = (strtoul(value.c_str(), NULL, 10) != 0);
+        } else if (key == "server_ip") {
+            config.server_ip = value;
+        }
     }
-    // -------------- end upgrade contingency
-    return result;
+    if (is_legacy_config) {
+        defaultOutputFiles();
+    } else {
+        loadOutputFiles(in);
+    }
+    return true;
 }
 
-string conf_load_cur_tracks_count()
+bool configSave()
 {
-    char buf[2048] = { 0 };
-    GetPrivateProfileString("RBSongExporterConfig", "cur_tracks_count", "3", 
-        buf, sizeof(buf), get_config_path().c_str());
-    return string(buf);
+    ofstream of(getConfigPath(), ios_base::trunc);
+    if (!of.is_open()) {
+        return false;
+    }
+    string line;
+    of << "[RBSE Config]\n"
+       << "version=" RBSE_VERSION "\n"
+       << "rbox_version=" << config.version << "\n"
+       << "rbox_path=" << config.path << "\n"
+       << "use_server=" << (config.use_server ? "1" : "0") << "\n"
+       << "server_ip=" << config.server_ip << "\n"
+       << "\n[Output Files]\n";
+    saveOutputFiles(of);
+    return true;
 }
 
-bool conf_load_use_timestamps()
-{
-    return (bool)GetPrivateProfileInt("RBSongExporterConfig", "use_timestamps", 1,
-        get_config_path().c_str());
-}
-
-bool conf_load_use_server()
-{
-    return (bool)GetPrivateProfileInt("RBSongExporterConfig", "use_server", 0,
-        get_config_path().c_str());
-}
-
-string conf_load_server_ip()
-{
-    char buf[2048] = { 0 };
-    GetPrivateProfileString("RBSongExporterConfig", "server_ip", "127.0.0.1", 
-        buf, sizeof(buf), get_config_path().c_str());
-    return string(buf);
-}
-
-// ==========================
-// saving functions
-
-bool conf_save_version(const string &version)
-{
-    return (WritePrivateProfileString("RBSongExporterConfig", "rbox_version",
-        version.c_str(), get_config_path().c_str()) != 0);
-}
-
-bool conf_save_path(const string &path)
-{
-    return (WritePrivateProfileString("RBSongExporterConfig", "rbox_path",
-        path.c_str(), get_config_path().c_str()) != 0);
-}
-
-bool conf_save_out_format(const string &out_format)
-{
-    return (WritePrivateProfileString("RBSongExporterConfig", "out_format",
-        out_format.c_str(), get_config_path().c_str()) != 0);
-}
-
-bool conf_save_cur_tracks_count(const string &num_tracks)
-{
-    return (WritePrivateProfileString("RBSongExporterConfig", "cur_tracks_count",
-        num_tracks.c_str(), get_config_path().c_str()) != 0);
-}
-
-bool conf_save_use_timestamps(bool use_timestamps)
-{
-    return (WritePrivateProfileString("RBSongExporterConfig", "use_timestamps",
-        use_timestamps ? "1" : "0", get_config_path().c_str()) != 0);
-}
-
-bool conf_save_use_server(bool use_server)
-{
-    return (WritePrivateProfileString("RBSongExporterConfig", "use_server",
-        use_server ? "1" : "0", get_config_path().c_str()) != 0);
-}
-
-bool conf_save_server_ip(const string &server_ip)
-{
-    return (WritePrivateProfileString("RBSongExporterConfig", "server_ip",
-        server_ip.c_str(), get_config_path().c_str()) != 0);
-}
+//bool conf_save_version(const string &version)
+//{
+//    return (WritePrivateProfileString("RBSongExporterConfig", "rbox_version",
+//        version.c_str(), get_config_path().c_str()) != 0);
+//}
+//
+//bool conf_save_path(const string &path)
+//{
+//    return (WritePrivateProfileString("RBSongExporterConfig", "rbox_path",
+//        path.c_str(), get_config_path().c_str()) != 0);
+//}
+//
+//bool conf_save_use_server(bool use_server)
+//{
+//    return (WritePrivateProfileString("RBSongExporterConfig", "use_server",
+//        use_server ? "1" : "0", get_config_path().c_str()) != 0);
+//}
+//
+//bool conf_save_server_ip(const string &server_ip)
+//{
+//    return (WritePrivateProfileString("RBSongExporterConfig", "server_ip",
+//        server_ip.c_str(), get_config_path().c_str()) != 0);
+//}
+//
+//bool conf_save_output_files()
+//{
+//    return true;
+//}
