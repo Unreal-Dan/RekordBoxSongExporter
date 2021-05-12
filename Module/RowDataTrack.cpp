@@ -24,7 +24,7 @@ destr_rowdata_fn destr_rowdata = NULL;
 bool init_row_data_funcs()
 {
     // best way to find these addresses is look for _Loop.wav
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585:
         get_inst = (get_instance_fn)(rb_base() + 0x39F2F0);
         get_rowdata = (get_rowdata_fn)(rb_base() + 0xF28610);
@@ -56,7 +56,7 @@ static row_data *new_row_data()
     // okay yeah they're all the same but just to indicate it 
     // may change in a new version we separate into a switch
     // that the compiler will probably just optimize away 
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585:
         rowdata = calloc(1, 0x488);
         break;
@@ -107,7 +107,7 @@ void destroy_row_data(row_data *rowdata)
 // the getter functions for the row data object
 const char *row_data::getTitle()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getString(0x18);
     case RBVER_650: return getString(0x20);
     case RBVER_651: return getString(0x20);
@@ -116,7 +116,7 @@ const char *row_data::getTitle()
 }
 const char *row_data::getArtist()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getString(0xB0);
     case RBVER_650: return getString(0xC0);
     case RBVER_651: return getString(0xC0);
@@ -125,7 +125,7 @@ const char *row_data::getArtist()
 }
 const char *row_data::getAlbum()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getString(0xE0);
     case RBVER_650: return getString(0xF8);
     case RBVER_651: return getString(0xF8);
@@ -134,7 +134,7 @@ const char *row_data::getAlbum()
 }
 const char *row_data::getGenre()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getString(0x148);
     case RBVER_650: return getString(0x170);
     case RBVER_651: return getString(0x170);
@@ -143,7 +143,7 @@ const char *row_data::getGenre()
 }
 const char *row_data::getLabel()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getString(0x178);
     case RBVER_650: return getString(0x1A8);
     case RBVER_651: return getString(0x1A8);
@@ -152,7 +152,7 @@ const char *row_data::getLabel()
 }
 const char *row_data::getKey()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getString(0x1C8);
     case RBVER_650: return getString(0x200);
     case RBVER_651: return getString(0x200);
@@ -161,7 +161,7 @@ const char *row_data::getKey()
 }
 const char *row_data::getOrigArtist()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getString(0x238);
     case RBVER_650: return getString(0x280);
     case RBVER_651: return getString(0x280);
@@ -170,7 +170,7 @@ const char *row_data::getOrigArtist()
 }
 const char *row_data::getRemixer()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getString(0x268);
     case RBVER_650: return getString(0x2B8);
     case RBVER_651: return getString(0x2B8);
@@ -179,7 +179,7 @@ const char *row_data::getRemixer()
 }
 const char *row_data::getComposer()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getString(0x298);
     case RBVER_650: return getString(0x2F0);
     case RBVER_651: return getString(0x2F0);
@@ -188,7 +188,7 @@ const char *row_data::getComposer()
 }
 const char *row_data::getComment()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getString(0x2C0);
     case RBVER_650: return getString(0x318);
     case RBVER_651: return getString(0x318);
@@ -197,7 +197,7 @@ const char *row_data::getComment()
 }
 const char *row_data::getMixName()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getString(0x2F0);
     case RBVER_650: return getString(0x348);
     case RBVER_651: return getString(0x348);
@@ -206,7 +206,7 @@ const char *row_data::getMixName()
 }
 const char *row_data::getLyricist()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getString(0x3B8);
     case RBVER_650: return getString(0x418);
     case RBVER_651: return getString(0x418);
@@ -215,7 +215,7 @@ const char *row_data::getLyricist()
 }
 const char *row_data::getDateCreated()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getString(0x320);
     case RBVER_650: return getString(0x378);
     case RBVER_651: return getString(0x378);
@@ -224,7 +224,7 @@ const char *row_data::getDateCreated()
 }
 const char *row_data::getDateAdded()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getString(0x328);
     case RBVER_650: return getString(0x380);
     case RBVER_651: return getString(0x380);
@@ -233,7 +233,7 @@ const char *row_data::getDateAdded()
 }
 uint32_t row_data::getTrackNumber()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getValue<uint32_t>(0x2B0);
     case RBVER_650: return getValue<uint32_t>(0x308);
     case RBVER_651: return getValue<uint32_t>(0x308);
@@ -242,7 +242,7 @@ uint32_t row_data::getTrackNumber()
 }
 uint32_t row_data::getBpm()
 {
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585: return getValue<uint32_t>(0x308);
     case RBVER_650: return getValue<uint32_t>(0x360);
     case RBVER_651: return getValue<uint32_t>(0x360);

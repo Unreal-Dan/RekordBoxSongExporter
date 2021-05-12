@@ -1,5 +1,6 @@
 #include <Windows.h>
 
+#include <fstream>
 #include <string>
 #include <deque>
 #include <queue>
@@ -11,16 +12,12 @@
 #include "Config.h"
 #include "Log.h"
 
-using namespace std;
+// the different ways an output file can be written
+#define MODE_REPLACE    0
+#define MODE_APPEND     1
+#define MODE_PREPEND    2
 
-// This is the file containing the last config.max_tracks songs
-#define CUR_TRACKS_FILE "current_tracks.txt"
-// This file contains the current track only
-#define CUR_TRACK_FILE  "current_track.txt"
-// This file contains the last track only
-#define LAST_TRACK_FILE "last_track.txt"
-// this is the logfile for all songs played
-#define TRACK_LOG_FILE  "played_tracks.txt"
+using namespace std;
 
 // simple local class to describe a track and it's metadata
 class track_data
@@ -28,38 +25,8 @@ class track_data
 public:
     // initialize a new track with the index of the deck to load
     // the track information from
-    track_data(uint32_t deck_idx) : idx(deck_idx)
-    {
-        // lookup a rowdata object
-        row_data *rowdata = lookup_row_data(deck_idx);
-        if (!rowdata) {
-            return;
-        }
-        // steal all the track information so we have it stored in our own containers
-        title = rowdata->getTitle();
-        artist = rowdata->getArtist();
-        album = rowdata->getAlbum();
-        genre = rowdata->getGenre();
-        label = rowdata->getLabel();
-        key = rowdata->getKey();
-        orig_artist = rowdata->getOrigArtist();
-        remixer = rowdata->getRemixer();
-        composer = rowdata->getComposer();
-        comment = rowdata->getComment();
-        mix_name = rowdata->getMixName();
-        lyricist = rowdata->getLyricist();
-        date_created = rowdata->getDateCreated();
-        date_added = rowdata->getDateAdded();
-        // track number is an integer
-        track_number = to_string(rowdata->getTrackNumber());
-        // the bpm is an integer like 15150 which represents 151.50 bpm
-        bpm = to_string(rowdata->getBpm());
-        // so we just shove a dot in there and it's good
-        bpm.insert(bpm.length() - 2, ".");
-        // cleanup the rowdata object we got from rekordbox
-        // so that we can just use our local containers
-        destroy_row_data(rowdata);
-    }
+    track_data(uint32_t deck_idx);
+   
     uint32_t idx; // the deck index this track is loaded on
     string title;
     string artist;
@@ -79,9 +46,78 @@ public:
     string bpm;
 };
 
-// update the various log files with a track string, only meant to be called
-// from the logging thread so making this static
-static void update_log_files(const string &track);
+// Bitflags to describe the various tags that can be used when a config is 
+// loaded the format is scanned for tags and a field is set with each tag 
+// to optimize replacements later on when the system has to replace fields 
+// as a track changes
+typedef enum out_tag_enum
+{
+    TAG_TITLE =         (1 << 0),
+    TAG_ARTIST =        (1 << 1),
+    TAG_ALBUM =         (1 << 2),
+    TAG_GENRE =         (1 << 3),
+    TAG_LABEL =         (1 << 4),
+    TAG_KEY =           (1 << 5),
+    TAG_ORIG_ARTIST =   (1 << 6),
+    TAG_REMIXER =       (1 << 7),
+    TAG_COMPOSER =      (1 << 8),
+    TAG_COMMENT =       (1 << 9),
+    TAG_MIX_NAME =      (1 << 10),
+    TAG_LYRICIST =      (1 << 11),
+    TAG_DATE_CREATED =  (1 << 12),
+    TAG_DATE_ADDED =    (1 << 13),
+    TAG_TRACK_NUMBER =  (1 << 14),
+    TAG_BPM =           (1 << 15),
+    TAG_TIME =          (1 << 16),
+} out_tag_t;
+
+// an output file object
+class output_file
+{
+public:
+    // construct an output file by parsing a config line
+    output_file(const string &line);
+
+    // function to log a track to an output file
+    void log_track(track_data *track);
+
+    // public info of output files
+    string name;
+    string format;
+    // full path of the output file
+    string path;
+    // bitflags describing which %tags% are used
+    uint32_t format_tags;
+    uint32_t mode;
+    uint32_t offset;
+    uint32_t max_lines;
+
+private:
+
+    // cache previous lines to support offset
+    // static because we want to hold onto the previous tracks so 
+    // we can update the various multi-line logs and last_track
+    deque<string> cached_lines;
+
+    // helper routines
+
+    // helper to build output line based on configured output format
+    string build_output(const string &format, uint32_t format_tags, track_data *track);
+    // update the various log files based on a track, only meant to be called
+    // from the logging thread so making this static
+    void update_output_file(const string &track_str);
+    // create and truncate a single file, only call this from the logger thread
+    bool clear_file(const string &filename);
+    // append data to a file, only call this from the logger thread
+    bool append_file(const string &filename, const string &data);
+    // just a wrapper around clear and append
+    bool rewrite_file(const string &filename, const string &data);
+    // helper for in-place replacements
+    bool replace(string &str, const string &from, const string &to);
+    // calc time since the first time this was called
+    string get_timestamp_since_start();
+};
+
 // Pop the next deck change index out of the queue, only meant to
 // be called from the logging thread so making this static
 static uint32_t pop_deck_update();
@@ -89,18 +125,13 @@ static uint32_t pop_deck_update();
 static bool replace(string& str, const string& from, const string& to);
 // calc time since the first time this was called
 static string get_timestamp_since_start();
-// helper to build output line based on configured output format
-static string build_output(track_data *track);
-// create and truncate a single file, only call this from the logger thread
-static bool clear_file(const string &filename);
-// append data to a file, only call this from the logger thread
-static bool append_file(const string &filename, const string &data);
-// just a wrapper around clear and append
-static bool rewrite_file(const string &filename, const string &data);
 
 // queue of indexes of decks that changed
 // For example if deck 1 changes then 1 gets pushed into this
 queue<uint32_t> deck_changes;
+
+// the list of output files loaded from the config
+vector<output_file> output_files;
 
 // critical section to protect track queue
 CRITICAL_SECTION track_list_critsec;
@@ -108,48 +139,9 @@ CRITICAL_SECTION track_list_critsec;
 // entries in the deck_changes queue
 HANDLE hLogSem;
 
-string get_log_file()
-{
-    return get_dll_path() + "\\" TRACK_LOG_FILE;
-}
-
-string get_cur_track_file()
-{
-    return get_dll_path() + "\\" CUR_TRACK_FILE;
-}
-
-string get_last_track_file()
-{
-    return get_dll_path() + "\\" LAST_TRACK_FILE;
-}
-
-string get_cur_tracks_file()
-{
-    return get_dll_path() + "\\" CUR_TRACKS_FILE;
-}
-
-
-
 // initialize all the output files
 bool initialize_output_files()
 {
-    // only clear the output files if we're going to write to them
-    if (!config.use_server) {
-        // clears all the track files
-        if (!clear_file(get_last_track_file()) ||
-            !clear_file(get_cur_tracks_file()) ||
-            !clear_file(get_cur_track_file()) ||
-            !clear_file(get_log_file())) {
-            error("Failed to clear output files");
-            return false;
-        }
-        // log them to the debug console
-        info("log file: %s", get_log_file().c_str());
-        info("tracks file: %s", get_cur_tracks_file().c_str());
-        info("last track file: %s", get_last_track_file().c_str());
-        info("current track file: %s", get_cur_track_file().c_str());
-    }
-
     // critical section to ensure all output files update together
     InitializeCriticalSection(&track_list_critsec);
     
@@ -163,6 +155,15 @@ bool initialize_output_files()
     success("Created logging semaphore");
 
     return true;
+}
+
+// called by config loader when it's loading the config file
+void load_output_files(ifstream &in)
+{
+    string line;
+    while (getline(in, line)) {
+        output_files.push_back(output_file(line));
+    }
 }
 
 // Push the index of a deck which has changed into the queue 
@@ -186,7 +187,7 @@ void run_listener()
     // doesn't like when we call CreateFile inside the threads that we hook.
 
     // This loop will wake up anytime a deck switches because the hook on 
-    // notifyMasterChange() will call update_output_files(deck_idx) and that
+    // notifyMasterChange() will call push_deck_update(deck_idx) and that
     // will push the deck index which changed and simultaneously signal the log 
     // semaphore to wake this thread up
     while (WaitForSingleObject(hLogSem, INFINITE) == WAIT_OBJECT_0) {
@@ -219,76 +220,11 @@ void run_listener()
         if (track.track_number.length()) { info("\ttrack number: %s", track.track_number.c_str()); }
         if (track.bpm.length())          { info("\tbpm: %s", track.bpm.c_str()); }
 #endif
-
-        // build the string that will be logged to files
-        string track_str = build_output(&track);
-
-        // server mode?
-        if (config.use_server) {
-            // in server mode send the track to the server for logging
-            send_network_message(track_str.c_str());
-            info("Sending track [%s] to server %s...", 
-                track_str.c_str(), config.server_ip.c_str());
-        } else {
-            // otherwise in non-server mode just directly update the log 
-            // files with this new track
-            update_log_files(track_str);
-            info("Logging track [%s]...", track_str.c_str());
+        // iterate the list of output files and populate them
+        for (auto outfile = output_files.begin(); outfile != output_files.end(); ++outfile) {
+            // log the track to the output file
+            outfile->log_track(&track);
         }
-    }
-}
-
-// update the various log files based on a track, only meant to be called
-// from the logging thread so making this static
-static void update_log_files(const string &track)
-{
-    // deque of tracks, deque instead of queue for iteration
-    // static because we want to hold onto the previous tracks so 
-    // we can update the various multi-line logs and last_track
-    static deque<string> tracks;
-
-    // store the track in the tracks list
-    tracks.push_front(track);
-    // make sure the list doesn't go beyond config.max_tracks
-    if (tracks.size() > config.max_tracks) {
-        tracks.pop_back();
-    }
-
-    // update the last x file by iterating tracks and writing
-    if (tracks.size() > 0) {
-        // concatenate the tracks into a single string
-        string tracks_str;
-        if (tracks.size() > 1) {
-            for (auto it = tracks.begin() + 1; it != tracks.end(); it++) {
-                tracks_str += it[0] + "\r\n";
-            }
-            // rewrite the tracks file with all of the lines at once
-            if (!rewrite_file(get_cur_tracks_file(), tracks_str)) {
-                error("Failed to write to tracks file");
-            }
-        }
-
-        // rewrite the current track file with only the current track
-        if (!rewrite_file(get_cur_track_file(), tracks.at(0))) {
-            error("Failed to append to current track file");
-        }
-    }
-    // rewrite the last track file with the previous track
-    if (tracks.size() > 1) {
-        if (!rewrite_file(get_last_track_file(), tracks.at(1))) {
-            error("Failed to write last track file");
-        }
-    }
-    // append the artist and track to the global log
-    string log_entry;
-    if (config.use_timestamps) {
-        // timestamp with a space after it
-        log_entry += get_timestamp_since_start() + " ";
-    }
-    // the rest of the current track output
-    log_entry += tracks.front() + "\r\n";
-    if (!append_file(get_log_file(), log_entry)) {
-        error("Failed to log track to global log");
     }
 }
 
@@ -306,11 +242,234 @@ static uint32_t pop_deck_update()
     return deck_idx;
 }
 
+track_data::track_data(uint32_t deck_idx) : idx(deck_idx)
+{
+    // lookup a rowdata object
+    row_data *rowdata = lookup_row_data(deck_idx);
+    if (!rowdata) {
+        return;
+    }
+    // steal all the track information so we have it stored in our own containers
+    title = rowdata->getTitle();
+    artist = rowdata->getArtist();
+    album = rowdata->getAlbum();
+    genre = rowdata->getGenre();
+    label = rowdata->getLabel();
+    key = rowdata->getKey();
+    orig_artist = rowdata->getOrigArtist();
+    remixer = rowdata->getRemixer();
+    composer = rowdata->getComposer();
+    comment = rowdata->getComment();
+    mix_name = rowdata->getMixName();
+    lyricist = rowdata->getLyricist();
+    date_created = rowdata->getDateCreated();
+    date_added = rowdata->getDateAdded();
+    // track number is an integer
+    track_number = to_string(rowdata->getTrackNumber());
+    // the bpm is an integer like 15150 which represents 151.50 bpm
+    bpm = to_string(rowdata->getBpm());
+    // so we just shove a dot in there and it's good
+    bpm.insert(bpm.length() - 2, ".");
+    // cleanup the rowdata object we got from rekordbox
+    // so that we can just use our local containers
+    destroy_row_data(rowdata);
+}
+
+output_file::output_file(const string &line) 
+{
+    // format of a line is something like this:
+    //  name=max_lines;offset;mode;format
+    size_t pos = 0;
+    string value;
+    // read out the name up till =
+    pos = line.find_first_of("=");
+    name = line.substr(0, pos);
+    value = line.substr(pos + 1);
+    // max lines
+    pos = value.find_first_of(";");
+    max_lines = strtoul(value.substr(0, pos).c_str(), NULL, 10);
+    value = value.substr(pos + 1);
+    // offset
+    pos = value.find_first_of(";");
+    offset = strtoul(value.substr(0, pos).c_str(), NULL, 10);
+    value = value.substr(pos + 1);
+    // mode
+    pos = value.find_first_of(";");
+    mode = strtoul(value.substr(0, pos).c_str(), NULL, 10);
+    value = value.substr(pos + 1);
+    // the format is everything left over
+    format = value;
+    info("Loading: [%s]", line.c_str());
+    info("\tName: %s\n\tmax lines: %u\n\toffset: %u\n\tmode: %u\n\tformat: %s\n",
+        name.c_str(), max_lines, offset, mode, format.c_str());
+    // check for tags and set bitflags so that replacements
+    // later will be optimized
+    if (format.find("%title%") != string::npos) { format_tags |= TAG_TITLE; }
+    if (format.find("%artist%") != string::npos) { format_tags |= TAG_ARTIST; }
+    if (format.find("%album%") != string::npos) { format_tags |= TAG_ALBUM; }
+    if (format.find("%genre%") != string::npos) { format_tags |= TAG_GENRE; }
+    if (format.find("%label%") != string::npos) { format_tags |= TAG_LABEL; }
+    if (format.find("%key%") != string::npos) { format_tags |= TAG_KEY; }
+    if (format.find("%orig_artist%") != string::npos) { format_tags |= TAG_ORIG_ARTIST; }
+    if (format.find("%remixer%") != string::npos) { format_tags |= TAG_REMIXER; }
+    if (format.find("%composer%") != string::npos) { format_tags |= TAG_COMPOSER; }
+    if (format.find("%comment%") != string::npos) { format_tags |= TAG_COMMENT; }
+    if (format.find("%mix_name%") != string::npos) { format_tags |= TAG_MIX_NAME; }
+    if (format.find("%lyricist%") != string::npos) { format_tags |= TAG_LYRICIST; }
+    if (format.find("%date_created%") != string::npos) { format_tags |= TAG_DATE_CREATED; }
+    if (format.find("%date_added%") != string::npos) { format_tags |= TAG_DATE_ADDED; }
+    if (format.find("%track_number%") != string::npos) { format_tags |= TAG_TRACK_NUMBER; }
+    if (format.find("%bpm%") != string::npos) { format_tags |= TAG_BPM; }
+    if (format.find("%time%") != string::npos) { format_tags |= TAG_TIME; }
+    // the full path of the output file
+    path = get_dll_path() + "\\" + name + ".txt";
+    // only clear the output file if not server mode
+    if (!config.use_server && !clear_file(path)) {
+        error("Failed to clear output file: %s", path.c_str());
+    }
+    info("Loaded output file %s", name.c_str());
+}
+
+// function to log a track to an output file
+void output_file::log_track(track_data *track)
+{
+    // build the string that will be logged to this output file
+    string track_str = build_output(format, format_tags, track);
+
+    // server mode?
+    if (config.use_server) {
+        // in server mode send the filename + track to the server for logging
+        string message = name + ":" + track_str;
+        send_network_message(message.c_str());
+        info("Sending track [%s] to file %s at server %s...",
+            track_str.c_str(), name.c_str(), config.server_ip.c_str());
+    } else {
+        // otherwise in non-server mode just directly update the log 
+        // files with this new track
+        update_output_file(track_str);
+    }
+}
+
+// helper to build output line based on configured output format
+string output_file::build_output(const string &format, uint32_t format_tags, track_data *track)
+{
+    // start with the format
+    string out = format;
+    // only replace fields if the tag was previously detected in the format
+    // this is a major optimization to avoid attempting to relace every tag
+    if (format_tags & TAG_TITLE)        { replace(out, "%title%", track->title); }
+    if (format_tags & TAG_ARTIST)       { replace(out, "%artist%", track->artist); }
+    if (format_tags & TAG_ALBUM)        { replace(out, "%album%", track->album); }
+    if (format_tags & TAG_GENRE)        { replace(out, "%genre%", track->genre); }
+    if (format_tags & TAG_LABEL)        { replace(out, "%label%", track->label); }
+    if (format_tags & TAG_KEY)          { replace(out, "%key%", track->key); }
+    if (format_tags & TAG_ORIG_ARTIST)  { replace(out, "%orig_artist%", track->orig_artist); }
+    if (format_tags & TAG_REMIXER)      { replace(out, "%remixer%", track->remixer); }
+    if (format_tags & TAG_COMPOSER)     { replace(out, "%composer%", track->composer); }
+    if (format_tags & TAG_COMMENT)      { replace(out, "%comment%", track->comment); }
+    if (format_tags & TAG_MIX_NAME)     { replace(out, "%mix_name%", track->mix_name); }
+    if (format_tags & TAG_LYRICIST)     { replace(out, "%lyricist%", track->lyricist); }
+    if (format_tags & TAG_DATE_CREATED) { replace(out, "%date_created%", track->date_created); }
+    if (format_tags & TAG_DATE_ADDED)   { replace(out, "%date_added%", track->date_added); }
+    if (format_tags & TAG_TRACK_NUMBER) { replace(out, "%track_number%", track->track_number); }
+    if (format_tags & TAG_BPM)          { replace(out, "%bpm%", track->bpm); }
+    if (format_tags & TAG_TIME)         { replace(out, "%time%", get_timestamp_since_start()); }
+    return out;
+}
+
+// update the various log files based on a track, only meant to be called
+// from the logging thread so making this static
+void output_file::update_output_file(const string &track_str)
+{
+    // the line being stored defaults to the current track
+    string line = track_str;
+    // but if there is an offset or max lines then we need to
+    // utilize the cache and may need to access past tracks
+    if (max_lines || offset) {
+        // store the line in the cache
+        cached_lines.push_front(line);
+        // then trim the cache to the max lines + offset
+        if (cached_lines.size() > ((max_lines + offset) + 1)) {
+            cached_lines.pop_back();
+        }
+        // if we haven't cached up till the offset then return
+        if (cached_lines.size() <= offset) {
+            return;
+        }
+        // grab the line at offset out of the cache
+        line = cached_lines.at(offset);
+    }
+
+    info("Logging [%s] to %s...", line.c_str(), name.c_str());
+
+    // if the output file is in prepend mode
+    switch (mode) {
+    case MODE_REPLACE:
+        if (!rewrite_file(path, line)) {
+            error("Failed to rewrite track in %s", path.c_str());
+        }
+        break;
+    case MODE_APPEND:
+        if (!append_file(path, line)) {
+            error("Failed to append track to %s", path.c_str());
+        }
+        break;
+    case MODE_PREPEND:
+        // rewrite the entire file in prepend mode
+        for (auto it = cached_lines.begin() + offset + 1; it != cached_lines.end(); it++) {
+            line += it[0] + "\r\n";
+        }
+        // rewrite the tracks file with all of the lines at once
+        if (!rewrite_file(path, line)) {
+            error("Failed to prepend track to %s", path.c_str());
+        }
+        break;
+    }
+}
+
+// create and truncate a single file, only call this from the logger thread
+bool output_file::clear_file(const string &filename)
+{
+    // open with CREATE_ALWAYS to truncate any existing file and create any missing
+    HANDLE hFile = CreateFile(filename.c_str(), GENERIC_READ|GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        error("Failed to open for truncate %s (%d)", filename.c_str(), GetLastError());
+        return false;
+    }
+    CloseHandle(hFile);
+    return true;
+}
+
+// append data to a file, only call this from the logger thread
+bool output_file::append_file(const string &filename, const string &data)
+{
+    // open for append, create new, or open existing
+    HANDLE hFile = CreateFile(filename.c_str(), FILE_APPEND_DATA, 0, NULL, CREATE_NEW|OPEN_EXISTING, 0, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        error("Failed to open file for append %s (%d)", filename.c_str(), GetLastError());
+        return false;
+    }
+    DWORD written = 0;
+    if (!WriteFile(hFile, data.c_str(), (DWORD)data.length(), &written, NULL)) {
+        error("Failed to write to %s (%d)", filename.c_str(), GetLastError());
+        CloseHandle(hFile);
+        return false;
+    }
+    CloseHandle(hFile);
+    return true;
+}
+
+// just a wrapper around clear and append
+bool output_file::rewrite_file(const string &filename, const string &data)
+{
+    return clear_file(filename) && append_file(filename, data);
+}
+
 // helper for in-place replacements
-static bool replace(string& str, const string& from, const string& to) 
+bool output_file::replace(string& str, const string& from, const string& to) 
 {
     size_t start_pos = str.find(from);
-    if (start_pos == std::string::npos) {
+    if (start_pos == string::npos) {
         return false;
     }
     str.replace(start_pos, from.length(), to);
@@ -318,7 +477,7 @@ static bool replace(string& str, const string& from, const string& to)
 }
 
 // calc time since the first time this was called
-static string get_timestamp_since_start()
+string output_file::get_timestamp_since_start()
 {
     static DWORD start_timestamp = 0;
     if (!start_timestamp) {
@@ -342,69 +501,3 @@ static string get_timestamp_since_start()
     }
     return string(buf);
 }
-
-// helper to build output line based on configured output format
-static string build_output(track_data *track)
-{
-    // start with out format
-    string out = config.out_format;
-    // replace various fields
-    replace(out, "%title%", track->title);
-    replace(out, "%artist%", track->artist);
-    replace(out, "%album%", track->album);
-    replace(out, "%genre%", track->genre);
-    replace(out, "%label%", track->label);
-    replace(out, "%key%", track->key);
-    replace(out, "%orig_artist%", track->orig_artist);
-    replace(out, "%remixer%", track->remixer);
-    replace(out, "%composer%", track->composer);
-    replace(out, "%comment%", track->comment);
-    replace(out, "%mix_name%", track->mix_name);
-    replace(out, "%lyricist%", track->lyricist);
-    replace(out, "%date_created%", track->date_created);
-    replace(out, "%date_added%", track->date_added);
-    replace(out, "%track_number%", track->track_number);
-    replace(out, "%bpm%", track->bpm);
-    replace(out, "%time%", get_timestamp_since_start());
-    return out;
-}
-
-// create and truncate a single file, only call this from the logger thread
-static bool clear_file(const string &filename)
-{
-    // open with CREATE_ALWAYS to truncate any existing file and create any missing
-    HANDLE hFile = CreateFile(filename.c_str(), GENERIC_READ|GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
-    if (hFile == INVALID_HANDLE_VALUE) {
-        error("Failed to open for truncate %s (%d)", filename.c_str(), GetLastError());
-        return false;
-    }
-    CloseHandle(hFile);
-    return true;
-}
-
-// append data to a file, only call this from the logger thread
-static bool append_file(const string &filename, const string &data)
-{
-    // open for append, create new, or open existing
-    HANDLE hFile = CreateFile(filename.c_str(), FILE_APPEND_DATA, 0, NULL, CREATE_NEW|OPEN_EXISTING, 0, NULL);
-    if (hFile == INVALID_HANDLE_VALUE) {
-        error("Failed to open file for append %s (%d)", filename.c_str(), GetLastError());
-        return false;
-    }
-    DWORD written = 0;
-    if (!WriteFile(hFile, data.c_str(), (DWORD)data.length(), &written, NULL)) {
-        error("Failed to write to %s (%d)", filename.c_str(), GetLastError());
-        CloseHandle(hFile);
-        return false;
-    }
-    CloseHandle(hFile);
-    return true;
-}
-
-// just a wrapper around clear and append
-static bool rewrite_file(const string &filename, const string &data)
-{
-    return clear_file(filename) && append_file(filename, data);
-}
-
-

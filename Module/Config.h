@@ -21,30 +21,21 @@ typedef enum rbox_version_enum
 } rbox_version_t;
 
 // configuration options
-typedef struct config_struct
+class Config
 {
+public:
     // the version loaded from config
-    rbox_version_t rbox_version;
-
-    // the output format
-    std::string out_format;
-
-    // the max tracks to log in current tracks
-    uint32_t max_tracks;
-
-    // whether to use timestamps in global log
-    bool use_timestamps;
-
+    rbox_version_t version;
     // whether to use server mode
     bool use_server;
-
     // a server ip if there is one
     std::string server_ip;
-} config_t;
+};
 
 // global config object
-extern config_t config;
+extern Config config;
 
+// load configuration from the config file
 bool initialize_config();
 
 // path/folder where the module exists

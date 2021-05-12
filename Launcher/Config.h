@@ -11,6 +11,8 @@
 #define MAX_OUTFILE_NAME_LEN    64
 // maximum length of output formats
 #define MAX_OUTFILE_FORMAT_LEN  512
+// the default entry that is added when clicking 'add'
+#define DEFAULT_OUTPUT_FILE     "OutputFile=0;0;0;%title%"
 
 // the image base for various stuff
 extern HINSTANCE imageBase;
@@ -29,7 +31,7 @@ public:
 extern Config config; 
 
 // load the global config from file
-bool configLoad();
+bool config_load();
 
 // save the global config to file
-bool configSave();
+bool config_save();

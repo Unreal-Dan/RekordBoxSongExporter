@@ -80,15 +80,15 @@ bool init_network_client()
     }
     info("Connected to server %s", config.server_ip.c_str());
     // Config is: use_timestamps|max_tracks
-    string config_str = to_string(config.use_timestamps) + "|" +
-                        to_string(config.max_tracks);
+    //string config_str = to_string(config.use_timestamps) + "|" +
+    //                    to_string(config.max_tracks);
     // send that config to the server
-    if (!send_network_message(config_str)) {
-        error("Failed to send config");
-        closesocket(sock);
-        WSACleanup();
-        return false;
-    }
+    //if (!send_network_message(config_str)) {
+    //    error("Failed to send config");
+    //    closesocket(sock);
+    //    WSACleanup();
+    //    return false;
+    //}
     return true;
 }
 

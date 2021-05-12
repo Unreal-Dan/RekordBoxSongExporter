@@ -1,7 +1,9 @@
 #include <shlwapi.h>
 
+#include <fstream>
 #include <string>
 
+#include "OutputFiles.h"
 #include "Config.h"
 #include "Log.h"
 
@@ -22,61 +24,49 @@ const char *rbver_strings[RBVER_COUNT] = {
 };
 
 // global config object
-config_t config;
+Config config;
 
-bool initialize_config()
+static rbox_version_t version_parse(const string &rbox_version)
 {
-    // the config file path 
-    char buf[2048] = { 0 };
-    string configPath = get_dll_path() + "\\config.ini";
-    if (!GetPrivateProfileString("RBSongExporterConfig", "rbox_version", "", buf, sizeof(buf), configPath.c_str())) {
-        error("Failed to load rbox version from [%s]: %d", configPath.c_str(), GetLastError());
-        return false;
-    }
-    // just the version part
-    string rbox_version = buf;
     // determine numeric version id
     for (size_t ver = 0; ver < RBVER_COUNT; ver++) {
         if (rbox_version == rbver_strings[ver]) {
-            config.rbox_version = (rbox_version_t)ver;
+            return (rbox_version_t)ver;
         }
     }
+    return RBVER_UNK;
+}
 
-    // the output format
-    if (!GetPrivateProfileString("RBSongExporterConfig", "out_format", "", buf, sizeof(buf), configPath.c_str())) {
-        error("Failed to load out_format from [%s]: %d", configPath.c_str(), GetLastError());
+bool initialize_config()
+{
+    string config_path = get_dll_path() + "\\config.ini";
+    ifstream in(config_path);
+    string line;
+    while (getline(in, line)) {
+        if (line[0] == '[') {
+            string heading = line.substr(1, line.find_first_of("]") - 1);
+            // Detect legacy config file
+            if (heading == "RBSongExporterConfig") {
+                return false;
+            } 
+            // start of output filessection
+            if (heading == "Output Files") {
+                break;
+            }
+            continue;
+        }
+        size_t pos = line.find_first_of("=");
+        string key = line.substr(0, pos);
+        string value = line.substr(pos + 1);
+        if (key == "rbox_version") {
+            config.version = version_parse(value);
+        } else if (key == "use_server") {
+            config.use_server = (strtoul(value.c_str(), NULL, 10) != 0);
+        } else if (key == "server_ip") {
+            config.server_ip = value;
+        }
     }
-    config.out_format = buf;
-
-    // the num lines in cur tracks
-    if (!GetPrivateProfileString("RBSongExporterConfig", "cur_tracks_count", "", buf, sizeof(buf), configPath.c_str())) {
-        error("Failed to load cur tracks lines from [%s]: %d", configPath.c_str(), GetLastError());
-    }
-    config.max_tracks = strtoul(buf, NULL, 10);
-    // don't let them shoot themself in the foot
-    if (!config.max_tracks) {
-        config.max_tracks = 1;
-    }
-
-    // whether to use timestamps in global log
-    if (!GetPrivateProfileString("RBSongExporterConfig", "use_timestamps", "", buf, sizeof(buf), configPath.c_str())) {
-        error("Failed to load timestamps from [%s]: %d", configPath.c_str(), GetLastError());
-    }
-    config.use_timestamps = (strtoul(buf, NULL, 10) != 0);
-
-    // whether to use server
-    if (!GetPrivateProfileString("RBSongExporterConfig", "use_server", "", buf, sizeof(buf), configPath.c_str())) {
-        error("Failed to load use_server from [%s]: %d", configPath.c_str(), GetLastError());
-    }
-    config.use_server = (strtoul(buf, NULL, 10) != 0);
-
-    // the server ip
-    if (!GetPrivateProfileString("RBSongExporterConfig", "server_ip", "", buf, sizeof(buf), configPath.c_str())) {
-        error("Failed to load server_ip from [%s]: %d", configPath.c_str(), GetLastError());
-        // don't return false for server ip it's optional
-    }
-    config.server_ip = buf;
-
+    load_output_files(in);
     return true;
 }
 

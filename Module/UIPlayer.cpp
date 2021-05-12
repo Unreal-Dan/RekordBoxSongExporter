@@ -8,7 +8,7 @@
 uint32_t djplayer_uiplayer::getTrackBrowserID()
 {
     // probably only changes on major versions
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585:
         return *(uint32_t *)((uintptr_t)this + 0x3A0);
     case RBVER_650:
@@ -32,7 +32,7 @@ djplayer_uiplayer *lookup_player(uint32_t deck_idx)
     uintptr_t main_component;
     uintptr_t ui_manager;
     djplayer_uiplayer **pPlayers;
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585:
         main_component = *(uintptr_t *)(rb_base() + 0x39D05D0);
         ui_manager = *(uintptr_t *)(main_component + 0x638);

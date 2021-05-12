@@ -21,7 +21,7 @@ HINSTANCE imageBase = (HINSTANCE)&__ImageBase;
 Config config;
 
 // helper to get the config file path
-static string getConfigPath()
+static string get_config_path()
 {
     char path[MAX_PATH] = { 0 };
     string configPath;
@@ -32,9 +32,9 @@ static string getConfigPath()
     return configPath;
 }
 
-bool configLoad()
+bool config_load()
 {
-    ifstream in(getConfigPath());
+    ifstream in(get_config_path());
     string line;
     bool is_legacy_config = false;
     while (getline(in, line)) {
@@ -64,16 +64,16 @@ bool configLoad()
         }
     }
     if (is_legacy_config) {
-        defaultOutputFiles();
+        default_output_files();
     } else {
-        loadOutputFiles(in);
+        load_output_files(in);
     }
     return true;
 }
 
-bool configSave()
+bool config_save()
 {
-    ofstream of(getConfigPath(), ios_base::trunc);
+    ofstream of(get_config_path(), ios_base::trunc);
     if (!of.is_open()) {
         return false;
     }
@@ -85,35 +85,6 @@ bool configSave()
        << "use_server=" << (config.use_server ? "1" : "0") << "\n"
        << "server_ip=" << config.server_ip << "\n"
        << "\n[Output Files]\n";
-    saveOutputFiles(of);
+    save_output_files(of);
     return true;
 }
-
-//bool conf_save_version(const string &version)
-//{
-//    return (WritePrivateProfileString("RBSongExporterConfig", "rbox_version",
-//        version.c_str(), get_config_path().c_str()) != 0);
-//}
-//
-//bool conf_save_path(const string &path)
-//{
-//    return (WritePrivateProfileString("RBSongExporterConfig", "rbox_path",
-//        path.c_str(), get_config_path().c_str()) != 0);
-//}
-//
-//bool conf_save_use_server(bool use_server)
-//{
-//    return (WritePrivateProfileString("RBSongExporterConfig", "use_server",
-//        use_server ? "1" : "0", get_config_path().c_str()) != 0);
-//}
-//
-//bool conf_save_server_ip(const string &server_ip)
-//{
-//    return (WritePrivateProfileString("RBSongExporterConfig", "server_ip",
-//        server_ip.c_str(), get_config_path().c_str()) != 0);
-//}
-//
-//bool conf_save_output_files()
-//{
-//    return true;
-//}

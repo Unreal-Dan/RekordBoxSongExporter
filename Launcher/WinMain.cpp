@@ -122,7 +122,8 @@ COLORREF textcolor = RGB(220, 220, 220);
 // down arrow color in dropdown
 COLORREF arrowcolor = RGB(200, 200, 200);
 
-void drawComboText(HWND hwnd, HDC hdc, RECT rc)
+// draw handler for the version combo box
+void draw_combo_text(HWND hwnd, HDC hdc, RECT rc)
 {
     // select font and text color
     SelectObject(hdc, (HFONT)SendMessage(hwnd, WM_GETFONT, 0, 0));
@@ -139,7 +140,8 @@ void drawComboText(HWND hwnd, HDC hdc, RECT rc)
     }
 }
 
-LRESULT CALLBACK comboProc(HWND hwnd, UINT msg, WPARAM wParam,
+// subprocess for version combobox
+LRESULT CALLBACK version_combo_subproc(HWND hwnd, UINT msg, WPARAM wParam,
     LPARAM lParam, UINT_PTR uIdSubClass, DWORD_PTR)
 {
     if (msg != WM_PAINT) {
@@ -167,7 +169,7 @@ LRESULT CALLBACK comboProc(HWND hwnd, UINT msg, WPARAM wParam,
     // draw the two rectangles
     Rectangle(hdc, 0, 0, rc.right, rc.bottom);
     // redraw the text 
-    drawComboText(hwnd, hdc, rc);
+    draw_combo_text(hwnd, hdc, rc);
     // draw the box around the dropdown button part
     Rectangle(hdc, rc.right - 25, rc.top + 2, rc.right - 24, rc.bottom - 2);
 
@@ -185,10 +187,10 @@ LRESULT CALLBACK comboProc(HWND hwnd, UINT msg, WPARAM wParam,
     return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
 
-void doCreate(HWND hwnd)
+void do_create(HWND hwnd)
 {
     // load the configuration
-    configLoad();
+    config_load();
 
     // set icon
     HICON hIcon = LoadIcon(imageBase, MAKEINTRESOURCE(IDI_ICON1));
@@ -218,7 +220,7 @@ void doCreate(HWND hwnd)
     // Send the CB_SETCURSEL message to display an initial item in the selection field  
     ComboBox_SetCurSel(hwndVersionCombo, cur_sel);
     // for overriding background colors of dropdown
-    SetWindowSubclass(hwndVersionCombo, comboProc, 0, 0);
+    SetWindowSubclass(hwndVersionCombo, version_combo_subproc, 0, 0);
 
     // create the server checkbox and ip textbox
     hwndServerCheck = CreateWindow(WC_BUTTON, "Server", 
@@ -259,8 +261,8 @@ void doCreate(HWND hwnd)
 
     // populate the listbox with names, when an item is
     // selected the rest of the fields will be populated
-    for (int i = 0; i < outputFiles.size(); ++i) {
-        ListBox_InsertString(hwndOutfilesList, i, outputFiles[i].name.c_str());
+    for (int i = 0; i < g_output_files.size(); ++i) {
+        ListBox_InsertString(hwndOutfilesList, i, g_output_files[i].name.c_str());
     }
 
     // Button to delete entries from listbox
@@ -339,7 +341,7 @@ void doCreate(HWND hwnd)
     // -----------------------------------------------------
     // after everything is created send a message to select 
     // the first entry in the listbox if there is one
-    if (outputFiles.size() > 0) {
+    if (g_output_files.size() > 0) {
         ListBox_SetCurSel(hwndOutfilesList, 0);
         // SetCurSel won't trigger the LBN_SELCHANGE event so we
         // just send it ourselves to trigger the selection
@@ -349,7 +351,7 @@ void doCreate(HWND hwnd)
     }
 }
 
-void doDestroy(HWND hwnd)
+void do_destroy(HWND hwnd)
 {
     DeleteObject(bkbrush);
     DeleteObject(bkbrush2);
@@ -358,7 +360,7 @@ void doDestroy(HWND hwnd)
     DeleteObject(arrowpen);
 }
 
-void doPaint(HWND hwnd)
+void do_paint(HWND hwnd)
 {
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(hwnd, &ps);
@@ -366,7 +368,7 @@ void doPaint(HWND hwnd)
     EndPaint(hwnd, &ps);
 }
 
-LRESULT doButtonPaint(WPARAM wParam, LPARAM lParam)
+LRESULT do_button_paint(WPARAM wParam, LPARAM lParam)
 {
     HDC hdc = (HDC)wParam;
     SetBkColor(hdc, bkcolor2);
@@ -392,7 +394,7 @@ LRESULT doButtonPaint(WPARAM wParam, LPARAM lParam)
 }
 
 // save the config file from current gui settings
-void doSaveConfig()
+void do_save_config()
 {
     char buf[2048] = {0};
 
@@ -413,11 +415,11 @@ void doSaveConfig()
     config.server_ip = buf;
 
     // save the configurations
-    configSave();
+    config_save();
 }
 
 // inject into the path specified in gui
-void doInject()
+void do_inject()
 {
     char buf[2048] = {0};
     GetWindowText(hwndPathEdit, buf, sizeof(buf));
@@ -429,14 +431,14 @@ void doInject()
     }
 }
 
-void handleClick(HWND hwnd, WPARAM wParam, LPARAM lParam)
+void handle_click(HWND hwnd, WPARAM wParam, LPARAM lParam)
 {
     int sel = 0;
     switch (LOWORD(wParam)) {
     case LAUNCH_BUTTON_ID:
         // when button clicked inject the module
-        doSaveConfig();
-        //doInject();
+        do_save_config();
+        do_inject();
         break;
     case ADD_BUTTON_ID:
         // add 1 to the current selection so that the new item appears
@@ -446,13 +448,14 @@ void handleClick(HWND hwnd, WPARAM wParam, LPARAM lParam)
         if (sel >= 0) {
             sel += 1;
         }
+        // generate default output file
         if (sel == -1) {
-            outputFiles.push_back(outputFile("OutputFile=0;0;0;"));
+            g_output_files.push_back(output_file());
         } else {
-            outputFiles.insert(outputFiles.begin() + sel, 1, outputFile("OutputFile=0;0;0;"));
+            g_output_files.insert(g_output_files.begin() + sel, 1, output_file());
         }
         // TODO: generate new output file name
-        ListBox_InsertString(hwndOutfilesList, sel, "OutputFile");
+        ListBox_InsertString(hwndOutfilesList, sel, g_output_files[sel].name.c_str());
         ListBox_SetCurSel(hwndOutfilesList, ((sel == -1) ? 0 : sel));
         // SetCurSel won't trigger the LBN_SELCHANGE event so we
         // just send it ourselves to trigger the selection
@@ -475,8 +478,8 @@ void handleClick(HWND hwnd, WPARAM wParam, LPARAM lParam)
             // try to select the one above
             ListBox_SetCurSel(hwndOutfilesList, (sel > 0 ? sel - 1 : sel));
         }
-        // erase the entry from the outputFiles array
-        outputFiles.erase(outputFiles.begin() + sel);
+        // erase the entry from the g_output_files array
+        g_output_files.erase(g_output_files.begin() + sel);
         // SetCurSel won't trigger the LBN_SELCHANGE event so we
         // just send it ourselves to trigger the selection
         SendMessage(hwnd, WM_COMMAND,
@@ -488,7 +491,7 @@ void handleClick(HWND hwnd, WPARAM wParam, LPARAM lParam)
         if (sel == -1) {
             return;
         }
-        outputFiles[sel].mode = MODE_REPLACE;
+        g_output_files[sel].mode = MODE_REPLACE;
         EnableWindow(hwndMaxLinesEdit, false);
         Edit_SetText(hwndMaxLinesEdit, "N/A");
         return;
@@ -497,7 +500,7 @@ void handleClick(HWND hwnd, WPARAM wParam, LPARAM lParam)
         if (sel == -1) {
             return;
         }
-        outputFiles[sel].mode = MODE_APPEND;
+        g_output_files[sel].mode = MODE_APPEND;
         EnableWindow(hwndMaxLinesEdit, false);
         Edit_SetText(hwndMaxLinesEdit, "N/A");
         return;
@@ -506,7 +509,7 @@ void handleClick(HWND hwnd, WPARAM wParam, LPARAM lParam)
         if (sel == -1) {
             return;
         }
-        outputFiles[sel].mode = MODE_PREPEND;
+        g_output_files[sel].mode = MODE_PREPEND;
         EnableWindow(hwndMaxLinesEdit, true);
         Edit_SetText(hwndMaxLinesEdit, "3");
         break;
@@ -518,7 +521,7 @@ void handleClick(HWND hwnd, WPARAM wParam, LPARAM lParam)
     }
 }
 
-void handleSelectionChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
+void handle_selection_change(HWND hwnd, WPARAM wParam, LPARAM lParam)
 {
     if (LOWORD(wParam) == VERSION_COMBO_ID) {
         // when combobox changes update the text box
@@ -540,20 +543,20 @@ void handleSelectionChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
             return;
         }
         EnableWindow(hwndOutfileNameEdit, true);
-        Edit_SetText(hwndOutfileNameEdit, outputFiles[sel].name.c_str());
+        Edit_SetText(hwndOutfileNameEdit, g_output_files[sel].name.c_str());
 
         EnableWindow(hwndOutfileFormatEdit, true);
-        Edit_SetText(hwndOutfileFormatEdit, outputFiles[sel].format.c_str());
+        Edit_SetText(hwndOutfileFormatEdit, g_output_files[sel].format.c_str());
 
         EnableWindow(hwndReplaceModeRadio, true);
         EnableWindow(hwndAppendModeRadio, true);
         EnableWindow(hwndPrependModeRadio, true);
         CheckRadioButton(hwnd, REPLACE_RADIO_ID, PREPEND_RADIO_ID,
-            REPLACE_RADIO_ID + (int)outputFiles[sel].mode);
+            REPLACE_RADIO_ID + (int)g_output_files[sel].mode);
 
-        if (outputFiles[sel].mode == MODE_PREPEND) {
+        if (g_output_files[sel].mode == MODE_PREPEND) {
             char maxlines_text[16] = { 0 };
-            snprintf(maxlines_text, sizeof(maxlines_text), "%u", outputFiles[sel].max_lines);
+            snprintf(maxlines_text, sizeof(maxlines_text), "%u", g_output_files[sel].max_lines);
             EnableWindow(hwndMaxLinesEdit, true);
             Edit_SetText(hwndMaxLinesEdit, maxlines_text);
         } else {
@@ -562,14 +565,14 @@ void handleSelectionChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
         }
 
         char offset_text[16] = { 0 };
-        snprintf(offset_text, sizeof(offset_text), "%u", outputFiles[sel].offset);
+        snprintf(offset_text, sizeof(offset_text), "%u", g_output_files[sel].offset);
         EnableWindow(hwndOffsetEdit, true);
         Edit_SetText(hwndOffsetEdit, offset_text);
         return;
     }
 }
 
-void handleEditChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
+void handle_edit_change(HWND hwnd, WPARAM wParam, LPARAM lParam)
 {
     int sel = ListBox_GetCurSel(hwndOutfilesList);
     if (sel == -1) {
@@ -581,64 +584,64 @@ void handleEditChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
         ListBox_DeleteString(hwndOutfilesList, sel);
         ListBox_InsertString(hwndOutfilesList, sel, name);
         ListBox_SetCurSel(hwndOutfilesList, sel);
-        outputFiles[sel].name = name;
+        g_output_files[sel].name = name;
     } else if (LOWORD(wParam) == OUTFILEFORMAT_EDIT_ID) {
         char format[MAX_OUTFILE_FORMAT_LEN] = { 0 };
         Edit_GetText(hwndOutfileFormatEdit, format, sizeof(format) - 1);
-        outputFiles[sel].format = format;
+        g_output_files[sel].format = format;
     } else if (LOWORD(wParam) == OFFSET_EDIT_ID) {
         char offset[16] = { 0 };
         Edit_GetText(hwndOffsetEdit, offset, sizeof(offset) - 1);
-        outputFiles[sel].offset = strtoul(offset, NULL, 10);
+        g_output_files[sel].offset = strtoul(offset, NULL, 10);
     } else if (LOWORD(wParam) == MAXLINES_EDIT_ID) {
         char maxlines[16] = { 0 };
         Edit_GetText(hwndMaxLinesEdit, maxlines, sizeof(maxlines) - 1);
-        outputFiles[sel].max_lines = strtoul(maxlines, NULL, 10);
+        g_output_files[sel].max_lines = strtoul(maxlines, NULL, 10);
     }
 }
 
-void handleCommand(HWND hwnd, WPARAM wParam, LPARAM lParam)
+void do_command(HWND hwnd, WPARAM wParam, LPARAM lParam)
 {
     switch (HIWORD(wParam)) {
     case BN_CLICKED:
-        handleClick(hwnd, wParam, lParam);
+        handle_click(hwnd, wParam, lParam);
         break;
     case LBN_SELCHANGE: 
     //case CBN_SELCHANGE:
         // supposed to catch CBN_SELCHANGE for combobox and LBN_SELCHANGE 
         // for listbox but they literally both expand to 1 so we can't
         // even have both in the same switch statement
-        handleSelectionChange(hwnd, wParam, lParam);
+        handle_selection_change(hwnd, wParam, lParam);
         break;
     case EN_CHANGE:
-        handleEditChange(hwnd, wParam, lParam);
+        handle_edit_change(hwnd, wParam, lParam);
         break;
     }
 }
 
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg) {
     case WM_COMMAND:
-        handleCommand(hwnd, wParam, lParam);
+        do_command(hwnd, wParam, lParam);
         break;
     case WM_INITDIALOG:
         break;
     case WM_CREATE:
-        doCreate(hwnd);
+        do_create(hwnd);
         break;
     case WM_DESTROY:
-        doDestroy(hwnd);
+        do_destroy(hwnd);
         PostQuitMessage(0);
         break;
     case WM_PAINT:
-        doPaint(hwnd);
+        do_paint(hwnd);
         return 0;
     case WM_CTLCOLORBTN:
     case WM_CTLCOLORLISTBOX:
     case WM_CTLCOLOREDIT:
     case WM_CTLCOLORSTATIC:
-        return doButtonPaint(wParam, lParam);
+        return do_button_paint(wParam, lParam);
     default:
         break;
     }
@@ -655,7 +658,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, 
     // class registration
     memset(&msg, 0, sizeof(msg));
     memset(&wc, 0, sizeof(wc));
-    wc.lpfnWndProc = WindowProc;
+    wc.lpfnWndProc = window_proc;
     wc.hInstance = hInstance;
     wc.lpszClassName = "RekordBoxSongExporter";
     RegisterClass(&wc);

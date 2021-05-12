@@ -35,7 +35,7 @@ public:
     }
     void **sync_master_list()
     {
-        switch (config.rbox_version) {
+        switch (config.version) {
         case RBVER_585: return sm_585.syncMasterList;
         case RBVER_650: return sm_650.syncMasterList;
         case RBVER_651: return sm_651.syncMasterList;
@@ -44,7 +44,7 @@ public:
     }
     void *cur_sync_master()
     {
-        switch (config.rbox_version) {
+        switch (config.version) {
         case RBVER_585: return sm_585.curSyncMaster;
         case RBVER_650: return sm_650.curSyncMaster;
         case RBVER_651: return sm_651.curSyncMaster;
@@ -53,7 +53,7 @@ public:
     }
     uint32_t num_sync_masters() 
     {
-        switch (config.rbox_version) {
+        switch (config.version) {
         case RBVER_585: return sm_585.numSyncMasters;
         case RBVER_650: return sm_650.numSyncMasters;
         case RBVER_651: return sm_651.numSyncMasters;
@@ -129,7 +129,7 @@ bool hook_notify_master_change()
     uint32_t func_offset = 0;
     // sig for functions in 6.5.0:
     // 40 53 48 83 EC 30 48 8B D9 48 8B 89 40 01 00 00 48 85 C9 0F 84 65 01 00 00 F6 C1 03 0F 85 5C 01
-    switch (config.rbox_version) {
+    switch (config.version) {
     case RBVER_585:
         func_offset = 0x14CEF80;
         break;
