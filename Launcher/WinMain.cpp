@@ -98,7 +98,7 @@ HWND hwndMaxLinesEdit;
 #define MAXLINES_EDIT_ID        1013
 
 // launch button
-HWND hwndButton;
+HWND hwndLaunchButton;
 #define LAUNCH_BUTTON_ID        1014
 
 
@@ -122,8 +122,85 @@ COLORREF textcolor = RGB(220, 220, 220);
 // down arrow color in dropdown
 COLORREF arrowcolor = RGB(200, 200, 200);
 
+// prototypes of static functions
+static string get_window_text(HWND hwnd);
+static void draw_combo_text(HWND hwnd, HDC hdc, RECT rc);
+static LRESULT CALLBACK version_combo_subproc(HWND hwnd, UINT msg, WPARAM wParam,
+    LPARAM lParam, UINT_PTR uIdSubClass, DWORD_PTR);
+static void do_create(HWND hwnd);
+static void do_destroy(HWND hwnd);
+static void do_paint(HWND hwnd);
+static LRESULT do_button_paint(WPARAM wParam, LPARAM lParam);
+static void do_save_config();
+static void do_inject();
+static void handle_click(HWND hwnd, WPARAM wParam, LPARAM lParam);
+static void handle_selection_change(HWND hwnd, WPARAM wParam, LPARAM lParam);
+static void handle_edit_change(HWND hwnd, WPARAM wParam, LPARAM lParam);
+static void do_command(HWND hwnd, WPARAM wParam, LPARAM lParam);
+static LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+// program entry
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow)
+{
+    RECT desktop;
+    WNDCLASS wc;
+    HWND hwnd;
+    MSG msg;
+
+    // class registration
+    memset(&msg, 0, sizeof(msg));
+    memset(&wc, 0, sizeof(wc));
+    wc.lpfnWndProc = window_proc;
+    wc.hInstance = hInstance;
+    wc.lpszClassName = "RekordBoxSongExporter";
+    RegisterClass(&wc);
+
+    // get desktop rect so we can center the window
+    GetClientRect(GetDesktopWindow(), &desktop);
+
+    // create the window
+    hwnd = CreateWindow(wc.lpszClassName, "Rekordbox Song Exporter " RBSE_VERSION,
+        WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, 
+        (desktop.right/2) - 240, (desktop.bottom/2) - 84, 
+        420, 269, NULL, NULL, hInstance, NULL);
+    if (!hwnd) {
+        MessageBox(NULL, "Failed to open window", "Error", 0);
+        return 0;
+    }
+
+    // main message loop
+    ShowWindow(hwnd, nCmdShow);
+    while (GetMessage(&msg, NULL, 0, 0)) {
+        if (!IsDialogMessage(hwnd, &msg)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    }
+
+    return 0;
+}
+
+// helper to read text from a textbox
+static string get_window_text(HWND hwnd)
+{
+    string result;
+    char *buf = NULL;
+    if (!hwnd) {
+        return result;
+    }
+    int len = GetWindowTextLength(hwnd) + 1;
+    buf = new char[len];
+    if (!buf) {
+        return result;
+    }
+    GetWindowText(hwnd, buf, len);
+    result = buf;
+    delete[] buf;
+    return result;
+}
+
 // draw handler for the version combo box
-void draw_combo_text(HWND hwnd, HDC hdc, RECT rc)
+static void draw_combo_text(HWND hwnd, HDC hdc, RECT rc)
 {
     // select font and text color
     SelectObject(hdc, (HFONT)SendMessage(hwnd, WM_GETFONT, 0, 0));
@@ -141,7 +218,7 @@ void draw_combo_text(HWND hwnd, HDC hdc, RECT rc)
 }
 
 // subprocess for version combobox
-LRESULT CALLBACK version_combo_subproc(HWND hwnd, UINT msg, WPARAM wParam,
+static LRESULT CALLBACK version_combo_subproc(HWND hwnd, UINT msg, WPARAM wParam,
     LPARAM lParam, UINT_PTR uIdSubClass, DWORD_PTR)
 {
     if (msg != WM_PAINT) {
@@ -187,7 +264,7 @@ LRESULT CALLBACK version_combo_subproc(HWND hwnd, UINT msg, WPARAM wParam,
     return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
 
-void do_create(HWND hwnd)
+static void do_create(HWND hwnd)
 {
     // load the configuration
     config_load();
@@ -261,8 +338,8 @@ void do_create(HWND hwnd)
 
     // populate the listbox with names, when an item is
     // selected the rest of the fields will be populated
-    for (int i = 0; i < g_output_files.size(); ++i) {
-        ListBox_InsertString(hwndOutfilesList, i, g_output_files[i].name.c_str());
+    for (int i = 0; i < num_output_files(); ++i) {
+        ListBox_InsertString(hwndOutfilesList, i, get_outfile_name(i));
     }
 
     // Button to delete entries from listbox
@@ -334,14 +411,14 @@ void do_create(HWND hwnd)
     EnableWindow(hwndMaxLinesEdit, false);
 
     // create the launch button
-    hwndButton = CreateWindow(WC_BUTTON, "Launch",
+    hwndLaunchButton = CreateWindow(WC_BUTTON, "Launch",
         WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON | WS_TABSTOP,
         160, 178, 230, 42, hwnd, (HMENU)LAUNCH_BUTTON_ID, NULL, NULL);
 
     // -----------------------------------------------------
     // after everything is created send a message to select 
     // the first entry in the listbox if there is one
-    if (g_output_files.size() > 0) {
+    if (num_output_files() > 0) {
         ListBox_SetCurSel(hwndOutfilesList, 0);
         // SetCurSel won't trigger the LBN_SELCHANGE event so we
         // just send it ourselves to trigger the selection
@@ -351,7 +428,7 @@ void do_create(HWND hwnd)
     }
 }
 
-void do_destroy(HWND hwnd)
+static void do_destroy(HWND hwnd)
 {
     DeleteObject(bkbrush);
     DeleteObject(bkbrush2);
@@ -360,7 +437,7 @@ void do_destroy(HWND hwnd)
     DeleteObject(arrowpen);
 }
 
-void do_paint(HWND hwnd)
+static void do_paint(HWND hwnd)
 {
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(hwnd, &ps);
@@ -368,18 +445,13 @@ void do_paint(HWND hwnd)
     EndPaint(hwnd, &ps);
 }
 
-LRESULT do_button_paint(WPARAM wParam, LPARAM lParam)
+static LRESULT do_button_paint(WPARAM wParam, LPARAM lParam)
 {
     HDC hdc = (HDC)wParam;
     SetBkColor(hdc, bkcolor2);
     SetTextColor(hdc, textcolor);
-    if (lParam == (LPARAM)hwndButton) {
-        return (LRESULT)bkbrush2;
-    }
-
-    if (lParam == (LPARAM)hwndVersionCombo) {
-        return (LRESULT)bkbrush2;
-    }
+    // labels, radio buttons, and checkboxes need transparency set
+    // otherwise they have an ugly box around the text
     if (lParam == (LPARAM)hwndOffsetLabel || 
         lParam == (LPARAM)hwndMaxLinesLabel || 
         lParam == (LPARAM)hwndReplaceModeRadio ||
@@ -393,144 +465,116 @@ LRESULT do_button_paint(WPARAM wParam, LPARAM lParam)
     return (LRESULT)bkbrush2;
 }
 
-// save the config file from current gui settings
-void do_save_config()
+// inject into the path specified in gui
+static void do_launch()
 {
-    char buf[2048] = {0};
-
-    // the version selection
-    int sel = ComboBox_GetCurSel(hwndVersionCombo);
-    // only save the part after the word "Rekordbox " (the version number)
-    config.version = versions[sel].name + sizeof("Rekordbox");
-
-    // the path
-    GetWindowText(hwndPathEdit, buf, sizeof(buf));
-    config.path = buf;
-
-    // whether server enabled
-    config.use_server = Button_GetCheck(hwndServerCheck);
-
-    // save the server ip
-    GetWindowText(hwndServerEdit, buf, sizeof(buf));
-    config.server_ip = buf;
-
     // save the configurations
     config_save();
-}
-
-// inject into the path specified in gui
-void do_inject()
-{
-    char buf[2048] = {0};
-    GetWindowText(hwndPathEdit, buf, sizeof(buf));
-    string rbox_path = buf;
-    // inject the dll
-    if (!inject(rbox_path)) {
-        string msg = string("Failed to inject into ") + buf;
+    return;
+    // get the launch path for rekordbox
+    string path = get_window_text(hwndPathEdit);
+    // launch rekordbox and inject the dll
+    if (!inject(path)) {
+        string msg = "Failed to inject into " + path;
         MessageBox(NULL, msg.c_str(), "Error", 0);
     }
 }
 
-void handle_click(HWND hwnd, WPARAM wParam, LPARAM lParam)
+static void handle_click(HWND hwnd, WPARAM wParam, LPARAM lParam)
 {
-    int sel = 0;
+    // most of the clicks utilize the current selection
+    int sel = ListBox_GetCurSel(hwndOutfilesList);
     switch (LOWORD(wParam)) {
     case LAUNCH_BUTTON_ID:
-        // when button clicked inject the module
-        do_save_config();
-        do_inject();
+        do_launch();
         break;
     case ADD_BUTTON_ID:
         // add 1 to the current selection so that the new item appears
         // below the current selection -- unless the current selection
         // is -1 then it just adds to the bottom
-        sel = ListBox_GetCurSel(hwndOutfilesList);
         if (sel >= 0) {
             sel += 1;
         }
-        // generate default output file
-        if (sel == -1) {
-            g_output_files.push_back(output_file());
-        } else {
-            g_output_files.insert(g_output_files.begin() + sel, 1, output_file());
-        }
-        // TODO: generate new output file name
-        ListBox_InsertString(hwndOutfilesList, sel, g_output_files[sel].name.c_str());
+        // NOTE: sel can be -1 here, it works but seems cludgy
+        // Add a new output file at the index
+        add_output_file(sel);
+        // insert the outfile name into the outfiles list and select it
+        ListBox_InsertString(hwndOutfilesList, sel, get_outfile_name(sel));
         ListBox_SetCurSel(hwndOutfilesList, ((sel == -1) ? 0 : sel));
         // SetCurSel won't trigger the LBN_SELCHANGE event so we
-        // just send it ourselves to trigger the selection
+        // just send it ourselves to trigger the selection event
+        // which populates the name, format, etc
         SendMessage(hwnd, WM_COMMAND,
             MAKEWPARAM(OUTFILES_LIST_ID, LBN_SELCHANGE),
             (LPARAM)hwndOutfilesList);
         return;
     case DEL_BUTTON_ID:
         // grab the currently selected entry, -1 means no selection
-        sel = ListBox_GetCurSel(hwndOutfilesList);
-        if (sel == -1) {
-            return;
+        if (sel >= 0) {
+            // delete the entry at the selected spot
+            ListBox_DeleteString(hwndOutfilesList, sel);
+            // try to re-select the same spot
+            ListBox_SetCurSel(hwndOutfilesList, sel);
+            // if it didn't work
+            if (ListBox_GetCurSel(hwndOutfilesList) == -1 && sel > 0) {
+                // try to select the one above
+                ListBox_SetCurSel(hwndOutfilesList, (sel > 0 ? sel - 1 : sel));
+            }
+            // erase the entry from the output files
+            remove_output_file(sel);
+            // SetCurSel won't trigger the LBN_SELCHANGE event so we
+            // just send it ourselves to trigger the selection
+            SendMessage(hwnd, WM_COMMAND,
+                MAKEWPARAM(OUTFILES_LIST_ID, LBN_SELCHANGE),
+                (LPARAM)hwndOutfilesList);
         }
-        // delete the entry at the selected spot
-        ListBox_DeleteString(hwndOutfilesList, sel);
-        // try to re-select the same spot
-        ListBox_SetCurSel(hwndOutfilesList, sel);
-        // if it didn't work
-        if (ListBox_GetCurSel(hwndOutfilesList) == -1 && sel > 0) {
-            // try to select the one above
-            ListBox_SetCurSel(hwndOutfilesList, (sel > 0 ? sel - 1 : sel));
-        }
-        // erase the entry from the g_output_files array
-        g_output_files.erase(g_output_files.begin() + sel);
-        // SetCurSel won't trigger the LBN_SELCHANGE event so we
-        // just send it ourselves to trigger the selection
-        SendMessage(hwnd, WM_COMMAND,
-            MAKEWPARAM(OUTFILES_LIST_ID, LBN_SELCHANGE),
-            (LPARAM)hwndOutfilesList);
         return;
     case REPLACE_RADIO_ID:
-        sel = ListBox_GetCurSel(hwndOutfilesList);
-        if (sel == -1) {
-            return;
+        if (sel >= 0) { 
+            set_outfile_mode(sel, MODE_REPLACE);
+            EnableWindow(hwndMaxLinesEdit, false);
+            Edit_SetText(hwndMaxLinesEdit, "N/A");
+            set_outfile_max_lines(sel, 0);
         }
-        g_output_files[sel].mode = MODE_REPLACE;
-        EnableWindow(hwndMaxLinesEdit, false);
-        Edit_SetText(hwndMaxLinesEdit, "N/A");
         return;
     case APPEND_RADIO_ID:
-        sel = ListBox_GetCurSel(hwndOutfilesList);
-        if (sel == -1) {
-            return;
+        if (sel >= 0) {
+            set_outfile_mode(sel, MODE_APPEND);
+            EnableWindow(hwndMaxLinesEdit, false);
+            Edit_SetText(hwndMaxLinesEdit, "N/A");
+            set_outfile_max_lines(sel, 0);
         }
-        g_output_files[sel].mode = MODE_APPEND;
-        EnableWindow(hwndMaxLinesEdit, false);
-        Edit_SetText(hwndMaxLinesEdit, "N/A");
         return;
     case PREPEND_RADIO_ID:
-        sel = ListBox_GetCurSel(hwndOutfilesList);
-        if (sel == -1) {
-            return;
+        if (sel >= 0) {
+            set_outfile_mode(sel, MODE_PREPEND);
+            EnableWindow(hwndMaxLinesEdit, true);
+            Edit_SetText(hwndMaxLinesEdit, get_outfile_max_lines(sel));
         }
-        g_output_files[sel].mode = MODE_PREPEND;
-        EnableWindow(hwndMaxLinesEdit, true);
-        Edit_SetText(hwndMaxLinesEdit, "3");
         break;
     case SERVER_CHECK_ID:
-        EnableWindow(hwndServerEdit, !IsWindowEnabled(hwndServerEdit));
-        return;
+        config.use_server = !config.use_server;
+        EnableWindow(hwndServerEdit, config.use_server);
+        break;
     default:
         break;
     }
 }
 
-void handle_selection_change(HWND hwnd, WPARAM wParam, LPARAM lParam)
+static void handle_selection_change(HWND hwnd, WPARAM wParam, LPARAM lParam)
 {
     if (LOWORD(wParam) == VERSION_COMBO_ID) {
         // when combobox changes update the text box
-        int sel = ListBox_GetCurSel(hwndVersionCombo);
+        int sel = ComboBox_GetCurSel(hwndVersionCombo);
         Edit_SetText(hwndPathEdit, versions[sel].path);
-        return;
+        // The edit box contains the full word 'Rekordbox x.y.z' but we
+        // only save the part after the word "Rekordbox " (the x.y.z)
+        config.version = versions[sel].name + sizeof("Rekordbox");
     } else if (LOWORD(wParam) == OUTFILES_LIST_ID) {
         int sel = ListBox_GetCurSel(hwndOutfilesList);
+        // if we deselected everything
         if (sel == -1) {
+            // disable all the outfile property edit windows
             EnableWindow(hwndOutfileNameEdit, false);
             EnableWindow(hwndOutfileFormatEdit, false);
             EnableWindow(hwndReplaceModeRadio, false);
@@ -538,69 +582,83 @@ void handle_selection_change(HWND hwnd, WPARAM wParam, LPARAM lParam)
             EnableWindow(hwndPrependModeRadio, false);
             EnableWindow(hwndOffsetEdit, false);
             EnableWindow(hwndMaxLinesEdit, false);
+            Edit_SetText(hwndOffsetEdit, "");
+            Edit_SetText(hwndMaxLinesEdit, "");
             Edit_SetText(hwndOutfileNameEdit, "");
             Edit_SetText(hwndOutfileFormatEdit, "");
             return;
         }
         EnableWindow(hwndOutfileNameEdit, true);
-        Edit_SetText(hwndOutfileNameEdit, g_output_files[sel].name.c_str());
+        Edit_SetText(hwndOutfileNameEdit, get_outfile_name(sel));
 
         EnableWindow(hwndOutfileFormatEdit, true);
-        Edit_SetText(hwndOutfileFormatEdit, g_output_files[sel].format.c_str());
+        Edit_SetText(hwndOutfileFormatEdit, get_outfile_format(sel));
 
         EnableWindow(hwndReplaceModeRadio, true);
         EnableWindow(hwndAppendModeRadio, true);
         EnableWindow(hwndPrependModeRadio, true);
         CheckRadioButton(hwnd, REPLACE_RADIO_ID, PREPEND_RADIO_ID,
-            REPLACE_RADIO_ID + (int)g_output_files[sel].mode);
+            REPLACE_RADIO_ID + get_outfile_mode(sel));
 
-        if (g_output_files[sel].mode == MODE_PREPEND) {
-            char maxlines_text[16] = { 0 };
-            snprintf(maxlines_text, sizeof(maxlines_text), "%u", g_output_files[sel].max_lines);
+        if (get_outfile_mode(sel) == MODE_PREPEND) {
             EnableWindow(hwndMaxLinesEdit, true);
-            Edit_SetText(hwndMaxLinesEdit, maxlines_text);
+            Edit_SetText(hwndMaxLinesEdit, get_outfile_max_lines(sel));
         } else {
             EnableWindow(hwndMaxLinesEdit, false);
             Edit_SetText(hwndMaxLinesEdit, "N/A");
         }
 
-        char offset_text[16] = { 0 };
-        snprintf(offset_text, sizeof(offset_text), "%u", g_output_files[sel].offset);
         EnableWindow(hwndOffsetEdit, true);
-        Edit_SetText(hwndOffsetEdit, offset_text);
+        Edit_SetText(hwndOffsetEdit, get_outfile_offset(sel));
         return;
     }
 }
 
-void handle_edit_change(HWND hwnd, WPARAM wParam, LPARAM lParam)
+static void handle_edit_change(HWND hwnd, WPARAM wParam, LPARAM lParam)
 {
+    // grab current outfile selection for the property edits
     int sel = ListBox_GetCurSel(hwndOutfilesList);
-    if (sel == -1) {
-        return;
-    }
-    if (LOWORD(wParam) == OUTFILENAME_EDIT_ID) {
-        char name[MAX_OUTFILE_NAME_LEN] = { 0 };
-        Edit_GetText(hwndOutfileNameEdit, name, sizeof(name) - 1);
-        ListBox_DeleteString(hwndOutfilesList, sel);
-        ListBox_InsertString(hwndOutfilesList, sel, name);
-        ListBox_SetCurSel(hwndOutfilesList, sel);
-        g_output_files[sel].name = name;
-    } else if (LOWORD(wParam) == OUTFILEFORMAT_EDIT_ID) {
-        char format[MAX_OUTFILE_FORMAT_LEN] = { 0 };
-        Edit_GetText(hwndOutfileFormatEdit, format, sizeof(format) - 1);
-        g_output_files[sel].format = format;
-    } else if (LOWORD(wParam) == OFFSET_EDIT_ID) {
-        char offset[16] = { 0 };
-        Edit_GetText(hwndOffsetEdit, offset, sizeof(offset) - 1);
-        g_output_files[sel].offset = strtoul(offset, NULL, 10);
-    } else if (LOWORD(wParam) == MAXLINES_EDIT_ID) {
-        char maxlines[16] = { 0 };
-        Edit_GetText(hwndMaxLinesEdit, maxlines, sizeof(maxlines) - 1);
-        g_output_files[sel].max_lines = strtoul(maxlines, NULL, 10);
+    // the target hwnd of the edit box is in lparam
+    HWND cur = (HWND)lParam;
+    // grab the text from the edit
+    string text = get_window_text(cur);
+    // do something with the edit text based on the edit ID
+    switch (LOWORD(wParam)) {
+    case PATH_EDIT_ID:
+        config.path = text;
+        break;
+    case SERVER_EDIT_ID:
+        config.server_ip = text;
+        break;
+    case OUTFILENAME_EDIT_ID:
+        if (sel >= 0) {
+            ListBox_DeleteString(hwndOutfilesList, sel);
+            ListBox_InsertString(hwndOutfilesList, sel, text.c_str());
+            ListBox_SetCurSel(hwndOutfilesList, sel);
+            set_outfile_name(sel, text);
+        }
+        break;
+    case OUTFILEFORMAT_EDIT_ID:
+        if (sel >= 0) {
+            set_outfile_format(sel, text);
+        }
+        break;
+    case OFFSET_EDIT_ID:
+        if (sel >= 0) {
+            set_outfile_offset(sel, strtoul(text.c_str(), NULL, 10));
+        }
+        break;
+    case MAXLINES_EDIT_ID:
+        if (sel >= 0) {
+            set_outfile_max_lines(sel, strtoul(text.c_str(), NULL, 10));
+        }
+        break;
+    default:
+        break;
     }
 }
 
-void do_command(HWND hwnd, WPARAM wParam, LPARAM lParam)
+static void do_command(HWND hwnd, WPARAM wParam, LPARAM lParam)
 {
     switch (HIWORD(wParam)) {
     case BN_CLICKED:
@@ -619,7 +677,7 @@ void do_command(HWND hwnd, WPARAM wParam, LPARAM lParam)
     }
 }
 
-LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+static LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg) {
     case WM_COMMAND:
@@ -646,44 +704,4 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         break;
     }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
-}
-
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow)
-{
-    RECT desktop;
-    WNDCLASS wc;
-    HWND hwnd;
-    MSG msg;
-
-    // class registration
-    memset(&msg, 0, sizeof(msg));
-    memset(&wc, 0, sizeof(wc));
-    wc.lpfnWndProc = window_proc;
-    wc.hInstance = hInstance;
-    wc.lpszClassName = "RekordBoxSongExporter";
-    RegisterClass(&wc);
-
-    // get desktop rect so we can center the window
-    GetClientRect(GetDesktopWindow(), &desktop);
-
-    // create the window
-    hwnd = CreateWindow(wc.lpszClassName, "Rekordbox Song Exporter " RBSE_VERSION,
-        WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, 
-        (desktop.right/2) - 240, (desktop.bottom/2) - 84, 
-        420, 269, NULL, NULL, hInstance, NULL);
-    if (!hwnd) {
-        MessageBox(NULL, "Failed to open window", "Error", 0);
-        return 0;
-    }
-
-    // main message loop
-    ShowWindow(hwnd, nCmdShow);
-    while (GetMessage(&msg, NULL, 0, 0)) {
-        if (!IsDialogMessage(hwnd, &msg)) {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-    }
-
-    return 0;
 }

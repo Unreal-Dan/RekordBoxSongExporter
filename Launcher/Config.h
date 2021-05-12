@@ -21,6 +21,7 @@ extern HINSTANCE imageBase;
 class Config
 {
 public:
+    // the version of rekordbox being loaded
     std::string version;
     std::string path;
     bool use_server;

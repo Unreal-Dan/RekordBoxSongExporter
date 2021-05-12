@@ -389,7 +389,7 @@ void output_file::update_output_file(const string &track_str)
         // store the line in the cache
         cached_lines.push_front(line);
         // then trim the cache to the max lines + offset
-        if (cached_lines.size() > ((max_lines + offset) + 1)) {
+        if (cached_lines.size() > (((size_t)max_lines + offset) + 1)) {
             cached_lines.pop_back();
         }
         // if we haven't cached up till the offset then return

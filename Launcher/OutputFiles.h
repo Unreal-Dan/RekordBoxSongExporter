@@ -30,8 +30,27 @@ public:
     uint32_t max_lines;
 };
 
-// the global list of output files
-extern std::vector<output_file> g_output_files;
+// the number of output files
+size_t num_output_files();
+
+// add a default output file at index
+void add_output_file(int index);
+// remove the output file at the index
+void remove_output_file(int index);
+
+// getters for the list of output files
+const char *get_outfile_name(uint32_t index);
+const char *get_outfile_format(uint32_t index);
+uint32_t get_outfile_mode(uint32_t index);
+const char *get_outfile_offset(uint32_t index);
+const char *get_outfile_max_lines(uint32_t index);
+
+// setters for the list of output files
+void set_outfile_name(uint32_t index, const std::string &name);
+void set_outfile_format(uint32_t index, const std::string &format);
+void set_outfile_mode(uint32_t index, uint32_t mode);
+void set_outfile_offset(uint32_t index, uint32_t offset);
+void set_outfile_max_lines(uint32_t index, uint32_t max_lines);
 
 // load in default output files
 void default_output_files();

@@ -53,7 +53,13 @@ bool config_load()
         size_t pos = line.find_first_of("=");
         string key = line.substr(0, pos);
         string value = line.substr(pos + 1);
-        if (key == "rbox_version") {
+        if (key == "version") {
+            // make sure the config was generate by the same utility
+            if (value != RBSE_VERSION) {
+                // TODO: Do something when loading old version?
+                break;
+            }
+        } else if (key == "rbox_version") {
             config.version = value;
         } else if (key == "rbox_path") {
             config.path = value;
