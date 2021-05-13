@@ -37,31 +37,17 @@ int main()
             break;
         }
 
-        printf("Received connection!\n");
-
-        string config_str;
-        if (!receive_message(config_str)) {
-            printf("Failed to receive config\n");
-            break;
-        }
-
-        // quickly parse out the first message which is always the config
-        istringstream config_ss(config_str);
-        string token;
-        getline(config_ss, token, '|');
-        config_use_timestamps = (strtoul(token.c_str(), NULL, 10) == 1);
-        getline(config_ss, token, '|');
-        config_max_tracks = strtoul(token.c_str(), NULL, 10);
-
-        // dump config to console
-        printf("Timestamps are %s\n", config_use_timestamps ? "enabled" : "disabled");
-        printf("Max track count is %zu\n", config_max_tracks);
-
-        string track;
+        string file_track;
         // each message received will get passed into the logging system
-        while (receive_message(track)) {
-            printf("Logging track [%s]\n", track.c_str());
-            log_track(track);
+        while (receive_message(file_track)) {
+            size_t pos = file_track.find_first_of("=");
+            if (pos == string::npos) {
+                continue;
+            }
+            string file = file_track.substr(0, pos);
+            string track = file_track.substr(pos +1);
+            printf("Logging track [%s] to %s\n", track.c_str(), file.c_str());
+            log_track_to_output_file(file, track);
         }
 
         printf("Connection closed\n");

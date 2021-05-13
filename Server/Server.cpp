@@ -83,6 +83,7 @@ bool accept_connection()
         printf("accept failed with error: %d\n", WSAGetLastError());
         return 1;
     }
+    printf("Received connection!\n");
     return true;
 }
 

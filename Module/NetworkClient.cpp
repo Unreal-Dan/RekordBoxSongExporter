@@ -7,6 +7,7 @@
 #include <string>
 
 #include "NetworkClient.h"
+#include "OutputFiles.h"
 #include "Config.h"
 #include "Log.h"
 
@@ -19,6 +20,9 @@ using namespace std;
 
 WSADATA wsaData;
 SOCKET sock = INVALID_SOCKET;
+
+// send the list of output files to the server
+static bool send_configuration();
 
 // initialize the network client for server mode, thanks msdn for the code
 bool init_network_client()
@@ -79,16 +83,14 @@ bool init_network_client()
         return false;
     }
     info("Connected to server %s", config.server_ip.c_str());
-    // Config is: use_timestamps|max_tracks
-    //string config_str = to_string(config.use_timestamps) + "|" +
-    //                    to_string(config.max_tracks);
-    // send that config to the server
-    //if (!send_network_message(config_str)) {
-    //    error("Failed to send config");
-    //    closesocket(sock);
-    //    WSACleanup();
-    //    return false;
-    //}
+
+    if (!send_configuration()) {
+        error("Failed to send config");
+        closesocket(sock);
+        WSACleanup();
+        return false;
+    }
+
     return true;
 }
 
@@ -111,4 +113,24 @@ void cleanup_network_client()
     }
     closesocket(sock);
     WSACleanup();
+}
+
+// send the list of output files to the server
+static bool send_configuration()
+{
+    // send all the output files to the server
+    for (size_t i = 0; i < num_output_files(); ++i) {
+        // send each output file config line like:
+        //   file=0;1;2;%format%
+        // This allows the server to initialize the files and
+        // prepare anything it needs to for the incoming tracks
+        if (!send_network_message(get_output_file_confline(i))) {
+            return false;
+        }
+    }
+
+    // indicate the end of the configurations
+    if (!send_network_message("config:end")) {
+        return false;
+    }
 }

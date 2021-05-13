@@ -1,93 +1,170 @@
 #include <Windows.h>
 
-#include <deque>
 #include <string>
+#include <deque>
+#include <map>
 
+#include "Server.h"
 #include "Config.h"
 
 using namespace std;
 
-// create and truncate a single file, only call this from the logger thread
-static bool clear_file(const string &filename);
-// append data to a file, only call this from the logger thread
-static bool append_file(const string &filename, const string &data);
-// just a wrapper around clear and append
-static bool rewrite_file(const string &filename, const string &data);
-// helper for in-place replacements
-static bool replace(string& str, const string& from, const string& to) ;
-// calc time since the first time this was called
-static string get_timestamp_since_start();
+// the different ways an output file can be written
+#define MODE_REPLACE    0
+#define MODE_APPEND     1
+#define MODE_PREPEND    2
 
-// These come from the client over the network
-size_t config_max_tracks = 0;
-bool config_use_timestamps = false;
+// a class to describe an output file that will be written 
+class output_file
+{
+public:
+    // construct an output file by parsing a config line
+    output_file(const string &line);
+
+    // function to log a track to an output file
+    void log_track(const string &track_str);
+
+    // public info of output files
+    string name;
+    // full path of the output file
+    string path;
+    uint32_t mode;
+    uint32_t offset;
+    uint32_t max_lines;
+
+private:
+
+    // cache previous lines to support offset
+    // static because we want to hold onto the previous tracks so 
+    // we can update the various multi-line logs and last_track
+    deque<string> cached_lines;
+
+    // helper routines
+
+    // create and truncate a single file, only call this from the logger thread
+    bool clear_file(const string &filename);
+    // append data to a file, only call this from the logger thread
+    bool append_file(const string &filename, const string &data);
+    // just a wrapper around clear and append
+    bool rewrite_file(const string &filename, const string &data);
+    // helper for in-place replacements
+    bool replace(string &str, const string &from, const string &to);
+    // calc time since the first time this was called
+    string get_timestamp_since_start();
+};
+
+// map of name => output file
+map<string, output_file> output_files;
 
 // initialize the output files
 bool init_output_files()
 {
-    // clears all the track files (this initially creates them)
-    if (!clear_file(LAST_TRACK_FILE) ||
-        !clear_file(CUR_TRACKS_FILE) ||
-        !clear_file(CUR_TRACK_FILE) ||
-        !clear_file(TRACK_LOG_FILE)) {
-        printf("Failed to clear output files");
-        return false;
+    // retrieve the output files
+    string config_str;
+    while (receive_message(config_str)) {
+        if (config_str == "config:end") {
+            break;
+        }
+        output_file file = output_file(config_str);
+        output_files[file.name] = file;
     }
 
     return true;
 }
 
-// log a song to file, stolen straight from the module code
-void log_track(const string &song)
+void log_track_to_output_file(const string &file, const string &track)
 {
-    // deque of tracks, deque instead of queue for iteration
-    static deque<string> tracks;
+    if (output_files.count(file) <= 0) {
+        return;
+    }
+    output_files[file].log_track(track);
+}
 
-    // store the track in the tracks list
-    tracks.push_front(song);
-    // make sure the list doesn't go beyond config.max_tracks
-    if (tracks.size() > config_max_tracks) {
-        tracks.pop_back();
+output_file::output_file(const string &line) 
+{
+    // format of a line is something like this:
+    //  name=max_lines;offset;mode;format
+    size_t pos = 0;
+    string value;
+    // read out the name up till =
+    pos = line.find_first_of("=");
+    name = line.substr(0, pos);
+    value = line.substr(pos + 1);
+    // max lines
+    pos = value.find_first_of(";");
+    max_lines = strtoul(value.substr(0, pos).c_str(), NULL, 10);
+    value = value.substr(pos + 1);
+    // offset
+    pos = value.find_first_of(";");
+    offset = strtoul(value.substr(0, pos).c_str(), NULL, 10);
+    value = value.substr(pos + 1);
+    // mode
+    pos = value.find_first_of(";");
+    mode = strtoul(value.substr(0, pos).c_str(), NULL, 10);
+    value = value.substr(pos + 1);
+    printf("Loading: [%s]", line.c_str());
+    printf("\tName: %s\n\tmax lines: %u\n\toffset: %u\n\tmode: %u\n",
+        name.c_str(), max_lines, offset, mode);
+    // the full path of the output file
+    path = get_dll_path() + "\\" + name + ".txt";
+    // only clear the output file if not server mode
+    if (!config.use_server && !clear_file(path)) {
+        error("Failed to clear output file: %s", path.c_str());
+    }
+    info("Loaded output file %s", name.c_str());
+}
+
+// log a song to file, stolen straight from the module code
+void output_file::log_track(const string &track_str)
+{
+    // the line being stored defaults to the current track
+    string line = track_str;
+    // but if there is an offset or max lines then we need to
+    // utilize the cache and may need to access past tracks
+    if (max_lines || offset) {
+        // store the line in the cache
+        cached_lines.push_front(line);
+        // then trim the cache to the max lines + offset
+        if (cached_lines.size() > (((size_t)max_lines + offset) + 1)) {
+            cached_lines.pop_back();
+        }
+        // if we haven't cached up till the offset then return
+        if (cached_lines.size() <= offset) {
+            return;
+        }
+        // grab the line at offset out of the cache
+        line = cached_lines.at(offset);
     }
 
-    // update the last x file by iterating tracks and writing
-    if (tracks.size() > 0) {
-        // concatenate the tracks into a single string
-        string tracks_str;
-        for (auto it = tracks.begin(); it != tracks.end(); it++) {
-            tracks_str += it[0] + "\r\n";
+    printf("Logging [%s] to %s...", line.c_str(), name.c_str());
+
+    // if the output file is in prepend mode
+    switch (mode) {
+    case MODE_REPLACE:
+        if (!rewrite_file(path, line)) {
+            printf("Failed to rewrite track in %s", path.c_str());
+        }
+        break;
+    case MODE_APPEND:
+        if (!append_file(path, line)) {
+            printf("Failed to append track to %s", path.c_str());
+        }
+        break;
+    case MODE_PREPEND:
+        // rewrite the entire file in prepend mode
+        for (auto it = cached_lines.begin() + offset + 1; it != cached_lines.end(); it++) {
+            line += it[0] + "\r\n";
         }
         // rewrite the tracks file with all of the lines at once
-        if (!rewrite_file(CUR_TRACKS_FILE, tracks_str)) {
-            printf("Failed to write to tracks file");
+        if (!rewrite_file(path, line)) {
+            printf("Failed to prepend track to %s", path.c_str());
         }
-
-        // rewrite the current track file with only the current track
-        if (!rewrite_file(CUR_TRACK_FILE, tracks.at(0))) {
-            printf("Failed to append to current track file");
-        }
-    }
-    // rewrite the last track file with the previous track
-    if (tracks.size() > 1) {
-        if (!rewrite_file(LAST_TRACK_FILE, tracks.at(1))) {
-            printf("Failed to write last track file");
-        }
-    }
-    // append the artist and track to the global log
-    string log_entry;
-    if (config_use_timestamps) {
-        // timestamp with a space after it
-        log_entry += get_timestamp_since_start() + " ";
-    }
-    // the rest of the current track output
-    log_entry += tracks.front() + "\r\n";
-    if (!append_file(TRACK_LOG_FILE, log_entry)) {
-        printf("Failed to log track to global log");
+        break;
     }
 }
 
 // create and truncate a single file, only call this from the logger thread
-static bool clear_file(const string &filename)
+bool output_file::clear_file(const string &filename)
 {
     // open with CREATE_ALWAYS to truncate any existing file and create any missing
     HANDLE hFile = CreateFile(filename.c_str(), GENERIC_READ|GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
@@ -100,7 +177,7 @@ static bool clear_file(const string &filename)
 }
 
 // append data to a file, only call this from the logger thread
-static bool append_file(const string &filename, const string &data)
+bool output_file::append_file(const string &filename, const string &data)
 {
     // open for append, create new, or open existing
     HANDLE hFile = CreateFile(filename.c_str(), FILE_APPEND_DATA, 0, NULL, CREATE_NEW|OPEN_EXISTING, 0, NULL);
@@ -119,13 +196,13 @@ static bool append_file(const string &filename, const string &data)
 }
 
 // just a wrapper around clear and append
-static bool rewrite_file(const string &filename, const string &data)
+bool output_file::rewrite_file(const string &filename, const string &data)
 {
     return clear_file(filename) && append_file(filename, data);
 }
 
 // helper for in-place replacements
-static bool replace(string& str, const string& from, const string& to) 
+bool output_file::replace(string& str, const string& from, const string& to) 
 {
     size_t start_pos = str.find(from);
     if (start_pos == std::string::npos) {
@@ -136,7 +213,7 @@ static bool replace(string& str, const string& from, const string& to)
 }
 
 // calc time since the first time this was called
-static string get_timestamp_since_start()
+string output_file::get_timestamp_since_start()
 {
     static DWORD start_timestamp = 0;
     if (!start_timestamp) {

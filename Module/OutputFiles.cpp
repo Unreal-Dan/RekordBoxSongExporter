@@ -71,7 +71,7 @@ typedef enum out_tag_enum
     TAG_TIME =          (1 << 16),
 } out_tag_t;
 
-// an output file object
+// a class to describe an output file that will be written 
 class output_file
 {
 public:
@@ -81,6 +81,8 @@ public:
     // function to log a track to an output file
     void log_track(track_data *track);
 
+    // the original configuration line
+    string confline;
     // public info of output files
     string name;
     string format;
@@ -164,6 +166,21 @@ void load_output_files(ifstream &in)
     while (getline(in, line)) {
         output_files.push_back(output_file(line));
     }
+}
+
+// the number of loaded output files
+size_t num_output_files()
+{
+    return output_files.size();
+}
+
+// get the output file config string at index
+std::string get_output_file_confline(size_t index)
+{
+    if (output_files.size() <= index) {
+        return "";
+    }
+    return output_files[index].confline;
 }
 
 // Push the index of a deck which has changed into the queue 
@@ -281,6 +298,8 @@ output_file::output_file(const string &line)
     //  name=max_lines;offset;mode;format
     size_t pos = 0;
     string value;
+    // the confline is the entire input line
+    confline = line;
     // read out the name up till =
     pos = line.find_first_of("=");
     name = line.substr(0, pos);
@@ -302,25 +321,26 @@ output_file::output_file(const string &line)
     info("Loading: [%s]", line.c_str());
     info("\tName: %s\n\tmax lines: %u\n\toffset: %u\n\tmode: %u\n\tformat: %s\n",
         name.c_str(), max_lines, offset, mode, format.c_str());
-    // check for tags and set bitflags so that replacements
-    // later will be optimized
-    if (format.find("%title%") != string::npos) { format_tags |= TAG_TITLE; }
-    if (format.find("%artist%") != string::npos) { format_tags |= TAG_ARTIST; }
-    if (format.find("%album%") != string::npos) { format_tags |= TAG_ALBUM; }
-    if (format.find("%genre%") != string::npos) { format_tags |= TAG_GENRE; }
-    if (format.find("%label%") != string::npos) { format_tags |= TAG_LABEL; }
-    if (format.find("%key%") != string::npos) { format_tags |= TAG_KEY; }
-    if (format.find("%orig_artist%") != string::npos) { format_tags |= TAG_ORIG_ARTIST; }
-    if (format.find("%remixer%") != string::npos) { format_tags |= TAG_REMIXER; }
-    if (format.find("%composer%") != string::npos) { format_tags |= TAG_COMPOSER; }
-    if (format.find("%comment%") != string::npos) { format_tags |= TAG_COMMENT; }
-    if (format.find("%mix_name%") != string::npos) { format_tags |= TAG_MIX_NAME; }
-    if (format.find("%lyricist%") != string::npos) { format_tags |= TAG_LYRICIST; }
-    if (format.find("%date_created%") != string::npos) { format_tags |= TAG_DATE_CREATED; }
-    if (format.find("%date_added%") != string::npos) { format_tags |= TAG_DATE_ADDED; }
-    if (format.find("%track_number%") != string::npos) { format_tags |= TAG_TRACK_NUMBER; }
-    if (format.find("%bpm%") != string::npos) { format_tags |= TAG_BPM; }
-    if (format.find("%time%") != string::npos) { format_tags |= TAG_TIME; }
+    // check for tags and set bitflags so that performing 
+    // replacements later will be optimized because we will
+    // know exactly which tags need to be replaced
+    if (format.find("%title%") != string::npos)         { format_tags |= TAG_TITLE; }
+    if (format.find("%artist%") != string::npos)        { format_tags |= TAG_ARTIST; }
+    if (format.find("%album%") != string::npos)         { format_tags |= TAG_ALBUM; }
+    if (format.find("%genre%") != string::npos)         { format_tags |= TAG_GENRE; }
+    if (format.find("%label%") != string::npos)         { format_tags |= TAG_LABEL; }
+    if (format.find("%key%") != string::npos)           { format_tags |= TAG_KEY; }
+    if (format.find("%orig_artist%") != string::npos)   { format_tags |= TAG_ORIG_ARTIST; }
+    if (format.find("%remixer%") != string::npos)       { format_tags |= TAG_REMIXER; }
+    if (format.find("%composer%") != string::npos)      { format_tags |= TAG_COMPOSER; }
+    if (format.find("%comment%") != string::npos)       { format_tags |= TAG_COMMENT; }
+    if (format.find("%mix_name%") != string::npos)      { format_tags |= TAG_MIX_NAME; }
+    if (format.find("%lyricist%") != string::npos)      { format_tags |= TAG_LYRICIST; }
+    if (format.find("%date_created%") != string::npos)  { format_tags |= TAG_DATE_CREATED; }
+    if (format.find("%date_added%") != string::npos)    { format_tags |= TAG_DATE_ADDED; }
+    if (format.find("%track_number%") != string::npos)  { format_tags |= TAG_TRACK_NUMBER; }
+    if (format.find("%bpm%") != string::npos)           { format_tags |= TAG_BPM; }
+    if (format.find("%time%") != string::npos)          { format_tags |= TAG_TIME; }
     // the full path of the output file
     path = get_dll_path() + "\\" + name + ".txt";
     // only clear the output file if not server mode
