@@ -1,8 +1,9 @@
 #include <Windows.h>
 
+#include <sstream>
 #include <string>
+#include <vector>
 #include <deque>
-#include <map>
 
 #include "Server.h"
 #include "Config.h"
@@ -54,30 +55,46 @@ private:
 };
 
 // map of name => output file
-map<string, output_file> output_files;
+vector<output_file> output_files;
 
 // initialize the output files
 bool init_output_files()
 {
+    // create folder for output files
+    if (!CreateDirectory(OUTPUT_FOLDER, NULL)) {
+        if (GetLastError() != ERROR_ALREADY_EXISTS) {
+            printf("Failed to created output directory\n");
+            return false;
+        }
+    }
+
     // retrieve the output files
     string config_str;
-    while (receive_message(config_str)) {
-        if (config_str == "config:end") {
+    bool done_config = false;
+    do {
+        if (!receive_message(config_str)) {
             break;
         }
-        output_file file = output_file(config_str);
-        output_files[file.name] = file;
-    }
+        istringstream iss(config_str);
+        string line; 
+        while (getline(iss, line)) {
+            if (line == "config:end") {
+                done_config = true;
+                break;
+            }
+            output_files.push_back(output_file(line));
+        }
+    } while (!done_config);
 
-    return true;
+    return done_config;
 }
 
-void log_track_to_output_file(const string &file, const string &track)
+void log_track_to_output_file(uint32_t output_file_id, const string &track)
 {
-    if (output_files.count(file) <= 0) {
+    if (output_files.size() <= output_file_id) {
         return;
     }
-    output_files[file].log_track(track);
+    output_files[output_file_id].log_track(track);
 }
 
 output_file::output_file(const string &line) 
@@ -102,16 +119,16 @@ output_file::output_file(const string &line)
     pos = value.find_first_of(";");
     mode = strtoul(value.substr(0, pos).c_str(), NULL, 10);
     value = value.substr(pos + 1);
-    printf("Loading: [%s]", line.c_str());
+    printf("Loading: [%s]\n", line.c_str());
     printf("\tName: %s\n\tmax lines: %u\n\toffset: %u\n\tmode: %u\n",
         name.c_str(), max_lines, offset, mode);
     // the full path of the output file
-    path = get_dll_path() + "\\" + name + ".txt";
-    // only clear the output file if not server mode
-    if (!config.use_server && !clear_file(path)) {
-        error("Failed to clear output file: %s", path.c_str());
+    path = OUTPUT_FOLDER "\\" + name + ".txt";
+    // clear the output file 
+    if (!clear_file(path)) {
+        printf("Failed to clear output file: %s\n", path.c_str());
     }
-    info("Loaded output file %s", name.c_str());
+    printf("Loaded output file %s\n", name.c_str());
 }
 
 // log a song to file, stolen straight from the module code
@@ -136,28 +153,36 @@ void output_file::log_track(const string &track_str)
         line = cached_lines.at(offset);
     }
 
-    printf("Logging [%s] to %s...", line.c_str(), name.c_str());
+    printf("Logging [%s] to %s...\n", line.c_str(), name.c_str());
 
     // if the output file is in prepend mode
     switch (mode) {
     case MODE_REPLACE:
         if (!rewrite_file(path, line)) {
-            printf("Failed to rewrite track in %s", path.c_str());
+            printf("Failed to rewrite track in %s\n", path.c_str());
         }
         break;
     case MODE_APPEND:
-        if (!append_file(path, line)) {
-            printf("Failed to append track to %s", path.c_str());
+        if (!append_file(path, line + "\r\n")) {
+            printf("Failed to append track to %s\n", path.c_str());
         }
         break;
     case MODE_PREPEND:
-        // rewrite the entire file in prepend mode
-        for (auto it = cached_lines.begin() + offset + 1; it != cached_lines.end(); it++) {
-            line += it[0] + "\r\n";
+        // if there is any cached lines we need to implode them and
+        // rewrite the file with that instead
+        if (cached_lines.size() > 0) {
+            // rewrite the entire file in prepend mode
+            auto it = cached_lines.begin() + offset;
+            size_t lines = 0;
+            string content;
+            do {
+                content += lines ? "\r\n" + it[0] : it[0];
+            } while (++it != cached_lines.end() && ++lines < max_lines);
+            line = content;
         }
-        // rewrite the tracks file with all of the lines at once
+        // rewrite the file with the line which is actually many lines
         if (!rewrite_file(path, line)) {
-            printf("Failed to prepend track to %s", path.c_str());
+            printf("Failed to prepend track to %s\n", path.c_str());
         }
         break;
     }
@@ -169,7 +194,7 @@ bool output_file::clear_file(const string &filename)
     // open with CREATE_ALWAYS to truncate any existing file and create any missing
     HANDLE hFile = CreateFile(filename.c_str(), GENERIC_READ|GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
-        printf("Failed to open for truncate %s (%d)", filename.c_str(), GetLastError());
+        printf("Failed to open for truncate %s (%d)\n", filename.c_str(), GetLastError());
         return false;
     }
     CloseHandle(hFile);
@@ -182,12 +207,12 @@ bool output_file::append_file(const string &filename, const string &data)
     // open for append, create new, or open existing
     HANDLE hFile = CreateFile(filename.c_str(), FILE_APPEND_DATA, 0, NULL, CREATE_NEW|OPEN_EXISTING, 0, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
-        printf("Failed to open file for append %s (%d)", filename.c_str(), GetLastError());
+        printf("Failed to open file for append %s (%d)\n", filename.c_str(), GetLastError());
         return false;
     }
     DWORD written = 0;
     if (!WriteFile(hFile, data.c_str(), (DWORD)data.length(), &written, NULL)) {
-        printf("Failed to write to %s (%d)", filename.c_str(), GetLastError());
+        printf("Failed to write to %s (%d)\n", filename.c_str(), GetLastError());
         CloseHandle(hFile);
         return false;
     }

@@ -470,7 +470,6 @@ static void do_launch()
 {
     // save the configurations
     config_save();
-    return;
     // get the launch path for rekordbox
     string path = get_window_text(hwndPathEdit);
     // launch rekordbox and inject the dll

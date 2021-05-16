@@ -3,10 +3,13 @@
 
 // don't think this can be anything else
 // if you change this things will probably break
-#define NUM_DECKS 4
+#define NUM_DECKS       4
 
 // port for network comms
-#define DEFAULT_PORT "22345"
+#define DEFAULT_PORT    "22345"
+
+// name of output folder
+#define OUTPUT_FOLDER   "OutputFiles"
 
 // enum of versions we support
 typedef enum rbox_version_enum

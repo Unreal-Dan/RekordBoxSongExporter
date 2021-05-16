@@ -32,24 +32,43 @@ static string get_config_path()
     return configPath;
 }
 
+bool config_default()
+{
+    // the only config that really needs to be initialized
+    // for a default setup is the server ip, the rest will
+    // automatically be filled with good default values
+    // because the version checkbox will select the latest
+    // version which will populate the path textbox
+    config.server_ip = "127.0.0.1";
+
+    // default the output files
+    default_output_files();
+    return true;
+}
+
 bool config_load()
 {
     ifstream in(get_config_path());
+    // if the config is missing just default the configs
+    if (!in.is_open()) {
+        return config_default();
+    }
     string line;
     bool is_legacy_config = false;
     while (getline(in, line)) {
         if (line[0] == '[') {
             string heading = line.substr(1, line.find_first_of("]") - 1);
-            // Detect legacy config file
+            // Detect new config file
             if (heading == "RBSongExporterConfig") {
                 is_legacy_config = true;
             } 
-            // start of output filessection
+            // start of output files section
             if (heading == "Output Files") {
                 break;
             }
             continue;
         }
+        // split each config key=value
         size_t pos = line.find_first_of("=");
         string key = line.substr(0, pos);
         string value = line.substr(pos + 1);
@@ -69,6 +88,7 @@ bool config_load()
             config.server_ip = value;
         }
     }
+    // if we loaded an outdated config file then fill defaults
     if (is_legacy_config) {
         default_output_files();
     } else {

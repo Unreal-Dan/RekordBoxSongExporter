@@ -37,17 +37,24 @@ int main()
             break;
         }
 
-        string file_track;
+        string message;
         // each message received will get passed into the logging system
-        while (receive_message(file_track)) {
-            size_t pos = file_track.find_first_of("=");
-            if (pos == string::npos) {
-                continue;
+        while (1) {
+            if (!receive_message(message)) {
+                break;
             }
-            string file = file_track.substr(0, pos);
-            string track = file_track.substr(pos +1);
-            printf("Logging track [%s] to %s\n", track.c_str(), file.c_str());
-            log_track_to_output_file(file, track);
+            istringstream iss(message);
+            string line;
+            while (getline(iss, line)) {
+                size_t pos = line.find_first_of(":");
+                if (pos == string::npos) {
+                    continue;
+                }
+                string file_id_str = line.substr(0, pos);
+                string track = line.substr(pos + 1);
+                uint32_t file_id = strtoul(file_id_str.c_str(), NULL, 0);
+                log_track_to_output_file(file_id, track);
+            }
         }
 
         printf("Connection closed\n");

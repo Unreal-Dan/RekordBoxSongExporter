@@ -97,7 +97,8 @@ bool init_network_client()
 // send a message
 bool send_network_message(const string &message)
 {
-    if (send(sock, message.c_str(), (int)message.length(), 0 ) == SOCKET_ERROR) {
+    string line = message + "\n";
+    if (send(sock, line.c_str(), (int)line.length(), 0 ) == SOCKET_ERROR) {
         // most likely server closed
         error("send failed with error: %d", WSAGetLastError());
         return false;
@@ -133,4 +134,5 @@ static bool send_configuration()
     if (!send_network_message("config:end")) {
         return false;
     }
+    return true;
 }

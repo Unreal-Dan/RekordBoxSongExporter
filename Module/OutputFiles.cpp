@@ -94,7 +94,12 @@ public:
     uint32_t offset;
     uint32_t max_lines;
 
+    // a unique ID for sending the track to server
+    uint32_t id;
+
 private:
+    // a counter to give each module a unique incrementing ID
+    static uint32_t id_counter;
 
     // cache previous lines to support offset
     // static because we want to hold onto the previous tracks so 
@@ -119,6 +124,9 @@ private:
     // calc time since the first time this was called
     string get_timestamp_since_start();
 };
+
+// the ID counter for output files
+uint32_t output_file::id_counter = 0;
 
 // Pop the next deck change index out of the queue, only meant to
 // be called from the logging thread so making this static
@@ -154,7 +162,20 @@ bool initialize_output_files()
         error("Failed to create logging semaphore");
         return false;
     }
-    success("Created logging semaphore");
+
+    // if not in server mode
+    if (!config.use_server) {
+        // create folder for output files
+        string out_folder = get_dll_path() + "\\" OUTPUT_FOLDER;
+        if (!CreateDirectory(out_folder.c_str(), NULL)) {
+            if (GetLastError() != ERROR_ALREADY_EXISTS) {
+                error("Failed to created output directory");
+                return false;
+            }
+        }
+    }
+
+    success("Initialized output folder and files");
 
     return true;
 }
@@ -298,6 +319,8 @@ output_file::output_file(const string &line)
     //  name=max_lines;offset;mode;format
     size_t pos = 0;
     string value;
+    // grab the next id
+    id = id_counter++;
     // the confline is the entire input line
     confline = line;
     // read out the name up till =
@@ -342,12 +365,12 @@ output_file::output_file(const string &line)
     if (format.find("%bpm%") != string::npos)           { format_tags |= TAG_BPM; }
     if (format.find("%time%") != string::npos)          { format_tags |= TAG_TIME; }
     // the full path of the output file
-    path = get_dll_path() + "\\" + name + ".txt";
+    path = get_dll_path() + "\\" OUTPUT_FOLDER "\\" + name + ".txt";
     // only clear the output file if not server mode
     if (!config.use_server && !clear_file(path)) {
         error("Failed to clear output file: %s", path.c_str());
     }
-    info("Loaded output file %s", name.c_str());
+    info("Loaded output file: %s", name.c_str());
 }
 
 // function to log a track to an output file
@@ -359,7 +382,7 @@ void output_file::log_track(track_data *track)
     // server mode?
     if (config.use_server) {
         // in server mode send the filename + track to the server for logging
-        string message = name + ":" + track_str;
+        string message = to_string(id) + ":" + track_str;
         send_network_message(message.c_str());
         info("Sending track [%s] to file %s at server %s...",
             track_str.c_str(), name.c_str(), config.server_ip.c_str());
@@ -430,16 +453,24 @@ void output_file::update_output_file(const string &track_str)
         }
         break;
     case MODE_APPEND:
-        if (!append_file(path, line)) {
+        if (!append_file(path, line + "\r\n")) {
             error("Failed to append track to %s", path.c_str());
         }
         break;
     case MODE_PREPEND:
-        // rewrite the entire file in prepend mode
-        for (auto it = cached_lines.begin() + offset + 1; it != cached_lines.end(); it++) {
-            line += it[0] + "\r\n";
+        // if there is any cached lines we need to implode them and
+        // rewrite the file with that instead
+        if (cached_lines.size() > 0) {
+            // rewrite the entire file in prepend mode
+            auto it = cached_lines.begin() + offset;
+            size_t lines = 0;
+            string content;
+            do {
+                content += lines ? "\r\n" + it[0] : it[0];
+            } while (++it != cached_lines.end() && ++lines < max_lines);
+            line = content;
         }
-        // rewrite the tracks file with all of the lines at once
+        // rewrite the file with the line which is actually many lines
         if (!rewrite_file(path, line)) {
             error("Failed to prepend track to %s", path.c_str());
         }
