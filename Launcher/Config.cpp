@@ -32,26 +32,12 @@ static string get_config_path()
     return configPath;
 }
 
-bool config_default()
-{
-    // the only config that really needs to be initialized
-    // for a default setup is the server ip, the rest will
-    // automatically be filled with good default values
-    // because the version checkbox will select the latest
-    // version which will populate the path textbox
-    config.server_ip = "127.0.0.1";
-
-    // default the output files
-    default_output_files();
-    return true;
-}
-
 bool config_load()
 {
     ifstream in(get_config_path());
     // if the config is missing just default the configs
     if (!in.is_open()) {
-        return config_default();
+        return false;
     }
     string line;
     bool is_legacy_config = false;

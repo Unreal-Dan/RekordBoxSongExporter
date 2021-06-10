@@ -264,10 +264,28 @@ static LRESULT CALLBACK version_combo_subproc(HWND hwnd, UINT msg, WPARAM wParam
     return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
 
+static void config_default()
+{
+    // the only config that really needs to be initialized
+    // for a default setup is the server ip, the rest will
+    // automatically be filled with good default values
+    // because the version checkbox will select the latest
+    // version which will populate the path textbox
+    config.server_ip = "127.0.0.1";
+
+    // the default version is the first entry in versions table
+    config.version = versions[0].name + sizeof("Rekordbox");
+
+    // default the output files
+    default_output_files();
+}
+
 static void do_create(HWND hwnd)
 {
     // load the configuration
-    config_load();
+    if (!config_load()) {
+        config_default();
+    }
 
     // set icon
     HICON hIcon = LoadIcon(imageBase, MAKEINTRESOURCE(IDI_ICON1));
