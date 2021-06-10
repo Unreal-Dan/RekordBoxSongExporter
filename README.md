@@ -4,17 +4,7 @@ Tested on Win10 and Win8.1
 
 ### You can find prebuilt releases [here](https://github.com/Unreal-Dan/RekordBoxSongExporter/releases)
 
-![Launcher Image](/launcher.png?raw=true "Launcher")
-
-## tl;dr
-
-If you run Rekordbox and OBS on different PCs then you have to run the Server on the 
-streaming pc first, otherwise ignore the Server.
-
-Use the Launcher to start Rekordbox and then create a GDI text object in OBS and point
-it at the file called current_track.txt. 
-
-Turn on chatlog mode on the GDI text object in OBS and you're good to go.
+<img src="/launcher_new.png" />
 
 ## What does it do
 
@@ -31,6 +21,38 @@ the track information along with other unique options.
 The optional server allows you to send the track information to another PC and
 perform the logging on that pc instead. For situations where Rekordbox may be running
 on a separate PC from OBS.
+
+## Getting Started
+
+If you run Rekordbox and OBS on different PCs then you must start the Server on the 
+streaming pc first, otherwise ignore the Server.
+
+Place the RekordboxSongExporter launcher and module in a folder somewhere like your
+desktop, do not place the Launcher in the Program Files directory of Rekordbox because
+Windows will block it from creating files there. 
+
+If you just want to get up and running then the default configuration should be good
+right out of the box, you shouldn't need to touch anything except the version dropdown
+to ensure the software is interfacing with the correct version of Rekordbox.
+
+Use the Launcher to start Rekordbox and a folder called OutputFiles should appear in
+the same directory as the launcher.
+
+If you have any issues generating the OutputFiles folder then try moving the Launcher 
+and Module to a different location and retrying, it's possible Windows 10 may be blocking
+the creation of files in the chosen location.
+
+Open OBS and create a GDI text object then enable 'Read From File' and point it at one 
+of the files that were created inside the OutputFiles directory. These filenames should
+be exactly the same as the list of Output Files that were configured in the launcher.
+
+Turn on chatlog mode on the GDI text object in OBS and you're good to go.
+
+## Understanding the Launcher
+
+<p align="center">
+  <img src="/launcher_explained.png" />
+</p>
 
 ## How does it work
 
@@ -54,9 +76,9 @@ rest assured the song will still be logged correctly.
 
 This works with either two or four decks.
 
-## How to use it
+## Detailed Usage Instructions
 
- 1. Ensure the Loader and Module are both in the same folder on the same PC as Rekordbox.
+ 1. Ensure the Loader and Module are both in the same folder as each other in a user writable location (not Program Files or C:/)
 
     1a. If you're running Rekordbox and OBS on the same PC you can ignore the Server.
 
@@ -67,60 +89,26 @@ This works with either two or four decks.
 
  3. You may close the launcher once the module has been injected into Rekordbox.
 
- 4. Once the hack is loaded four output files will appear.
+ 4. Once the hack is loaded a folder called OutputFiles will appear.
  
-    4a. If you're running locally the files will appear in the same folder as the module
+    4a. If you're running locally the folder will appear in the same location as as the launcher/module
     
-    4b. If you're running the Server then the files will appear in the Server folder
+    4b. If you're running the Server then the folder will appear in the same locaiton as the Server
  
- 5. Create a GDI text object in OBS and point it at ```current_track.txt```
+ 5. Create a GDI text object in OBS and point it at one of the output files
  
  6. Make sure to enable chatlog mode on the GDI text object
 
-The four output files are dynamically updated with the latest track in various ways:
-
-### current_track.txt
-
-This file contains one line with the current track playing, nothing else.
-
-### last_track.txt
-
-This file is also one line with only the last track to play, nothing else.
-
-### current_tracks.txt
-
-This contains a rotating list of tracks capped to a maximum number of lines.  
-The newest track is at the top and oldest is at the bottom.  
-The number of lines is configurable in the launcher.  
-
-### played_tracks.txt
-
-This is a full log of all tracks played for the entire session.  
-The oldest track will be at the top and newest at bottom.  
-This file can include (hh:mm:ss) timestamp prefixes if 'Timestamps' is enabled.  
+All of the output files will dynamically update with the latest track info based on the configuration
 
 #### NOTE: All output files are wiped when the module is injected
 
-So if you want to save your played_tracks.txt file inbetween sessions then be sure 
+If you want to save your TrackList file inbetween sessions then be sure 
 to make a copy before launching the hack again.
 
-## Configurations
+### Output Format Placeholders
 
-The UI offers configurations for:
-
-### Version
-
-The version of Rekordbox being launched/hooked (only 6.5.x and 5.8.5 at the moment)
-
-### Specific Path
-
-The path of Rekordbox can be overridden to any location, the version dropdown is still 
-important because the module works differently for each version.
-The path is not important if you are running Rekordbox before pressing the Launch button.
-
-### Output Format
-
-The format of each line that is logged to all four files.
+The format can be enriched with various tags which are replaced with the track information in realtime.
 
 The available placeholders in the output format include (so far):
 ```
@@ -145,51 +133,6 @@ The available placeholders in the output format include (so far):
 
 An example format might be: ```%artist% - %title% (bpm: %bpm%)```
 
-The 'Timestamps' checkbox option (described below) controls built-in timestamps *only* 
-on the played_tracks.txt file, it does not control the ```%time%``` placeholder.
-
-If you use the ```%time%``` placeholder and enable 'Timestamps' then you will end up 
-with two timestamps in played_tracks.txt
-
-### Cur Tracks Count
-
-The number of lines to cap the current_tracks.txt file.
-
-The file is truncated to the configured number of lines as the track list rotates 
-through it.
-
-This is useful for OBS 'chatlog' mode with GDI text object because OBS requires a 
-'lines' count and will not read the file if the line count goes beyond the limit.
-
-Setting this to for example 10 would allow you to list the 'last 10 tracks' played 
-at any given time.
-
-### Timestamps
-
-This toggles a built-in timestamp on each line of played_tracks.txt.  
-The timer starts when the first song is played and doesn't ever stop.  
-This doesn't have any control over the ```%time%``` placeholder. 
-
-## OBS Integration
-
-The trick to integrating with OBS is to create a Text GDI object and select the 
-'read from file' option.
-
-Point the text GDI object at any of the four files and turn on 'chatlog' mode to 
-ensure the object is refreshed anytime the file changes content.
-
-You will need to set a 'lines' count in OBS, for displays such as 'current song' 
-you would want to set this to 1.
-
-If you wanted to have a list of the 'last 15 songs' which continuosly rotates then 
-you would set the launcher config for 'Cur Tracks Count' to 15, and similarly set 
-the OBS 'lines' count in the GDI text object to 15. Then you would point the file 
-at current_tracks.txt
-
-By using GDI text objects in OBS your track listings will update in realtime in 
-about ~2 seconds, the 2 second delay is from OBS polling the chatlog file, not 
-because this hack is delayed in writing the output.
-
 ## Server Mode
 
 If you are running OBS on the same PC as Rekordbox then you don't need the server,
@@ -200,6 +143,5 @@ The server will listen for connections from the module on port ```22345``` (TCP)
 Standard port forwarding rules apply for connections outside of your local network, 
 the connection is not encrypted and this is intended for LAN use.
 
-At the moment the server lacks dynamic configuration capabilities, the only way to
-configure the server is to recompile it with different options. Dynamic configuration
-may come in the future if it's wanted.
+The server should utilize all the same configuration options that are setup in the
+Launcher.
