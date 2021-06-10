@@ -107,21 +107,18 @@ output_file::output_file(const string &line)
     pos = line.find_first_of("=");
     name = line.substr(0, pos);
     value = line.substr(pos + 1);
-    // max lines
+    // mode
     pos = value.find_first_of(";");
-    max_lines = strtoul(value.substr(0, pos).c_str(), NULL, 10);
+    mode = strtoul(value.substr(0, pos).c_str(), NULL, 10);
     value = value.substr(pos + 1);
     // offset
     pos = value.find_first_of(";");
     offset = strtoul(value.substr(0, pos).c_str(), NULL, 10);
     value = value.substr(pos + 1);
-    // mode
+    // max lines
     pos = value.find_first_of(";");
-    mode = strtoul(value.substr(0, pos).c_str(), NULL, 10);
+    max_lines = strtoul(value.substr(0, pos).c_str(), NULL, 10);
     value = value.substr(pos + 1);
-    printf("Loading: [%s]\n", line.c_str());
-    printf("\tName: %s\n\tmax lines: %u\n\toffset: %u\n\tmode: %u\n",
-        name.c_str(), max_lines, offset, mode);
     // the full path of the output file
     path = OUTPUT_FOLDER "\\" + name + ".txt";
     // clear the output file 
@@ -168,10 +165,10 @@ void output_file::log_track(const string &track_str)
         }
         break;
     case MODE_PREPEND:
-        // if there is any cached lines we need to implode them and
-        // rewrite the file with that instead
+        // Rewrite the entire file in prepend mode.
         if (cached_lines.size() > 0) {
-            // rewrite the entire file in prepend mode
+            // If there is any cached lines we need to implode them and
+            // rewrite the file with that instead
             auto it = cached_lines.begin() + offset;
             size_t lines = 0;
             string content;

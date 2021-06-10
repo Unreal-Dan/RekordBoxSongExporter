@@ -327,23 +327,20 @@ output_file::output_file(const string &line)
     pos = line.find_first_of("=");
     name = line.substr(0, pos);
     value = line.substr(pos + 1);
-    // max lines
+    // mode
     pos = value.find_first_of(";");
-    max_lines = strtoul(value.substr(0, pos).c_str(), NULL, 10);
+    mode = strtoul(value.substr(0, pos).c_str(), NULL, 10);
     value = value.substr(pos + 1);
     // offset
     pos = value.find_first_of(";");
     offset = strtoul(value.substr(0, pos).c_str(), NULL, 10);
     value = value.substr(pos + 1);
-    // mode
+    // max lines
     pos = value.find_first_of(";");
-    mode = strtoul(value.substr(0, pos).c_str(), NULL, 10);
+    max_lines = strtoul(value.substr(0, pos).c_str(), NULL, 10);
     value = value.substr(pos + 1);
     // the format is everything left over
     format = value;
-    info("Loading: [%s]", line.c_str());
-    info("\tName: %s\n\tmax lines: %u\n\toffset: %u\n\tmode: %u\n\tformat: %s\n",
-        name.c_str(), max_lines, offset, mode, format.c_str());
     // check for tags and set bitflags so that performing 
     // replacements later will be optimized because we will
     // know exactly which tags need to be replaced
@@ -458,16 +455,17 @@ void output_file::update_output_file(const string &track_str)
         }
         break;
     case MODE_PREPEND:
-        // if there is any cached lines we need to implode them and
-        // rewrite the file with that instead
+        // Rewrite the entire file in prepend mode.
         if (cached_lines.size() > 0) {
-            // rewrite the entire file in prepend mode
+            // If there is any cached lines we need to implode them and
+            // rewrite the file with that instead
             auto it = cached_lines.begin() + offset;
             size_t lines = 0;
             string content;
             do {
                 content += lines ? "\r\n" + it[0] : it[0];
             } while (++it != cached_lines.end() && ++lines < max_lines);
+            // replace the 'line' with the multiline imploded cache
             line = content;
         }
         // rewrite the file with the line which is actually many lines

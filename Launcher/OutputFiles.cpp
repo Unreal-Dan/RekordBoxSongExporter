@@ -17,17 +17,17 @@ output_file::output_file(const string &line)
     pos = line.find_first_of("=");
     name = line.substr(0, pos);
     value = line.substr(pos + 1);
-    // max lines
+    // mode
     pos = value.find_first_of(";");
-    max_lines = strtoul(value.substr(0, pos).c_str(), NULL, 10);
+    mode = strtoul(value.substr(0, pos).c_str(), NULL, 10);
     value = value.substr(pos + 1);
     // offset
     pos = value.find_first_of(";");
     offset = strtoul(value.substr(0, pos).c_str(), NULL, 10);
     value = value.substr(pos + 1);
-    // mode
+    // max lines
     pos = value.find_first_of(";");
-    mode = strtoul(value.substr(0, pos).c_str(), NULL, 10);
+    max_lines = strtoul(value.substr(0, pos).c_str(), NULL, 10);
     value = value.substr(pos + 1);
     // the format is everything left over
     format = value;
@@ -43,9 +43,9 @@ output_file::output_file() :
 string output_file::to_line()
 {
     return name + "=" +
-        to_string(max_lines) + ";" +
-        to_string(offset) + ";" +
         to_string(mode) + ";" +
+        to_string(offset) + ";" +
+        to_string(max_lines) + ";" +
         format;
 }
 
@@ -161,14 +161,7 @@ void set_outfile_max_lines(uint32_t index, uint32_t max_lines)
 // load in default output files
 void default_output_files()
 {
-    static const char *default_files[] = {
-        "TrackTitle=0;0;0;%title%",
-        "TrackArtist=0;0;0;%artist%",
-        "LastTrackTitle=0;1;0;%title%",
-        "LastTrackArtist=0;1;0;%artist%",
-        "TrackList=0;0;1;%time% %artist% - %title%",
-    };
-
+    static const char *default_files[] = DEFAULT_OUTPUT_FILES;
     for (size_t i = 0; i < sizeof(default_files) / sizeof(default_files[0]); ++i) {
         output_files.push_back(output_file(default_files[i]));
     }
