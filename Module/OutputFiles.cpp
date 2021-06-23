@@ -178,17 +178,21 @@ bool initialize_output_files()
         }
     }
 
+    // process the output file strings in the config into actual output_file objects
+    load_output_files();
+
     success("Initialized output folder and files");
 
     return true;
 }
 
 // called by config loader when it's loading the config file
-void load_output_files(ifstream &in)
+void load_output_files()
 {
-    string line;
-    while (getline(in, line)) {
-        output_files.push_back(output_file(line));
+    // iterate the vector of output file strings in config and
+    // process them into output file objects
+    for (auto it = config.output_files.begin(); it != config.output_files.end(); ++it) {
+        output_files.push_back(output_file(*it));
     }
 }
 

@@ -67,7 +67,10 @@ bool initialize_config()
             config.server_ip = value;
         }
     }
-    load_output_files(in);
+    // read out all the output file config strings into a vector
+    while (getline(in, line)) {
+        config.output_files.push_back(line);
+    }
     return true;
 }
 

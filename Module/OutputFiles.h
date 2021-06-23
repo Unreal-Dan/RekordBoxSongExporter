@@ -5,7 +5,7 @@
 bool initialize_output_files();
 
 // load output files from config stream
-void load_output_files(std::ifstream &in);
+void load_output_files();
 
 // the number of loaded output files
 size_t num_output_files();

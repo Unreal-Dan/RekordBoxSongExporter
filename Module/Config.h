@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 #include <string>
 
 // don't think this can be anything else
@@ -34,6 +35,8 @@ public:
     bool use_server;
     // a server ip if there is one
     std::string server_ip;
+    // a vector of output file config strings
+    std::vector<std::string> output_files;
 };
 
 // global config object
