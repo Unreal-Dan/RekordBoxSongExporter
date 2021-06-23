@@ -78,10 +78,9 @@ bool config_load()
     }
     // use the new version number and latest version of rekordbox
     if (is_upgrade) {
-        // set the version to latest and the path to empty so the
-        // path will auto-populate based on the selected version
+        // set the rbox version and path to the latest possible
         config.rbox_version = get_latest_version_number();
-        config.rbox_path = "";
+        config.rbox_path = get_latest_version_path();
     }
     // if we loaded a legacy config (pre 3.0) config file
     if (is_legacy_config) {

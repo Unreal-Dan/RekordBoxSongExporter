@@ -24,5 +24,8 @@ const char *get_latest_version_name();
 // the latest version number of rekordbox (ex: 6.5.2)
 const char *get_latest_version_number();
 
+// the latest version path of rekordbox 
+const char *get_latest_version_path();
+
 // get the number of version objects
 size_t num_versions();
