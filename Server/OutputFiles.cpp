@@ -1,6 +1,7 @@
 #include <Windows.h>
 
 #include <sstream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <deque>
@@ -42,6 +43,8 @@ private:
 
     // helper routines
 
+    // read a file and append it to another in blocks
+    bool block_copy(const string &source, const string &dest);
     // create and truncate a single file, only call this from the logger thread
     bool clear_file(const string &filename);
     // append data to a file, only call this from the logger thread
@@ -177,12 +180,65 @@ void output_file::log_track(const string &track_str)
             } while (++it != cached_lines.end() && ++lines < max_lines);
             line = content;
         }
-        // rewrite the file with the line which is actually many lines
-        if (!rewrite_file(path, line)) {
-            printf("Failed to prepend track to %s\n", path.c_str());
+        if (max_lines > 0) {
+            // rewrite the file with the line which is actually many lines
+            if (!rewrite_file(path, line)) {
+                printf("Failed to prepend track to %s", path.c_str());
+            }
+        } else {
+            string temp_path = path + ".tmp";
+            // otherwise if we're in unlimited prepend mode we need to use a temp file
+            if (!rewrite_file(temp_path, line)) {
+                printf("Failed to prepend track to %s", path.c_str());
+            }
+            // append the old output file onto the temp file
+            if (!block_copy(path, temp_path)) {
+                printf("Failed to block copy %s to %s", path.c_str(), temp_path.c_str());
+            }
+            // rename the temp file to the output file
+            if (!MoveFileEx(temp_path.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+                printf("Failed to rename %s to %s (%d)", temp_path.c_str(), path.c_str(), GetLastError());
+            }
         }
         break;
     }
+}
+
+// read a file and append it to another in blocks
+bool output_file::block_copy(const string &source, const string &dest)
+{
+    char block[4096] = { 0 };
+    bool newline = false;
+    // open file
+    fstream in;
+    fstream out;
+    in.open(source, ios::binary | ios::in);
+    out.open(dest, ios::binary | ios::out | ios::app);
+
+    size_t amt_read = 0;
+
+    out.seekp(0, ios_base::end);
+
+    // read blocks of data and append data to output
+    do {
+        // read block
+        in.read(block, sizeof(block));
+        amt_read = in.gcount();
+        // if there is no content to append then bail out 
+        // and don't add the newline or anything
+        if (!amt_read) {
+            break;
+        }
+        // need to append a newline before the new content
+        if (!newline) {
+            newline = true;
+            out.write("\r\n", 2);
+        }
+        out.write(block, amt_read);
+    } while (!in.eof());
+    in.close();
+    out.close();
+    return true;
 }
 
 // create and truncate a single file, only call this from the logger thread
