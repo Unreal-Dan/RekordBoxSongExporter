@@ -97,6 +97,9 @@ bool hook_event_play_track()
     case RBVER_651:
         func_offset = 0x911610;
         break;
+    case RBVER_652:
+        func_offset = 0x91E4D0;
+        break;
     default:
         error("Unknown version");
         return false;

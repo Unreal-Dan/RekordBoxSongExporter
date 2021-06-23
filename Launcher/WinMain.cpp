@@ -29,6 +29,7 @@ struct version_path
 // list of supported versions
 version_path versions[] = {
     // Friendly name     Default installation path
+    { "Rekordbox 6.5.2", "C:\\Program Files\\Pioneer\\rekordbox 6.5.2\\rekordbox.exe" },
     { "Rekordbox 6.5.1", "C:\\Program Files\\Pioneer\\rekordbox 6.5.1\\rekordbox.exe" },
     { "Rekordbox 6.5.0", "C:\\Program Files\\Pioneer\\rekordbox 6.5.0\\rekordbox.exe" },
     { "Rekordbox 5.8.5", "C:\\Program Files\\Pioneer\\rekordbox 5.8.5\\rekordbox.exe" },
@@ -339,9 +340,9 @@ static void do_create(HWND hwnd)
         WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP, 
         12, 42, 378, 21, hwnd, (HMENU)PATH_EDIT_ID, NULL, NULL);
 
-    // default the path if there's no config file
+    // default the path to same as chosen version there's configured path
     if (!config.path.length()) {
-        config.path = versions[0].path;
+        config.path = versions[cur_sel].path;
     }
     SetWindowText(hwndPathEdit, config.path.c_str());
 

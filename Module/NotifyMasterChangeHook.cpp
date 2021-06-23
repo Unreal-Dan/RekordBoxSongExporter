@@ -37,8 +37,9 @@ public:
     {
         switch (config.version) {
         case RBVER_585: return sm_585.syncMasterList;
-        case RBVER_650: return sm_650.syncMasterList;
-        case RBVER_651: return sm_651.syncMasterList;
+        case RBVER_650: return sm_6xx.syncMasterList;
+        case RBVER_651: return sm_6xx.syncMasterList;
+        case RBVER_652: return sm_6xx.syncMasterList;
         default:        return NULL;
         }
     }
@@ -46,8 +47,9 @@ public:
     {
         switch (config.version) {
         case RBVER_585: return sm_585.curSyncMaster;
-        case RBVER_650: return sm_650.curSyncMaster;
-        case RBVER_651: return sm_651.curSyncMaster;
+        case RBVER_650: return sm_6xx.curSyncMaster;
+        case RBVER_651: return sm_6xx.curSyncMaster;
+        case RBVER_652: return sm_6xx.curSyncMaster;
         default:        return NULL;
         }
     }
@@ -55,13 +57,15 @@ public:
     {
         switch (config.version) {
         case RBVER_585: return sm_585.numSyncMasters;
-        case RBVER_650: return sm_650.numSyncMasters;
-        case RBVER_651: return sm_651.numSyncMasters;
+        case RBVER_650: return sm_6xx.numSyncMasters;
+        case RBVER_651: return sm_6xx.numSyncMasters;
+        case RBVER_652: return sm_6xx.numSyncMasters;
         default:        return 0;
         }
     }
 private:
 
+    // this is the sync manager struct for 5.8.5
     struct sync_manager_585
     {
         // this pad size is really the only difference
@@ -72,19 +76,8 @@ private:
         uint32_t numSyncMasters;
     };
 
-    struct sync_manager_650
-    {
-        uint8_t pad[0xF0];
-        // the current sync master
-        void *curSyncMaster;
-        // the list of sync masters
-        void **syncMasterList;
-        void *unknown;
-        // the number of sync masters in the list
-        uint32_t numSyncMasters;
-    };
-
-    struct sync_manager_651
+    // This structure seems to stay the same for all 6.x.x versions
+    struct sync_manager_6xx
     {
         uint8_t pad[0xF0];
         // the current sync master
@@ -99,9 +92,10 @@ private:
     // anonymous union of sync manager versions
     union
     {
+        // sync manager for 5.8.5
         sync_manager_585 sm_585;
-        sync_manager_650 sm_650;
-        sync_manager_651 sm_651;
+        // sync manager is the same for 6.x.x versions
+        sync_manager_6xx sm_6xx;
     };
 };
 
@@ -138,6 +132,9 @@ bool hook_notify_master_change()
         break;
     case RBVER_651:
         func_offset = 0x179E840;
+        break;
+    case RBVER_652:
+        func_offset = 0x17A8A40;
         break;
     default:
         error("Unknown version");
