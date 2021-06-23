@@ -11,6 +11,7 @@
 #include "OutputFiles.h"
 #include "Injector.h"
 #include "resource.h"
+#include "Versions.h"
 #include "Config.h"
 
 #pragma comment(lib, "Comctl32.lib")
@@ -18,25 +19,6 @@
 #pragma comment(lib, "Winmm.lib")
 
 using namespace std;
-
-// describes a supported version and it's path
-struct version_path
-{
-    const char *name;
-    const char *path;
-};
-
-// list of supported versions
-version_path versions[] = {
-    // Friendly name     Default installation path
-    { "Rekordbox 6.5.2", "C:\\Program Files\\Pioneer\\rekordbox 6.5.2\\rekordbox.exe" },
-    { "Rekordbox 6.5.1", "C:\\Program Files\\Pioneer\\rekordbox 6.5.1\\rekordbox.exe" },
-    { "Rekordbox 6.5.0", "C:\\Program Files\\Pioneer\\rekordbox 6.5.0\\rekordbox.exe" },
-    { "Rekordbox 5.8.5", "C:\\Program Files\\Pioneer\\rekordbox 5.8.5\\rekordbox.exe" },
-};
-
-// the number of versions in table above
-#define NUM_VERSIONS    (sizeof(versions) / sizeof(versions[0]))
 
 // version select combobox
 HWND hwndVersionCombo;
@@ -275,7 +257,7 @@ static void config_default()
     config.server_ip = "127.0.0.1";
 
     // the default version is the first entry in versions table
-    config.version = versions[0].name + sizeof("Rekordbox");
+    config.rbox_version = get_latest_version_number();
 
     // default the output files
     default_output_files();
@@ -304,12 +286,12 @@ static void do_create(HWND hwnd)
         12, 12, 140, 400, hwnd, (HMENU)VERSION_COMBO_ID, NULL, NULL);
     size_t cur_sel = 0;
     // populate the dropdown box with versions
-    for (size_t i = 0; i < NUM_VERSIONS; i++) {
+    for (size_t i = 0; i < num_versions(); i++) {
         // Add string to combobox.
-        ComboBox_AddString(hwndVersionCombo, versions[i].name);
+        ComboBox_AddString(hwndVersionCombo, get_version_name(i));
         // the versions[i].name has the full "rekordbox 6.5.0" and we
         // just want to compare the version number so add 10
-        if (config.version == (versions[i].name + 10)) {
+        if (config.rbox_version == get_version_number(i)) {
             cur_sel = i;
         }
     }
@@ -341,10 +323,10 @@ static void do_create(HWND hwnd)
         12, 42, 378, 21, hwnd, (HMENU)PATH_EDIT_ID, NULL, NULL);
 
     // default the path to same as chosen version there's configured path
-    if (!config.path.length()) {
-        config.path = versions[cur_sel].path;
+    if (!config.rbox_path.length()) {
+        config.rbox_path = get_version_path(cur_sel);
     }
-    SetWindowText(hwndPathEdit, config.path.c_str());
+    SetWindowText(hwndPathEdit, config.rbox_path.c_str());
 
     //  end global configs
     // =============================
@@ -584,10 +566,8 @@ static void handle_selection_change(HWND hwnd, WPARAM wParam, LPARAM lParam)
     if (LOWORD(wParam) == VERSION_COMBO_ID) {
         // when combobox changes update the text box
         int sel = ComboBox_GetCurSel(hwndVersionCombo);
-        Edit_SetText(hwndPathEdit, versions[sel].path);
-        // The edit box contains the full word 'Rekordbox x.y.z' but we
-        // only save the part after the word "Rekordbox " (the x.y.z)
-        config.version = versions[sel].name + sizeof("Rekordbox");
+        Edit_SetText(hwndPathEdit, get_version_path(sel));
+        config.rbox_version = get_version_number(sel);
     } else if (LOWORD(wParam) == OUTFILES_LIST_ID) {
         int sel = ListBox_GetCurSel(hwndOutfilesList);
         // if we deselected everything
@@ -643,7 +623,7 @@ static void handle_edit_change(HWND hwnd, WPARAM wParam, LPARAM lParam)
     // do something with the edit text based on the edit ID
     switch (LOWORD(wParam)) {
     case PATH_EDIT_ID:
-        config.path = text;
+        config.rbox_path = text;
         break;
     case SERVER_EDIT_ID:
         config.server_ip = text;

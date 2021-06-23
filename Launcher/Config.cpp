@@ -7,6 +7,7 @@
 #include <string>
 
 #include "OutputFiles.h"
+#include "Versions.h"
 #include "Config.h"
 
 #pragma comment(lib, "Shlwapi.lib")
@@ -66,9 +67,9 @@ bool config_load()
                 is_upgrade = true;
             }
         } else if (key == "rbox_version") {
-            config.version = value;
+            config.rbox_version = value;
         } else if (key == "rbox_path") {
-            config.path = value;
+            config.rbox_path = value;
         } else if (key == "use_server") {
             config.use_server = (strtoul(value.c_str(), NULL, 10) != 0);
         } else if (key == "server_ip") {
@@ -79,13 +80,15 @@ bool config_load()
     if (is_upgrade) {
         // set the version to latest and the path to empty so the
         // path will auto-populate based on the selected version
-        config.version = RBSE_VERSION;
-        config.path = "";
+        config.rbox_version = get_latest_version_number();
+        config.rbox_path = "";
     }
-    // if we loaded an outdated config file then fill defaults
+    // if we loaded a legacy config (pre 3.0) config file
     if (is_legacy_config) {
+        // then just use the default output files
         default_output_files();
     } else {
+        // otherwise just load the output files from the config
         load_output_files(in);
     }
     return true;
@@ -100,8 +103,8 @@ bool config_save()
     string line;
     of << "[RBSE Config]\n"
        << "version=" RBSE_VERSION "\n"
-       << "rbox_version=" << config.version << "\n"
-       << "rbox_path=" << config.path << "\n"
+       << "rbox_version=" << config.rbox_version << "\n"
+       << "rbox_path=" << config.rbox_path << "\n"
        << "use_server=" << (config.use_server ? "1" : "0") << "\n"
        << "server_ip=" << config.server_ip << "\n"
        << "\n[Output Files]\n";

@@ -32,8 +32,8 @@ class Config
 {
 public:
     // the version of rekordbox being loaded
-    std::string version;
-    std::string path;
+    std::string rbox_version;
+    std::string rbox_path;
     bool use_server;
     std::string server_ip;
 };

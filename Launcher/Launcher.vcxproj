@@ -150,6 +150,7 @@
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="Injector.cpp" />
     <ClCompile Include="OutputFiles.cpp" />
+    <ClCompile Include="Versions.cpp" />
     <ClCompile Include="WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -157,6 +158,7 @@
     <ClInclude Include="Injector.h" />
     <ClInclude Include="OutputFiles.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="Versions.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Launcher.rc" />
