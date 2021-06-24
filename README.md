@@ -66,7 +66,7 @@ The default output files that come with the software are:
     LastTrackTitle      This is the Title of the last track to play
     LastTrackArtist     This is the Artist of the last track to play
     TrackList           This is a timestamped list of all tracks
-    RotatingTrackList   This is a rotating list of the last 2nd to 5th tracks played
+    RotatingTrackList   This is a rotating list of the last 2nd to 8th tracks played
 ```
 
 When configuring an output file (green section) the following options are available:
