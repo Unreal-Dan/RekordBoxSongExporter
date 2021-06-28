@@ -6,7 +6,7 @@
 #include <string>
 
 // The current version of RBSE that appears in the titlebar
-#define RBSE_VERSION            "3.1"
+#define RBSE_VERSION            "3.2"
 // maximum length of output file names
 #define MAX_OUTFILE_NAME_LEN    64
 // maximum length of output formats
