@@ -28,10 +28,10 @@ bool init_row_data_funcs()
     //
     //     if ( v284 == 1 || (unsigned int)(v284 - 2) <= 1 )
     //       v285 = *(_DWORD *)(v283 + 32);
-    //     db::RowDataTrack::RowDataTrack((__int64)&v560);
-    //     v286 = db::DatabaseIF::getInstance();
+    //     db::RowDataTrack::RowDataTrack((__int64)&v560);      // 1st function
+    //     v286 = db::DatabaseIF::getInstance();                // 2nd function
     //     LODWORD(v530) = 0;
-    //     if ( (unsigned __int8)db::DatabaseIF::getRowDataTrack(v286) )
+    //     if ( db::DatabaseIF::getRowDataTrack(v286) )         // 3rd function
     //     {
     //       sub_1622970(&v547, &v561);
     //       sub_1622970(&v546, &v562);
@@ -39,7 +39,7 @@ bool init_row_data_funcs()
     //       sub_1622970(&v545, &v565);
     //       sub_1622970(&v551, &v564);
     //     }
-    //     db::RowDataTrack::DestructRowDataTrack(&v560);
+    //     db::RowDataTrack::DestructRowDataTrack(&v560);       // 4th function
     switch (config.version) {
     case RBVER_585:
         get_inst = (get_instance_fn)(rb_base() + 0x39F2F0);

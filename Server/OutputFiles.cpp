@@ -71,6 +71,9 @@ bool init_output_files()
         }
     }
 
+    // clear any previous output file configurations
+    output_files.clear();
+
     // retrieve the output files
     string config_str;
     bool done_config = false;

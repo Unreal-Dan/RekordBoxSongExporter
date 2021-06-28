@@ -37,7 +37,7 @@ djplayer_uiplayer *lookup_player(uint32_t deck_idx)
         deck_idx = 0;
     }
     // The main component is the global object that contains the UIManager object.
-    // Inside the UIManager object is a list of the UIPlayer objects.
+    // Inside the UIManager object is four consecutive UIPlayer pointers.
     //
     // To find the main component address look for "MainComponent", all three
     // occurrences of the string will be the constructor of the MainComponent. 
@@ -77,6 +77,7 @@ djplayer_uiplayer *lookup_player(uint32_t deck_idx)
     // At the start of djplay::UiManager::createObject() is assignments like this:
     //
     //    v4 = (__int64 *)(v1 + 0x50);
+    //                          ^ the first UIPlayer offset
     //
     // This is the first UiPlayer of four UiPlayers. It's not an array, they are 
     // just consecutive members but they can be accessed like an array.
@@ -108,6 +109,8 @@ djplayer_uiplayer *lookup_player(uint32_t deck_idx)
         error("Unknown version");
         return NULL;
     }
+    // pPlayers is really just the first of four consecutive UIPlayers in
+    // the UIManager object so we can access them like an array
     return pPlayers[deck_idx];
 }
 
