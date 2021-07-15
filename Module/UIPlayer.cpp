@@ -29,6 +29,27 @@ uint32_t djplayer_uiplayer::getTrackBrowserID()
     return 0;
 }
 
+uint32_t djplayer_uiplayer::getDeckBPM()
+{
+    // This was actually quite tough to find, the BPM is hidden inside the
+    // the djplay::DeviceComponent object which is in a massive list of other
+    // device component objects. This list is found inside the UIPlayer and
+    // can be found via the string "@BPM" which is utilized inside the func
+    // djplay::UiPlayer::createDevice which initializes all the devices for 
+    // the player.
+    if (config.version < RBVER_652) {
+        // bpm not supported before 6.5.2 because I'm lazy
+        return 0;
+    }
+    // the bpm device is 0xAD0 into the UIPlayer object
+    void *bpmDevice = *(void **)((uintptr_t)this + 0xAD0);
+    // there is another pointer 0x80 bytes inside the bpmDevice
+    void *bpmDeviceInner = *(void **)((uintptr_t)bpmDevice + 0x80);
+    // then the bpm is 0x154 into the inner device
+    uint32_t bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + 0x154);
+    return bpm;
+}
+
 // lookup a djplayer/deck by index (0 to 3)
 djplayer_uiplayer *lookup_player(uint32_t deck_idx) 
 {
@@ -81,33 +102,38 @@ djplayer_uiplayer *lookup_player(uint32_t deck_idx)
     //
     // This is the first UiPlayer of four UiPlayers. It's not an array, they are 
     // just consecutive members but they can be accessed like an array.
-    uintptr_t main_component;
-    uintptr_t ui_manager;
-    djplayer_uiplayer **pPlayers;
-    switch (config.version) {
-    case RBVER_585:
-        main_component = *(uintptr_t *)(rb_base() + 0x39D05D0);
-        ui_manager = *(uintptr_t *)(main_component + 0x638);
-        pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
-        break;
-    case RBVER_650:
-        main_component = *(uintptr_t *)(rb_base() + 0x3F38108);
-        ui_manager = *(uintptr_t *)(main_component + 0x648);
-        pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
-        break;
-    case RBVER_651:
-        main_component = *(uintptr_t *)(rb_base() + 0x3F649E8);
-        ui_manager = *(uintptr_t *)(main_component + 0x648);
-        pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
-        break;
-    case RBVER_652:
-        main_component = *(uintptr_t *)(rb_base() + 0x3F8B318);
-        ui_manager = *(uintptr_t *)(main_component + 0x648);
-        pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
-        break;
-    default:
-        error("Unknown version");
-        return NULL;
+    static uintptr_t main_component = 0;
+    static uintptr_t ui_manager = 0;
+    static djplayer_uiplayer **pPlayers = nullptr;
+    if (!pPlayers) {
+        switch (config.version) {
+        case RBVER_585:
+            main_component = *(uintptr_t *)(rb_base() + 0x39D05D0);
+            ui_manager = *(uintptr_t *)(main_component + 0x638);
+            pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
+            break;
+        case RBVER_650:
+            main_component = *(uintptr_t *)(rb_base() + 0x3F38108);
+            ui_manager = *(uintptr_t *)(main_component + 0x648);
+            pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
+            break;
+        case RBVER_651:
+            main_component = *(uintptr_t *)(rb_base() + 0x3F649E8);
+            ui_manager = *(uintptr_t *)(main_component + 0x648);
+            pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
+            break;
+        case RBVER_652:
+            main_component = *(uintptr_t *)(rb_base() + 0x3F8B318);
+            ui_manager = *(uintptr_t *)(main_component + 0x648);
+            pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
+            break;
+        default:
+            error("Unknown version");
+            return NULL;
+        }
+        info("MainComponent: %p", main_component);
+        info("UIManager: %p", ui_manager);
+        info("Players: %p", pPlayers);
     }
     // pPlayers is really just the first of four consecutive UIPlayers in
     // the UIManager object so we can access them like an array

@@ -10,6 +10,7 @@
 #include "NetworkClient.h"
 #include "RowDataTrack.h"
 #include "OutputFiles.h"
+#include "UIPlayer.h"
 #include "Config.h"
 #include "Log.h"
 
@@ -70,6 +71,11 @@ typedef enum out_tag_enum
     TAG_TRACK_NUMBER =  (1 << 14),
     TAG_BPM =           (1 << 15),
     TAG_TIME =          (1 << 16),
+    TAG_DECK1_BPM =     (1 << 17),
+    TAG_DECK2_BPM =     (1 << 18),
+    TAG_DECK3_BPM =     (1 << 19),
+    TAG_DECK4_BPM =     (1 << 20),
+    TAG_MASTER_BPM =    (1 << 21),
 } out_tag_t;
 
 // a class to describe an output file that will be written 
@@ -126,6 +132,10 @@ private:
     bool replace(string &str, const string &from, const string &to);
     // calc time since the first time this was called
     string get_timestamp_since_start();
+    // get bpm of a specific deck as a string
+    string get_deck_bpm(uint32_t deck);
+    // get master bpm as a string
+    string get_master_bpm();
 };
 
 // the ID counter for output files
@@ -134,10 +144,6 @@ uint32_t output_file::id_counter = 0;
 // Pop the next deck change index out of the queue, only meant to
 // be called from the logging thread so making this static
 static uint32_t pop_deck_update();
-// helper for in-place replacements
-static bool replace(string& str, const string& from, const string& to);
-// calc time since the first time this was called
-static string get_timestamp_since_start();
 
 // queue of indexes of decks that changed
 // For example if deck 1 changes then 1 gets pushed into this
@@ -368,6 +374,11 @@ output_file::output_file(const string &line)
     if (format.find("%track_number%") != string::npos)  { format_tags |= TAG_TRACK_NUMBER; }
     if (format.find("%bpm%") != string::npos)           { format_tags |= TAG_BPM; }
     if (format.find("%time%") != string::npos)          { format_tags |= TAG_TIME; }
+    if (format.find("%deck1_bpm%") != string::npos)     { format_tags |= TAG_DECK1_BPM; }
+    if (format.find("%deck2_bpm%") != string::npos)     { format_tags |= TAG_DECK2_BPM; }
+    if (format.find("%deck3_bpm%") != string::npos)     { format_tags |= TAG_DECK3_BPM; }
+    if (format.find("%deck4_bpm%") != string::npos)     { format_tags |= TAG_DECK4_BPM; }
+    if (format.find("%master_bpm%") != string::npos)    { format_tags |= TAG_MASTER_BPM; }
     // the full path of the output file
     path = get_dll_path() + "\\" OUTPUT_FOLDER "\\" + name + ".txt";
     // only clear the output file if not server mode
@@ -421,6 +432,11 @@ string output_file::build_output(const string &format, uint32_t format_tags, tra
     if (format_tags & TAG_TRACK_NUMBER) { replace(out, "%track_number%", track->track_number); }
     if (format_tags & TAG_BPM)          { replace(out, "%bpm%", track->bpm); }
     if (format_tags & TAG_TIME)         { replace(out, "%time%", get_timestamp_since_start()); }
+    if (format_tags & TAG_TIME)         { replace(out, "%deck1_bpm%", get_deck_bpm(0)); }
+    if (format_tags & TAG_TIME)         { replace(out, "%deck2_bpm%", get_deck_bpm(1)); }
+    if (format_tags & TAG_TIME)         { replace(out, "%deck3_bpm%", get_deck_bpm(2)); }
+    if (format_tags & TAG_TIME)         { replace(out, "%deck4_bpm%", get_deck_bpm(3)); }
+    if (format_tags & TAG_TIME)         { replace(out, "%master_bpm%", get_master_bpm()); }
     return out;
 }
 
@@ -609,4 +625,28 @@ string output_file::get_timestamp_since_start()
         return string("(00:00:00)");
     }
     return string(buf);
+}
+
+// get bpm of a specific deck (0 - 3) as a string
+string output_file::get_deck_bpm(uint32_t deck)
+{
+    djplayer_uiplayer *player = lookup_player(deck);
+    uint32_t bpm = player->getDeckBPM();
+    char buf[256] = { 0 };
+    if (bpm % 100) {
+        if (snprintf(buf, sizeof(buf), "%u.%u", bpm / 100, bpm % 100) < 1) {
+            return string("0");
+        }
+    } else {
+        if (snprintf(buf, sizeof(buf), "%u", bpm / 100) < 1) {
+            return string("0");
+        }
+    }
+    return string(buf);
+}
+
+// get master bpm as a string
+string output_file::get_master_bpm()
+{
+    return get_deck_bpm(get_master());
 }

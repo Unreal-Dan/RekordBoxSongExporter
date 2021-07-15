@@ -7,6 +7,8 @@ class djplayer_uiplayer
 public:
     // get the ID of the track which is used to lookup track info in the browser
     uint32_t getTrackBrowserID();
+    // get the bpm of this deck/player as uint (ex. 150.05 bpm is returned as 15005)
+    uint32_t getDeckBPM();
 };
 
 // lookup a djplayer/deck by index (0 to 3)
