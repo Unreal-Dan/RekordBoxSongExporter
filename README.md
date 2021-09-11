@@ -1,5 +1,5 @@
 # Rekord Box Song Exporter
-A hack for Rekordbox 6.5.2, 6.5.1, 6.5.0 or 5.8.5 on Windows 64bit only.  
+A hack for Rekordbox 6.5.3, 6.5.2, 6.5.1, 6.5.0 or 5.8.5 on Windows 64bit only.  
 Tested on Win10 and Win8.1
 
 ### You can find prebuilt releases [here](https://github.com/Unreal-Dan/RekordBoxSongExporter/releases)
