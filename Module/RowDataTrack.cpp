@@ -28,10 +28,10 @@ bool init_row_data_funcs()
     //
     //     if ( v284 == 1 || (unsigned int)(v284 - 2) <= 1 )
     //       v285 = *(_DWORD *)(v283 + 32);
-    //     db::RowDataTrack::RowDataTrack((__int64)&v560);      // 1st function
-    //     v286 = db::DatabaseIF::getInstance();                // 2nd function
+    //     db::RowDataTrack::RowDataTrack((__int64)&v560);      // 3rd function
+    //     v286 = db::DatabaseIF::getInstance();                // 1st function
     //     LODWORD(v530) = 0;
-    //     if ( db::DatabaseIF::getRowDataTrack(v286) )         // 3rd function
+    //     if ( db::DatabaseIF::getRowDataTrack(v286) )         // 2nd function
     //     {
     //       sub_1622970(&v547, &v561);
     //       sub_1622970(&v546, &v562);
@@ -65,6 +65,12 @@ bool init_row_data_funcs()
         init_rowdata = (init_rowdata_fn)(rb_base() + 0x379AB0);
         destr_rowdata = (destr_rowdata_fn)(rb_base() + 0x37A140);
         break;
+    case RBVER_653:
+        get_inst = (get_instance_fn)(rb_base() + 0x249550);
+        get_rowdata = (get_rowdata_fn)(rb_base() + 0xFD74D0);
+        init_rowdata = (init_rowdata_fn)(rb_base() + 0x2419B0);
+        destr_rowdata = (destr_rowdata_fn)(rb_base() + 0x242040);
+        break;
     default:
         error("Invalid version");
     }
@@ -93,6 +99,7 @@ static row_data *new_row_data()
     case RBVER_650:
     case RBVER_651:
     case RBVER_652:
+    case RBVER_653:
         rowdata = calloc(1, 0x488);
         break;
     default:
@@ -141,6 +148,7 @@ const char *row_data::getTitle()
     case RBVER_650: return getString(0x20);
     case RBVER_651: return getString(0x20);
     case RBVER_652: return getString(0x20);
+    case RBVER_653: return getString(0x20);
     default:        return "";
     }
 }
@@ -151,6 +159,7 @@ const char *row_data::getArtist()
     case RBVER_650: return getString(0xC0);
     case RBVER_651: return getString(0xC0);
     case RBVER_652: return getString(0xC0);
+    case RBVER_653: return getString(0xC0);
     default:        return "";
     }
 }
@@ -161,6 +170,7 @@ const char *row_data::getAlbum()
     case RBVER_650: return getString(0xF8);
     case RBVER_651: return getString(0xF8);
     case RBVER_652: return getString(0xF8);
+    case RBVER_653: return getString(0xF8);
     default:        return "";
     }
 }
@@ -171,6 +181,7 @@ const char *row_data::getGenre()
     case RBVER_650: return getString(0x170);
     case RBVER_651: return getString(0x170);
     case RBVER_652: return getString(0x170);
+    case RBVER_653: return getString(0x170);
     default:        return "";
     }
 }
@@ -181,6 +192,7 @@ const char *row_data::getLabel()
     case RBVER_650: return getString(0x1A8);
     case RBVER_651: return getString(0x1A8);
     case RBVER_652: return getString(0x1A8);
+    case RBVER_653: return getString(0x1A8);
     default:        return "";
     }
 }
@@ -191,6 +203,7 @@ const char *row_data::getKey()
     case RBVER_650: return getString(0x200);
     case RBVER_651: return getString(0x200);
     case RBVER_652: return getString(0x200);
+    case RBVER_653: return getString(0x200);
     default:        return "";
     }
 }
@@ -201,6 +214,7 @@ const char *row_data::getOrigArtist()
     case RBVER_650: return getString(0x280);
     case RBVER_651: return getString(0x280);
     case RBVER_652: return getString(0x280);
+    case RBVER_653: return getString(0x280);
     default:        return "";
     }
 }
@@ -211,6 +225,7 @@ const char *row_data::getRemixer()
     case RBVER_650: return getString(0x2B8);
     case RBVER_651: return getString(0x2B8);
     case RBVER_652: return getString(0x2B8);
+    case RBVER_653: return getString(0x2B8);
     default:        return "";
     }
 }
@@ -221,6 +236,7 @@ const char *row_data::getComposer()
     case RBVER_650: return getString(0x2F0);
     case RBVER_651: return getString(0x2F0);
     case RBVER_652: return getString(0x2F0);
+    case RBVER_653: return getString(0x2F0);
     default:        return "";
     }
 }
@@ -231,6 +247,7 @@ const char *row_data::getComment()
     case RBVER_650: return getString(0x318);
     case RBVER_651: return getString(0x318);
     case RBVER_652: return getString(0x318);
+    case RBVER_653: return getString(0x318);
     default:        return "";
     }
 }
@@ -241,6 +258,7 @@ const char *row_data::getMixName()
     case RBVER_650: return getString(0x348);
     case RBVER_651: return getString(0x348);
     case RBVER_652: return getString(0x348);
+    case RBVER_653: return getString(0x348);
     default:        return "";
     }
 }
@@ -251,6 +269,7 @@ const char *row_data::getLyricist()
     case RBVER_650: return getString(0x418);
     case RBVER_651: return getString(0x418);
     case RBVER_652: return getString(0x418);
+    case RBVER_653: return getString(0x418);
     default:        return "";
     }
 }
@@ -261,6 +280,7 @@ const char *row_data::getDateCreated()
     case RBVER_650: return getString(0x378);
     case RBVER_651: return getString(0x378);
     case RBVER_652: return getString(0x378);
+    case RBVER_653: return getString(0x378);
     default:        return "";
     }
 }
@@ -271,6 +291,7 @@ const char *row_data::getDateAdded()
     case RBVER_650: return getString(0x380);
     case RBVER_651: return getString(0x380);
     case RBVER_652: return getString(0x380);
+    case RBVER_653: return getString(0x380);
     default:        return "";
     }
 }
@@ -281,6 +302,7 @@ uint32_t row_data::getTrackNumber()
     case RBVER_650: return getValue<uint32_t>(0x308);
     case RBVER_651: return getValue<uint32_t>(0x308);
     case RBVER_652: return getValue<uint32_t>(0x308);
+    case RBVER_653: return getValue<uint32_t>(0x308);
     default:        return 0;
     }
 }
@@ -291,6 +313,7 @@ uint32_t row_data::getBpm()
     case RBVER_650: return getValue<uint32_t>(0x360);
     case RBVER_651: return getValue<uint32_t>(0x360);
     case RBVER_652: return getValue<uint32_t>(0x360);
+    case RBVER_653: return getValue<uint32_t>(0x360);
     default:        return 0;
     }
 }

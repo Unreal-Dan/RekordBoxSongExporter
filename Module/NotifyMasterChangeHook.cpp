@@ -33,6 +33,9 @@ public:
         }
         return 0;
     }
+    
+    // using explicit cases for each version to improve readability
+    // even though a fallthrough could work 
     void **sync_master_list()
     {
         switch (config.version) {
@@ -40,6 +43,7 @@ public:
         case RBVER_650: return sm_6xx.syncMasterList;
         case RBVER_651: return sm_6xx.syncMasterList;
         case RBVER_652: return sm_6xx.syncMasterList;
+        case RBVER_653: return sm_6xx.syncMasterList;
         default:        return NULL;
         }
     }
@@ -50,6 +54,7 @@ public:
         case RBVER_650: return sm_6xx.curSyncMaster;
         case RBVER_651: return sm_6xx.curSyncMaster;
         case RBVER_652: return sm_6xx.curSyncMaster;
+        case RBVER_653: return sm_6xx.curSyncMaster;
         default:        return NULL;
         }
     }
@@ -60,6 +65,7 @@ public:
         case RBVER_650: return sm_6xx.numSyncMasters;
         case RBVER_651: return sm_6xx.numSyncMasters;
         case RBVER_652: return sm_6xx.numSyncMasters;
+        case RBVER_653: return sm_6xx.numSyncMasters;
         default:        return 0;
         }
     }
@@ -79,6 +85,7 @@ private:
     // This structure seems to stay the same for all 6.x.x versions
     struct sync_manager_6xx
     {
+        // this pad is 0xF8 is the previous major versions
         uint8_t pad[0xF0];
         // the current sync master
         void *curSyncMaster;
@@ -135,6 +142,9 @@ bool hook_notify_master_change()
         break;
     case RBVER_652:
         func_offset = 0x17A8A40;
+        break;
+    case RBVER_653:
+        func_offset = 0x169D240;
         break;
     default:
         error("Unknown version");

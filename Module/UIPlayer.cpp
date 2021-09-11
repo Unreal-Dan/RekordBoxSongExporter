@@ -21,6 +21,7 @@ uint32_t djplayer_uiplayer::getTrackBrowserID()
     case RBVER_650:
     case RBVER_651:
     case RBVER_652:
+    case RBVER_653:
         return *(uint32_t *)((uintptr_t)this + 0x368);
     default:
         error("Unknown version");
@@ -33,20 +34,31 @@ uint32_t djplayer_uiplayer::getDeckBPM()
 {
     // This was actually quite tough to find, the BPM is hidden inside the
     // the djplay::DeviceComponent object which is in a massive list of other
-    // device component objects. This list is found inside the UIPlayer and
-    // can be found via the string "@BPM" which is utilized inside the func
-    // djplay::UiPlayer::createDevice which initializes all the devices for 
-    // the player.
-    if (config.version < RBVER_652) {
-        // bpm not supported before 6.5.2 because I'm lazy
-        return 0;
+    // device component objects. A device component appears to be any feature
+    // on a deck that is polled by rekordbox, such as the bpm control, all the
+    // knobs, and buttons.  The device initialization can be found via the 
+    // string "@BPM" inside djplay::UiPlayer::createDevice().
+    void *bpmDevice = nullptr;
+    void *bpmDeviceInner = nullptr;
+    uint32_t bpm = 0;
+    switch (config.version) {
+    case RBVER_585:
+        bpmDevice = *(void **)((uintptr_t)this + 0xA90);
+        bpmDeviceInner = *(void **)((uintptr_t)bpmDevice + 0x80);
+        bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + 0x154);
+        break;
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+        bpmDevice = *(void **)((uintptr_t)this + 0xAD0);
+        bpmDeviceInner = *(void **)((uintptr_t)bpmDevice + 0x80);
+        bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + 0x154);
+        break;
+    default:
+        error("Unknown version");
+        break;
     }
-    // the bpm device is 0xAD0 into the UIPlayer object
-    void *bpmDevice = *(void **)((uintptr_t)this + 0xAD0);
-    // there is another pointer 0x80 bytes inside the bpmDevice
-    void *bpmDeviceInner = *(void **)((uintptr_t)bpmDevice + 0x80);
-    // then the bpm is 0x154 into the inner device
-    uint32_t bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + 0x154);
     return bpm;
 }
 
@@ -79,12 +91,12 @@ djplayer_uiplayer *lookup_player(uint32_t deck_idx)
     // The second xref of gMainComponent should be a simple function returning
     // the pointer, this is MainComponent::getInstance()
     //
-    // To find the offset for the UIManager look for string "Layout" and the first 
-    // occurrence should be shortly before a usage of MainComponent::getInstance()
+    // To find the offset for the UIManager look for string "Layout" (capital L) and 
+    // the first occurrence should be shortly before a usage of MainComponent::getInstance()
     // the call right after utilizes the UIManager to call UIManager->InitSkin:
     //
     //    v209 = MainComponent::getInstance();
-    //    djplay::UiManager::initSkin(*(v209 + 0x648), &v498[4], 0);
+    //    djplay::UiManager::initSkin(*(v209 + 0x648), &v557, 0);
     //                                         ^ This is the UIManager offset
     //
     // Then finally to get the pPlayers offset look for "WindowID" and at the 
@@ -124,6 +136,11 @@ djplayer_uiplayer *lookup_player(uint32_t deck_idx)
             break;
         case RBVER_652:
             main_component = *(uintptr_t *)(rb_base() + 0x3F8B318);
+            ui_manager = *(uintptr_t *)(main_component + 0x648);
+            pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
+            break;
+        case RBVER_653:
+            main_component = *(uintptr_t *)(rb_base() + 0x3E4B308);
             ui_manager = *(uintptr_t *)(main_component + 0x648);
             pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
             break;

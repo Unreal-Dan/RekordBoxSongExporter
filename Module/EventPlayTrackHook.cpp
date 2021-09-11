@@ -86,7 +86,7 @@ bool hook_event_play_track()
     // and the number of bytes to copy out into a trampoline
     uint32_t trampoline_len = 0x13;
     uint32_t func_offset = 0;
-    // Search for string 'eventPlayTrack (%d)' to find this
+    // Search for string 'eventPlayTrack (%d)' to find this function
     switch (config.version) {
     case RBVER_585:
         func_offset = 0x7A5DE0;
@@ -99,6 +99,9 @@ bool hook_event_play_track()
         break;
     case RBVER_652:
         func_offset = 0x91E4D0;
+        break;
+    case RBVER_653:
+        func_offset = 0x793D80;
         break;
     default:
         error("Unknown version");

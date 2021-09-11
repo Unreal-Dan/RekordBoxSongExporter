@@ -376,9 +376,11 @@ output_file::output_file(const string &line)
     if (format.find("%time%") != string::npos)          { format_tags |= TAG_TIME; }
     if (format.find("%deck1_bpm%") != string::npos)     { format_tags |= TAG_DECK1_BPM; }
     if (format.find("%deck2_bpm%") != string::npos)     { format_tags |= TAG_DECK2_BPM; }
-    if (format.find("%deck3_bpm%") != string::npos)     { format_tags |= TAG_DECK3_BPM; }
-    if (format.find("%deck4_bpm%") != string::npos)     { format_tags |= TAG_DECK4_BPM; }
-    if (format.find("%master_bpm%") != string::npos)    { format_tags |= TAG_MASTER_BPM; }
+    if (config.version > RBVER_585) {
+        if (format.find("%deck3_bpm%") != string::npos)     { format_tags |= TAG_DECK3_BPM; }
+        if (format.find("%deck4_bpm%") != string::npos)     { format_tags |= TAG_DECK4_BPM; }
+    }
+    if (format.find("%master_bpm%") != string::npos) { format_tags |= TAG_MASTER_BPM; }
     // the full path of the output file
     path = get_dll_path() + "\\" OUTPUT_FOLDER "\\" + name + ".txt";
     // only clear the output file if not server mode
@@ -398,7 +400,9 @@ void output_file::log_track(track_data *track)
     if (config.use_server) {
         // in server mode send the filename + track to the server for logging
         string message = to_string(id) + ":" + track_str;
-        send_network_message(message.c_str());
+        if (!send_network_message(message.c_str())) {
+            // possible disconnection?
+        }
         info("Sending track [%s] to file %s at server %s...",
             track_str.c_str(), name.c_str(), config.server_ip.c_str());
     } else {
@@ -432,11 +436,13 @@ string output_file::build_output(const string &format, uint32_t format_tags, tra
     if (format_tags & TAG_TRACK_NUMBER) { replace(out, "%track_number%", track->track_number); }
     if (format_tags & TAG_BPM)          { replace(out, "%bpm%", track->bpm); }
     if (format_tags & TAG_TIME)         { replace(out, "%time%", get_timestamp_since_start()); }
-    if (format_tags & TAG_TIME)         { replace(out, "%deck1_bpm%", get_deck_bpm(0)); }
-    if (format_tags & TAG_TIME)         { replace(out, "%deck2_bpm%", get_deck_bpm(1)); }
-    if (format_tags & TAG_TIME)         { replace(out, "%deck3_bpm%", get_deck_bpm(2)); }
-    if (format_tags & TAG_TIME)         { replace(out, "%deck4_bpm%", get_deck_bpm(3)); }
-    if (format_tags & TAG_TIME)         { replace(out, "%master_bpm%", get_master_bpm()); }
+    if (format_tags & TAG_DECK1_BPM)    { replace(out, "%deck1_bpm%", get_deck_bpm(0)); }
+    if (format_tags & TAG_DECK2_BPM)    { replace(out, "%deck2_bpm%", get_deck_bpm(1)); }
+    if (config.version > RBVER_585) {
+        if (format_tags & TAG_DECK3_BPM)    { replace(out, "%deck3_bpm%", get_deck_bpm(2)); }
+        if (format_tags & TAG_DECK4_BPM)    { replace(out, "%deck4_bpm%", get_deck_bpm(3)); }
+    }
+    if (format_tags & TAG_MASTER_BPM)   { replace(out, "%master_bpm%", get_master_bpm()); }
     return out;
 }
 
@@ -634,7 +640,7 @@ string output_file::get_deck_bpm(uint32_t deck)
     uint32_t bpm = player->getDeckBPM();
     char buf[256] = { 0 };
     if (bpm % 100) {
-        if (snprintf(buf, sizeof(buf), "%u.%u", bpm / 100, bpm % 100) < 1) {
+        if (snprintf(buf, sizeof(buf), "%u.%02u", bpm / 100, bpm % 100) < 1) {
             return string("0");
         }
     } else {

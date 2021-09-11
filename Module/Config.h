@@ -21,6 +21,7 @@ typedef enum rbox_version_enum
     RBVER_650, // 6.5.0
     RBVER_651, // 6.5.1
     RBVER_652, // 6.5.2
+    RBVER_653, // 6.5.3
 
     RBVER_COUNT // the number of versions supported
 } rbox_version_t;
@@ -29,6 +30,7 @@ typedef enum rbox_version_enum
 class Config
 {
 public:
+    Config() : version(RBVER_UNK), use_server(false), server_ip(), output_files() {}
     // the version loaded from config
     rbox_version_t version;
     // whether to use server mode
