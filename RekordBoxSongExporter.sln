@@ -4,6 +4,10 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 16.0.30907.101
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Launcher", "Launcher\Launcher.vcxproj", "{88280CF4-EA46-4379-B1C4-61264EDF931A}"
+	ProjectSection(ProjectDependencies) = postProject
+		{842C7450-915C-4CE2-B62D-CD9885748BB7} = {842C7450-915C-4CE2-B62D-CD9885748BB7}
+		{CC52236B-B1A8-4177-B9C1-9789B92D9516} = {CC52236B-B1A8-4177-B9C1-9789B92D9516}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Module", "Module\Module.vcxproj", "{842C7450-915C-4CE2-B62D-CD9885748BB7}"
 EndProject

@@ -29,11 +29,11 @@ bool inject(const string &rekordbox)
         if (!launch_rekordbox(rekordbox)) {
             return false;
         }
-    }
-    // retry 15 times to see if we can find rekordbox window now
-    hProc = find_rekordbox_window(15);
-    if (!hProc) {
-        return false;
+        // retry 15 times to see if we can find rekordbox window now
+        hProc = find_rekordbox_window(15);
+        if (!hProc) {
+            return false;
+        }
     }
     // inject the dll module
     if (!inject_module(hProc)) {

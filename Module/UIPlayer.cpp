@@ -2,8 +2,12 @@
 #include <inttypes.h>
 
 #include "UIPlayer.h"
+#include "SigScan.h"
 #include "Config.h"
 #include "Log.h"
+
+#define MAIN_COMPONENT_SIG "\x49\x8B\xCE\x41\x2B\xFC\x41\x2B\xFF\x2B\xFD\x2B\xBC\x24\xC0\x00\x00\x00\x41\x2B\xFD"
+#define MAIN_COMPONENT_SIG_LEN (sizeof(MAIN_COMPONENT_SIG) - 1)
 
 // get the ID of the track which is used to lookup track info in the browser
 uint32_t djplayer_uiplayer::getTrackBrowserID()
@@ -22,8 +26,11 @@ uint32_t djplayer_uiplayer::getTrackBrowserID()
     case RBVER_651:
     case RBVER_652:
     case RBVER_653:
-        return *(uint32_t *)((uintptr_t)this + 0x368);
     default:
+        // just going to set this going forward... hopefully it doesn't change
+        if (config.version >= RBVER_661) {
+            return *(uint32_t *)((uintptr_t)this + 0x368);
+        }
         error("Unknown version");
         break;
     }
@@ -51,11 +58,14 @@ uint32_t djplayer_uiplayer::getDeckBPM()
     case RBVER_651:
     case RBVER_652:
     case RBVER_653:
-        bpmDevice = *(void **)((uintptr_t)this + 0xAD0);
-        bpmDeviceInner = *(void **)((uintptr_t)bpmDevice + 0x80);
-        bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + 0x154);
-        break;
     default:
+        // just going to set this going forward... hopefully it doesn't change
+        if (config.version >= RBVER_661) {
+            bpmDevice = *(void **)((uintptr_t)this + 0xAD0);
+            bpmDeviceInner = *(void **)((uintptr_t)bpmDevice + 0x80);
+            bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + 0x154);
+            break;
+        }
         error("Unknown version");
         break;
     }
@@ -144,9 +154,22 @@ djplayer_uiplayer *lookup_player(uint32_t deck_idx)
             ui_manager = *(uintptr_t *)(main_component + 0x648);
             pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
             break;
-        default:
+        default: // RBVER_661+
+            // just going to set this going forward... hopefully it doesn't change
+            if (config.version >= RBVER_661) {
+                // this sig will dump us 0x1D bytes before a reference to gMainComponent
+                uintptr_t main_component_ref = sig_scan(NULL, MAIN_COMPONENT_SIG, MAIN_COMPONENT_SIG_LEN);
+                // this is the offset to the EIP for gMainComponent
+                int32_t offset = *(int32_t *)(main_component_ref + 0x1D);
+                // the main component is offset bytes from the opcode after the reference
+                main_component = *(uintptr_t *)(main_component_ref + 0x21 + offset);
+                // ui manager and players are just offset of main component like normal
+                ui_manager = *(uintptr_t *)(main_component + 0x648);
+                pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
+                break;
+            }
             error("Unknown version");
-            return NULL;
+            break;
         }
         info("MainComponent: %p", main_component);
         info("UIManager: %p", ui_manager);

@@ -7,9 +7,13 @@
 #include "LastTrackStorage.h"
 #include "OutputFiles.h"
 #include "UIPlayer.h"
+#include "SigScan.h"
 #include "Config.h"
 #include "Hook.h"
 #include "Log.h"
+
+#define NOTIFY_MASTER_CHANGE_SIG "\x40\x53\x48\x83\xEC\x30\x48\x8B\xD9\x48\x8B\x89\x40\x01\x00\x00\x48\x85\xC9\x0F"
+#define NOTIFY_MASTER_CHANGE_SIG_LEN (sizeof(NOTIFY_MASTER_CHANGE_SIG) - 1)
 
 using namespace std;
 
@@ -128,8 +132,7 @@ bool hook_notify_master_change()
     // and the number of bytes to copy out into a trampoline
     uint32_t trampoline_len = 0x10;
     uint32_t func_offset = 0;
-    // sig for functions in 6.5.0:
-    // 40 53 48 83 EC 30 48 8B D9 48 8B 89 40 01 00 00 48 85 C9 0F 84 65 01 00 00 F6 C1 03 0F 85 5C 01
+    uintptr_t nmc_addr = 0;
     switch (config.version) {
     case RBVER_585:
         func_offset = 0x14CEF80;
@@ -146,14 +149,20 @@ bool hook_notify_master_change()
     case RBVER_653:
         func_offset = 0x169D240;
         break;
-    default:
-        error("Unknown version");
-        return false;
+    default: // RBVER_661+
+        nmc_addr = sig_scan(NULL, NOTIFY_MASTER_CHANGE_SIG, NOTIFY_MASTER_CHANGE_SIG_LEN);
+        break;
     };
+    if (!nmc_addr) {
+        if (!func_offset) {
+            error("Failed to locate NotifyMasterChange");
+            return false;
+        }
+        nmc_addr = rb_base() + func_offset;
+    }
     // determine address of target function to hook
-    uintptr_t nmc_addr = rb_base() + func_offset;
     info("notify_master_change: %p", nmc_addr);
-    // install hook on event_play_addr that redirects to play_track_hook
+    // install hook on notify_master_change that redirects to notify_master_change_hook
     if (!install_hook(nmc_addr, notify_master_change_hook, trampoline_len)) {
         error("Failed to hook notifyMasterChange");
         return false;

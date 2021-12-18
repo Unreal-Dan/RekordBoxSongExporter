@@ -2,8 +2,22 @@
 
 #include "RowDataTrack.h"
 #include "UIPlayer.h"
+#include "SigScan.h"
 #include "Config.h"
 #include "Log.h"
+
+// db::databaseif::getinstance();
+#define GET_INSTANCE_SIG "\x40\x57\x48\x83\xec\x30\x48\xc7\x44\x24\x20\xfe\xff\xff\xff\x48\x89\x5c\x24\x58\x48\x8b\x05\x90\x90\x90\x90\x48\x85\xc0"
+#define GET_INSTANCE_SIG_LEN (sizeof(GET_INSTANCE_SIG) - 1)
+// db::databaseif::getrowdatatrack(v8, v7, &a1a, 1u, 0) 
+#define GET_ROW_DATA_TRACK_SIG "\x48\x89\x5c\x24\x08\x57\x48\x83\xec\x20\x48\x8b\x09\x49\x8b\xd8\x44\x8b\x44\x24\x50\x8b\xfa\x41\x8b\xd1"
+#define GET_ROW_DATA_TRACK_SIG_LEN (sizeof(GET_ROW_DATA_TRACK_SIG) - 1)
+// db::rowdatatrack::rowdatatrack(rowdata);
+#define ROW_DATA_TRACK_SIG "\x48\x89\x4c\x24\x08\x53\x55\x56\x57\x41\x56\x48\x83\xec\x30\x48\xc7\x44\x24\x20\xfe\xff\xff\xff\x48\x8b\xf9\xbd\x01\x00\x00\x00"
+#define ROW_DATA_TRACK_SIG_LEN (sizeof(ROW_DATA_TRACK_SIG) - 1)
+// db::rowdatatrack::~rowdatatrack(rowdata);
+#define DESTR_ROW_DATA_SIG "\x48\x89\x4c\x24\x08\x53\x55\x56\x57\x41\x56\x48\x83\xec\x30\x48\xc7\x44\x24\x20\xfe\xff\xff\xff\x4c\x8b\xf1\x48\x8d\x05\x90\x90\x90\x90\x48\x89\x01\x48"
+#define DESTR_ROW_DATA_SIG_LEN (sizeof(DESTR_ROW_DATA_SIG) - 1)
 
 // inst = db::DatabaseIF::getInstance();
 typedef void *(*get_instance_fn)();
@@ -71,9 +85,34 @@ bool init_row_data_funcs()
         init_rowdata = (init_rowdata_fn)(rb_base() + 0x2419B0);
         destr_rowdata = (destr_rowdata_fn)(rb_base() + 0x242040);
         break;
-    default:
-        error("Invalid version");
+    default: // RBVER_661+
+        // sig scan for each function
+        get_inst = (get_instance_fn)sig_scan(NULL, GET_INSTANCE_SIG, GET_INSTANCE_SIG_LEN);
+        get_rowdata = (get_rowdata_fn)sig_scan(NULL, GET_ROW_DATA_TRACK_SIG, GET_ROW_DATA_TRACK_SIG_LEN);
+        init_rowdata = (init_rowdata_fn)sig_scan(NULL, ROW_DATA_TRACK_SIG, ROW_DATA_TRACK_SIG_LEN);
+        destr_rowdata = (destr_rowdata_fn)sig_scan(NULL, DESTR_ROW_DATA_SIG, DESTR_ROW_DATA_SIG_LEN);
+        break;
     }
+    if (!get_inst) {
+        error("Failed to locate db::DatabaseIF::getInstance()");
+        return false;
+    }
+    if (!get_rowdata) {
+        error("Failed to locate db::DatabaseIF::getRowDataTrack()");
+        return false;
+    }
+    if (!init_rowdata) {
+        error("Failed to locate db::RowDataTrack::RowDataTrack()");
+        return false;
+    }
+    if (!destr_rowdata) {
+        error("Failed to locate db::RowDataTrack::~RowDataTrack()");
+        return false;
+    }
+    success("Found get_inst: %p", get_inst);
+    success("Found get_rowdata: %p", get_rowdata);
+    success("Found init_rowdata: %p", init_rowdata);
+    success("Found destr_rowdata: %p", destr_rowdata);
     return true;
 }
 
@@ -100,10 +139,9 @@ static row_data *new_row_data()
     case RBVER_651:
     case RBVER_652:
     case RBVER_653:
+    case RBVER_661:
+    default: // RBVER_661+ just guess
         rowdata = calloc(1, 0x488);
-        break;
-    default:
-        error("Invalid version");
         break;
     }
     return (row_data *)rowdata;
@@ -149,6 +187,7 @@ const char *row_data::getTitle()
     case RBVER_651: return getString(0x20);
     case RBVER_652: return getString(0x20);
     case RBVER_653: return getString(0x20);
+    case RBVER_661: return getString(0x20);
     default:        return "";
     }
 }
@@ -160,6 +199,7 @@ const char *row_data::getArtist()
     case RBVER_651: return getString(0xC0);
     case RBVER_652: return getString(0xC0);
     case RBVER_653: return getString(0xC0);
+    case RBVER_661: return getString(0xC0);
     default:        return "";
     }
 }
@@ -171,6 +211,7 @@ const char *row_data::getAlbum()
     case RBVER_651: return getString(0xF8);
     case RBVER_652: return getString(0xF8);
     case RBVER_653: return getString(0xF8);
+    case RBVER_661: return getString(0xF8);
     default:        return "";
     }
 }
@@ -182,6 +223,7 @@ const char *row_data::getGenre()
     case RBVER_651: return getString(0x170);
     case RBVER_652: return getString(0x170);
     case RBVER_653: return getString(0x170);
+    case RBVER_661: return getString(0x170);
     default:        return "";
     }
 }
@@ -193,6 +235,7 @@ const char *row_data::getLabel()
     case RBVER_651: return getString(0x1A8);
     case RBVER_652: return getString(0x1A8);
     case RBVER_653: return getString(0x1A8);
+    case RBVER_661: return getString(0x1A8);
     default:        return "";
     }
 }
@@ -204,6 +247,7 @@ const char *row_data::getKey()
     case RBVER_651: return getString(0x200);
     case RBVER_652: return getString(0x200);
     case RBVER_653: return getString(0x200);
+    case RBVER_661: return getString(0x200);
     default:        return "";
     }
 }
@@ -215,6 +259,7 @@ const char *row_data::getOrigArtist()
     case RBVER_651: return getString(0x280);
     case RBVER_652: return getString(0x280);
     case RBVER_653: return getString(0x280);
+    case RBVER_661: return getString(0x280);
     default:        return "";
     }
 }
@@ -226,6 +271,7 @@ const char *row_data::getRemixer()
     case RBVER_651: return getString(0x2B8);
     case RBVER_652: return getString(0x2B8);
     case RBVER_653: return getString(0x2B8);
+    case RBVER_661: return getString(0x2B8);
     default:        return "";
     }
 }
@@ -237,6 +283,7 @@ const char *row_data::getComposer()
     case RBVER_651: return getString(0x2F0);
     case RBVER_652: return getString(0x2F0);
     case RBVER_653: return getString(0x2F0);
+    case RBVER_661: return getString(0x2F0);
     default:        return "";
     }
 }
@@ -248,6 +295,7 @@ const char *row_data::getComment()
     case RBVER_651: return getString(0x318);
     case RBVER_652: return getString(0x318);
     case RBVER_653: return getString(0x318);
+    case RBVER_661: return getString(0x318);
     default:        return "";
     }
 }
@@ -259,6 +307,7 @@ const char *row_data::getMixName()
     case RBVER_651: return getString(0x348);
     case RBVER_652: return getString(0x348);
     case RBVER_653: return getString(0x348);
+    case RBVER_661: return getString(0x348);
     default:        return "";
     }
 }
@@ -270,6 +319,7 @@ const char *row_data::getLyricist()
     case RBVER_651: return getString(0x418);
     case RBVER_652: return getString(0x418);
     case RBVER_653: return getString(0x418);
+    case RBVER_661: return getString(0x418);
     default:        return "";
     }
 }
@@ -281,6 +331,7 @@ const char *row_data::getDateCreated()
     case RBVER_651: return getString(0x378);
     case RBVER_652: return getString(0x378);
     case RBVER_653: return getString(0x378);
+    case RBVER_661: return getString(0x378);
     default:        return "";
     }
 }
@@ -292,6 +343,7 @@ const char *row_data::getDateAdded()
     case RBVER_651: return getString(0x380);
     case RBVER_652: return getString(0x380);
     case RBVER_653: return getString(0x380);
+    case RBVER_661: return getString(0x380);
     default:        return "";
     }
 }
@@ -303,6 +355,7 @@ uint32_t row_data::getTrackNumber()
     case RBVER_651: return getValue<uint32_t>(0x308);
     case RBVER_652: return getValue<uint32_t>(0x308);
     case RBVER_653: return getValue<uint32_t>(0x308);
+    case RBVER_661: return getValue<uint32_t>(0x308);
     default:        return 0;
     }
 }
@@ -314,7 +367,7 @@ uint32_t row_data::getBpm()
     case RBVER_651: return getValue<uint32_t>(0x360);
     case RBVER_652: return getValue<uint32_t>(0x360);
     case RBVER_653: return getValue<uint32_t>(0x360);
+    case RBVER_661: return getValue<uint32_t>(0x360);
     default:        return 0;
     }
 }
-

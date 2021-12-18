@@ -159,6 +159,7 @@
     <ClCompile Include="EventPlayTrackHook.cpp" />
     <ClCompile Include="OutputFiles.cpp" />
     <ClCompile Include="RowDataTrack.cpp" />
+    <ClCompile Include="SigScan.cpp" />
     <ClCompile Include="UIPlayer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -171,6 +172,7 @@
     <ClInclude Include="EventPlayTrackHook.h" />
     <ClInclude Include="OutputFiles.h" />
     <ClInclude Include="RowDataTrack.h" />
+    <ClInclude Include="SigScan.h" />
     <ClInclude Include="UIPlayer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
