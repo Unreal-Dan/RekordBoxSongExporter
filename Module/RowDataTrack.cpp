@@ -187,8 +187,11 @@ const char *row_data::getTitle()
     case RBVER_651: return getString(0x20);
     case RBVER_652: return getString(0x20);
     case RBVER_653: return getString(0x20);
-    case RBVER_661: return getString(0x20);
-    default:        return "";
+    default:        
+        if (config.version >= RBVER_661) {
+            return getString(0x20);
+        }
+        return "";
     }
 }
 const char *row_data::getArtist()
@@ -200,7 +203,11 @@ const char *row_data::getArtist()
     case RBVER_652: return getString(0xC0);
     case RBVER_653: return getString(0xC0);
     case RBVER_661: return getString(0xC0);
-    default:        return "";
+    default:        
+        if (config.version >= RBVER_661) {
+            return getString(0xC0);
+        }
+        return "";
     }
 }
 const char *row_data::getAlbum()
@@ -212,7 +219,11 @@ const char *row_data::getAlbum()
     case RBVER_652: return getString(0xF8);
     case RBVER_653: return getString(0xF8);
     case RBVER_661: return getString(0xF8);
-    default:        return "";
+    default:        
+        if (config.version >= RBVER_661) {
+            return getString(0xF8);
+        }
+        return "";
     }
 }
 const char *row_data::getGenre()
@@ -224,7 +235,11 @@ const char *row_data::getGenre()
     case RBVER_652: return getString(0x170);
     case RBVER_653: return getString(0x170);
     case RBVER_661: return getString(0x170);
-    default:        return "";
+    default:        
+        if (config.version >= RBVER_661) {
+            return getString(0x170);
+        }
+        return "";
     }
 }
 const char *row_data::getLabel()
@@ -236,7 +251,11 @@ const char *row_data::getLabel()
     case RBVER_652: return getString(0x1A8);
     case RBVER_653: return getString(0x1A8);
     case RBVER_661: return getString(0x1A8);
-    default:        return "";
+    default:        
+        if (config.version >= RBVER_661) {
+            return getString(0x1A8);
+        }
+        return "";
     }
 }
 const char *row_data::getKey()
@@ -248,7 +267,11 @@ const char *row_data::getKey()
     case RBVER_652: return getString(0x200);
     case RBVER_653: return getString(0x200);
     case RBVER_661: return getString(0x200);
-    default:        return "";
+    default:        
+        if (config.version >= RBVER_661) {
+            return getString(0x200);
+        }
+        return "";
     }
 }
 const char *row_data::getOrigArtist()
@@ -260,7 +283,11 @@ const char *row_data::getOrigArtist()
     case RBVER_652: return getString(0x280);
     case RBVER_653: return getString(0x280);
     case RBVER_661: return getString(0x280);
-    default:        return "";
+    default:        
+        if (config.version >= RBVER_661) {
+            return getString(0x280);
+        }
+        return "";
     }
 }
 const char *row_data::getRemixer()
@@ -272,7 +299,11 @@ const char *row_data::getRemixer()
     case RBVER_652: return getString(0x2B8);
     case RBVER_653: return getString(0x2B8);
     case RBVER_661: return getString(0x2B8);
-    default:        return "";
+    default:        
+        if (config.version >= RBVER_661) {
+            return getString(0x2B8);
+        }
+        return "";
     }
 }
 const char *row_data::getComposer()
@@ -284,7 +315,11 @@ const char *row_data::getComposer()
     case RBVER_652: return getString(0x2F0);
     case RBVER_653: return getString(0x2F0);
     case RBVER_661: return getString(0x2F0);
-    default:        return "";
+    default:        
+        if (config.version >= RBVER_661) {
+            return getString(0x2F0);
+        }
+        return "";
     }
 }
 const char *row_data::getComment()
@@ -296,7 +331,11 @@ const char *row_data::getComment()
     case RBVER_652: return getString(0x318);
     case RBVER_653: return getString(0x318);
     case RBVER_661: return getString(0x318);
-    default:        return "";
+    default:        
+        if (config.version >= RBVER_661) {
+            return getString(0x318);
+        }
+        return "";
     }
 }
 const char *row_data::getMixName()
@@ -308,7 +347,11 @@ const char *row_data::getMixName()
     case RBVER_652: return getString(0x348);
     case RBVER_653: return getString(0x348);
     case RBVER_661: return getString(0x348);
-    default:        return "";
+    default:        
+        if (config.version >= RBVER_661) {
+            return getString(0x348);
+        }
+        return "";
     }
 }
 const char *row_data::getLyricist()
@@ -320,7 +363,11 @@ const char *row_data::getLyricist()
     case RBVER_652: return getString(0x418);
     case RBVER_653: return getString(0x418);
     case RBVER_661: return getString(0x418);
-    default:        return "";
+    default:        
+        if (config.version >= RBVER_661) {
+            return getString(0x418);
+        }
+        return "";
     }
 }
 const char *row_data::getDateCreated()
@@ -332,7 +379,11 @@ const char *row_data::getDateCreated()
     case RBVER_652: return getString(0x378);
     case RBVER_653: return getString(0x378);
     case RBVER_661: return getString(0x378);
-    default:        return "";
+    default:        
+        if (config.version >= RBVER_661) {
+            return getString(0x378);
+        }
+        return "";
     }
 }
 const char *row_data::getDateAdded()
@@ -344,7 +395,11 @@ const char *row_data::getDateAdded()
     case RBVER_652: return getString(0x380);
     case RBVER_653: return getString(0x380);
     case RBVER_661: return getString(0x380);
-    default:        return "";
+    default:        
+        if (config.version >= RBVER_661) {
+            return getString(0x380);
+        }
+        return "";
     }
 }
 uint32_t row_data::getTrackNumber()
@@ -356,7 +411,11 @@ uint32_t row_data::getTrackNumber()
     case RBVER_652: return getValue<uint32_t>(0x308);
     case RBVER_653: return getValue<uint32_t>(0x308);
     case RBVER_661: return getValue<uint32_t>(0x308);
-    default:        return 0;
+    default:        
+        if (config.version >= RBVER_661) {
+            return getValue<uint32_t>(0x308);
+        }
+        return 0;
     }
 }
 uint32_t row_data::getBpm()
@@ -368,6 +427,10 @@ uint32_t row_data::getBpm()
     case RBVER_652: return getValue<uint32_t>(0x360);
     case RBVER_653: return getValue<uint32_t>(0x360);
     case RBVER_661: return getValue<uint32_t>(0x360);
-    default:        return 0;
+    default:        
+        if (config.version >= RBVER_661) {
+            return getValue<uint32_t>(0x360);
+        }
+        return 0;
     }
 }

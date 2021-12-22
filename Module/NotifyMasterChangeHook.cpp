@@ -48,7 +48,11 @@ public:
         case RBVER_651: return sm_6xx.syncMasterList;
         case RBVER_652: return sm_6xx.syncMasterList;
         case RBVER_653: return sm_6xx.syncMasterList;
-        default:        return NULL;
+        default:        
+            if (config.version >= RBVER_661) {
+                return sm_6xx.syncMasterList;
+            }
+            return NULL;
         }
     }
     void *cur_sync_master()
@@ -59,7 +63,11 @@ public:
         case RBVER_651: return sm_6xx.curSyncMaster;
         case RBVER_652: return sm_6xx.curSyncMaster;
         case RBVER_653: return sm_6xx.curSyncMaster;
-        default:        return NULL;
+        default:
+            if (config.version >= RBVER_661) {
+                return sm_6xx.curSyncMaster;
+            }
+            return NULL;
         }
     }
     uint32_t num_sync_masters() 
@@ -70,7 +78,11 @@ public:
         case RBVER_651: return sm_6xx.numSyncMasters;
         case RBVER_652: return sm_6xx.numSyncMasters;
         case RBVER_653: return sm_6xx.numSyncMasters;
-        default:        return 0;
+        default:
+            if (config.version >= RBVER_661) {
+                return sm_6xx.numSyncMasters;
+            }
+            return 0;
         }
     }
 private:
