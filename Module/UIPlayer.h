@@ -9,6 +9,9 @@ public:
     uint32_t getTrackBrowserID();
     // get the bpm of this deck/player as uint (ex. 150.05 bpm is returned as 15005)
     uint32_t getDeckBPM();
+
+private:
+    uintptr_t find_bpm_device_offset();
 };
 
 // lookup a djplayer/deck by index (0 to 3)

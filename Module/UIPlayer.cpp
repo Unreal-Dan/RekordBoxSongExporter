@@ -37,6 +37,28 @@ uint32_t djplayer_uiplayer::getTrackBrowserID()
     return 0;
 }
 
+uintptr_t djplayer_uiplayer::find_bpm_device_offset()
+{
+    // The start of the device list shouldn't change, but it might
+    // To find the start of the device list just look at the djplayer object
+    // in reclass and see where the massive list of pointers begins
+    uintptr_t device_list_start = (uintptr_t)this + 0x450;
+    uintptr_t device_list_end = (uintptr_t)this + 0xe60;
+    uintptr_t device_ptr = device_list_start;
+    // iterate the device list and find the device with the name @BPM
+    do {
+        uintptr_t device = *(uintptr_t *)device_ptr;
+        if (device) {
+            const char *device_name = *(const char **)(device + 0x10);
+            if (strcmp(device_name, "@BPM") == 0) {
+                return device_ptr - (uintptr_t)this;
+            }
+        }
+        device_ptr += 8;
+    } while (device_ptr < device_list_end);
+    return NULL;
+}
+
 uint32_t djplayer_uiplayer::getDeckBPM()
 {
     // This was actually quite tough to find, the BPM is hidden inside the
@@ -59,9 +81,17 @@ uint32_t djplayer_uiplayer::getDeckBPM()
     case RBVER_652:
     case RBVER_653:
     default:
-        // just going to set this going forward... hopefully it doesn't change
+        // dynamically locate the bpm device after 661
         if (config.version >= RBVER_661) {
-            bpmDevice = *(void **)((uintptr_t)this + 0xAD0);
+            static uintptr_t bpm_device_offset = 0;
+            if (!bpm_device_offset) {
+                // this will iterate the list of devices and look for the device with
+                // the name @BPM instead of using a hardcoded offset which seems to
+                // change anytime new devices are added -- which seems not uncommon
+                bpm_device_offset = find_bpm_device_offset();
+            }
+            bpmDevice = *(void **)((uintptr_t)this + bpm_device_offset);
+            // then the offsets for the bpm within the device should never change
             bpmDeviceInner = *(void **)((uintptr_t)bpmDevice + 0x80);
             bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + 0x154);
             break;

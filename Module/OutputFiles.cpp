@@ -636,9 +636,12 @@ string output_file::get_timestamp_since_start()
 // get bpm of a specific deck (0 - 3) as a string
 string output_file::get_deck_bpm(uint32_t deck)
 {
-    djplayer_uiplayer *player = lookup_player(deck);
-    uint32_t bpm = player->getDeckBPM();
     char buf[256] = { 0 };
+    djplayer_uiplayer *player = lookup_player(deck);
+    if (!player) {
+        return string(buf);
+    }
+    uint32_t bpm = player->getDeckBPM();
     if (bpm % 100) {
         if (snprintf(buf, sizeof(buf), "%u.%02u", bpm / 100, bpm % 100) < 1) {
             return string("0");
