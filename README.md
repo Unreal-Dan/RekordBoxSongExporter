@@ -44,8 +44,8 @@ and Module to a different location and retrying, it's possible Windows 10 may be
 the creation of files in the chosen location.
 
 Open OBS and create a GDI text object then enable 'Read From File' and point it at one 
-of the files that were created inside the OutputFiles directory. These filenames should
-be exactly the same as the list of Output Files that were configured in the launcher.
+of the files that were created inside the OutputFiles directory. These filenames correspond
+to the Output Files list in the launcher.
 
 Turn on chatlog mode on the GDI text object in OBS and you're good to go.
 
