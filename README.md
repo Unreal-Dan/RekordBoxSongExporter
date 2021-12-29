@@ -150,8 +150,7 @@ It is suggested you review the example output files that come with the Launcher 
 
     1a. If you're running Rekordbox and OBS on the same PC you can ignore the Server.
 
-    1b. If you are running Rekordbox and OBS on separate PCs then you need to run the 
-        the Server on the streaming PC first, then enter the stream PC IP into Launcher.
+    1b. If you are running Rekordbox and OBS on separate PCs then you need to run the the Server on the streaming PC first, then enter the stream PC IP into Launcher.
 
  2. You can run Rekordbox beforehand or just use the launcher to start Rekordbox for you. 
 
