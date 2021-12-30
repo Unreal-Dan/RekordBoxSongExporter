@@ -189,18 +189,19 @@ Launcher.
 ## How does it work
 
 The Launcher will optionally launch Rekordbox and inject a module which hooks two 
-of Rekordbox's functions: one function is called when the play/cue button is pressed
-on a deck, and the other function is called when the 'master' deck switches.
+of Rekordbox's functions: one function is called when a track is loaded onto a deck,
+and the other function is called when the 'master' deck switches.
 
-The play/cue hook will cache each song that is played on any deck into an internal
-storage of the hack itself.
+The track loading hook will cache each song that is played on any deck into an 
+internal storage of the hack itself.
 
 The other hook will detect anytime the 'master' switches to another deck, when
-this happens it will log the cached track and artist for that deck.
+this happens it will log the cached track and artist for that deck based on the 
+output file configurations.
 
-So the expected flow is to load a track, play/cue it, then eventually fade into 
-the track. When you fade from one deck into the other Rekordbox will update the 
-'master', this will trigger the hack to log the new track title and artist.
+So the expected flow is to load a track, play/cue it, then eventually transition 
+into the track. When you switch from one deck into the other Rekordbox will update 
+the 'master', this will trigger the hack to log the new track title and artist.
 
 There is also edge-case support for when you load a new track onto the master deck 
 while a track is already playing there. F in chat for your terrible transition, but 
