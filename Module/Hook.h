@@ -28,13 +28,18 @@ typedef uintptr_t (__fastcall *hook_callback_fn)(hook_arg_t, func_args *);
 class Hook {
 public:
     Hook();
-    Hook(uintptr_t target_func, hook_callback_fn hook_func, hook_arg_t arg);
+    Hook(uintptr_t target_func, hook_callback_fn hook_func, hook_arg_t arg = NULL);
     ~Hook();
 
     //=========================================================================
-    // initialize the hook on the target_func that redirects to the hook_func
+    // Quickly hook a function and get a dynamic Hook object back
+    static Hook *instant_hook(uintptr_t target_func, hook_callback_fn hook_func, 
+        hook_arg_t arg = NULL, bool do_callback = true, uint32_t num_args = 0);
+
+    //=========================================================================
+    // Initialize the hook on the target_func that redirects to the hook_func
     // and pass along the arg to the hook_func
-    void init(uintptr_t target_func, hook_callback_fn hook_func, hook_arg_t arg);
+    void init(uintptr_t target_func, hook_callback_fn hook_func, hook_arg_t arg = NULL);
 
     //=========================================================================
     // Install the hook on the target function

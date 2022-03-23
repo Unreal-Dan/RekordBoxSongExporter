@@ -159,6 +159,7 @@
   <ItemGroup>
     <ClCompile Include="BpmControl.cpp" />
     <ClCompile Include="Config.cpp" />
+    <ClCompile Include="DjEngineInterface.cpp" />
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="Hook.cpp" />
     <ClCompile Include="LastTrackStorage.cpp" />
@@ -168,12 +169,14 @@
     <ClCompile Include="EventPlayTrackHook.cpp" />
     <ClCompile Include="OutputFiles.cpp" />
     <ClCompile Include="RowDataTrack.cpp" />
+    <ClCompile Include="SemitoneKeyControl.cpp" />
     <ClCompile Include="SigScan.cpp" />
     <ClCompile Include="UIPlayer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BpmControl.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="DjEngineInterface.h" />
     <ClInclude Include="Hook.h" />
     <ClInclude Include="LastTrackStorage.h" />
     <ClInclude Include="Log.h" />
@@ -182,6 +185,7 @@
     <ClInclude Include="EventPlayTrackHook.h" />
     <ClInclude Include="OutputFiles.h" />
     <ClInclude Include="RowDataTrack.h" />
+    <ClInclude Include="SemitoneKeyControl.h" />
     <ClInclude Include="SigScan.h" />
     <ClInclude Include="UIPlayer.h" />
   </ItemGroup>

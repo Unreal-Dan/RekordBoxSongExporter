@@ -1,9 +1,16 @@
 #pragma once
 #include <inttypes.h>
 
-// Lookup a signature in a module
+#include "Hook.h"
+
+// Lookup a signature in current exe (or specific module
 // ex:
-//      sig = sig_scan(NULL, "\x11\x22\x33\x44\x90\x90\x90\x90\x55\x66\x77", 11);
-//      0x90 is wildcard because int3 is unlikely to appear in a signature
-//      NULL module means lookup in current executable
-uintptr_t sig_scan(const char *module_name, const char *sig, size_t sig_len);
+//      sig = sig_scan("11 22 33 44 ?? ?? ?? ?? 55 66 77");
+//      ?? is wildcard byte
+uintptr_t sig_scan(const char *sig, const char *module_name = NULL);
+
+#ifdef _DEBUG
+// hook a signature with a generic callback that prints the name and first 4 args
+// useful for debugging and hooking functions to see what they do
+Hook *hook_sig(const char *name, const char *signature, hook_callback_fn func = NULL);
+#endif

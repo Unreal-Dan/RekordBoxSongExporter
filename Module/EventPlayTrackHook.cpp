@@ -11,8 +11,8 @@
 #include "hook.h"
 #include "Log.h"
 
-#define EVENT_PLAY_SIG "\x40\x53\x57\x48\x81\xEC\x98\x00\x00\x00\x48\xC7\x44\x24\x30\xFE\xFF\xFF\xFF\x48\x8B\xF9\x44\x8B\x01"
-#define EVENT_PLAY_SIG_LEN (sizeof(EVENT_PLAY_SIG) - 1)
+// Function with 'eventPlayTrack' inside it
+#define EVENT_PLAY_SIG "40 53 57 48 81 EC 98 00 00 00 48 C7 44 24 30 FE FF FF FF 48 8B F9 44 8B 01"
 
 using namespace std;
 
@@ -113,7 +113,7 @@ bool hook_event_play_track()
         func_offset = 0x793D80;
         break;
     default: // RBVER_661+
-        ep_addr = sig_scan(NULL, EVENT_PLAY_SIG, EVENT_PLAY_SIG_LEN);
+        ep_addr = sig_scan(EVENT_PLAY_SIG);
         break;
     };
     if (!ep_addr) {

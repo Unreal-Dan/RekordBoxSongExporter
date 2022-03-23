@@ -8,20 +8,18 @@
 #include "Log.h"
 
 // sig for djengine::djengineIF::getinstance()
-#define DJENG_GET_INST_SIG "\x40\x53\x48\x83\xEC\x30\x48\xC7\x44\x24\x20\xFE\xFF\xFF\xFF\x48\x8B\x05\x90\x90\x90\x90\x48\x85\xC0\x75\x6B\x48\x8D\x1D"
-#define DJENG_GET_INST_SIG_LEN (sizeof(DJENG_GET_INST_SIG) - 1)
+#define DJENG_GET_INST_SIG "40 53 48 83 EC 30 48 C7 44 24 20 FE FF FF FF 48 8B 05 90 90 90 90 48 85 C0 75 6B 48 8D 1D"
 
 // sig for djengine::djengineIF::setTempo(uint32_t deck, float tempo_percent)
-#define DJENG_SET_TEMPO_SIG "\x48\x89\x5C\x24\x08\x48\x89\x74\x24\x18\x57\x48\x83\xEC\x30\x48\x8B\xF1\x0F\x29\x74\x24\x20"
-#define DJENG_SET_TEMPO_SIG_LEN (sizeof(DJENG_SET_TEMPO_SIG) - 1)
+#define DJENG_SET_TEMPO_SIG "48 89 5C 24 08 48 89 74 24 18 57 48 83 EC 30 48 8B F1 0F 29 74 24 20"
 
 // typedef of the djengineIF::getInstance
 typedef void *(*get_instance_fn_t)(void);
-get_instance_fn_t get_instance = NULL;
+static get_instance_fn_t get_instance = NULL;
 
 // typedef of the djengineIF::setTempo
 typedef void (*set_tempo_fn_t)(void *pthis, uint32_t deck, float tempo_percent);
-set_tempo_fn_t set_tempo = NULL;
+static set_tempo_fn_t set_tempo = NULL;
 
 // lookup original bpm of song on deck
 static uint32_t get_track_bpm_of_deck(uint32_t deck);
@@ -32,24 +30,42 @@ static void bpm_changed(uint32_t deck, uint32_t old_bpm, uint32_t new_bpm);
 static Hook olvc_hook;
 
 // djplay::DeviceComponent::operateLongValueChange
-// 48 8B C4 41 56 48 83 EC 60 48 C7 40 C8 FE FF FF FF 48 89 58 08 48 89 68 10 48 89 70 18 48 89 78 20 41
-#define DC_OLVC_SIG             "\x48\x8B\xC4\x41\x56\x48\x83\xEC\x60\x48\xC7\x40\xC8\xFE\xFF\xFF\xFF\x48\x89\x58\x08\x48\x89\x68\x10\x48\x89\x70\x18\x48\x89\x78\x20\x41"
-#define DC_OLVC_SIG_LEN         (sizeof(DC_OLVC_SIG) - 1)
+#define DC_OLVC_SIG "48 8B C4 41 56 48 83 EC 60 48 C7 40 C8 FE FF FF FF 48 89 58 08 48 89 68 10 48 89 70 18 48 89 78 20 41"
+
+
+void *wait_keypress(void *arg)
+{
+    while (1) {
+        if (GetAsyncKeyState(VK_UP) & 1) {
+            info("Add 5 bpm to deck %u", get_master());
+            adjust_deck_bpm(get_master(), 5);
+        }
+        if (GetAsyncKeyState(VK_DOWN) & 1) {
+            info("Subtract 5 bpm from deck %u", get_master());
+            adjust_deck_bpm(get_master(), -5);
+        }
+
+        Sleep(100);
+    }
+    return NULL;
+}
 
 // initialize the bpm control system
 bool init_bpm_control()
 {
-    get_instance = (get_instance_fn_t)sig_scan(NULL, DJENG_GET_INST_SIG, DJENG_GET_INST_SIG_LEN);
+    // sig for djengine::djengineIF::getinstance()
+    get_instance = (get_instance_fn_t)sig_scan(DJENG_GET_INST_SIG);
     if (!get_instance) {
         error("Failed to locate djengineIF::getInstance");
         return false;
     }
-    set_tempo = (set_tempo_fn_t)sig_scan(NULL, DJENG_SET_TEMPO_SIG, DJENG_SET_TEMPO_SIG_LEN);
+    // sig for djengine::djengineIF::setTempo(uint32_t deck, float tempo_percent)
+    set_tempo = (set_tempo_fn_t)sig_scan(DJENG_SET_TEMPO_SIG);
     if (!set_tempo) {
         error("Failed to locate djengineIF::setTempo");
         return false;
     }
-    uintptr_t olvc = sig_scan(NULL, DC_OLVC_SIG, DC_OLVC_SIG_LEN);
+    uintptr_t olvc = sig_scan(DC_OLVC_SIG);
     if (!olvc) {
         return false;
     }
@@ -58,45 +74,8 @@ bool init_bpm_control()
         error("Failed to install set_tempo hook");
         return false;
     }
+    //CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)wait_keypress, NULL, 0, NULL);
     return true;
-}
-
-// add some bpm amount to a deck
-bool adjust_deck_bpm(uint32_t deck, int tempo_offset)
-{
-    djplayer_uiplayer *player = lookup_player(deck);
-    if (!player) {
-        error("player %u is NULL", deck);
-        return false;
-    }
-    // get the original track bpm ex: 15000 (150)
-    int orig_bpm = (int)get_track_bpm_of_deck(deck);
-    // get the real current bpm of deck ex: 15500 (155)
-    int real_bpm = (int)player->getDeckBPM();
-    // get the intended new bpm, ex: 16000 (160)
-    int new_bpm = real_bpm + (tempo_offset * 100);
-    // the diff is how far the new value is from the original ex: 1500 (+15)
-    int bpm_diff = new_bpm - orig_bpm;
-    // the precent diff is the percent of the original that is different ex: 15/150 (+10%)
-    float percent_diff = ((float)bpm_diff / (float)orig_bpm) * (float)100.0;
-    // call the rekordbox functions to set tempo via percent offset
-    set_tempo(get_instance(), deck, percent_diff);
-    return true;
-}
-
-// lookup original bpm of song on deck
-static uint32_t get_track_bpm_of_deck(uint32_t deck)
-{
-    // lookup a rowdata object
-    row_data *rowdata = lookup_row_data(deck);
-    if (!rowdata) {
-        return 0;
-    }
-    uint32_t bpm = rowdata->getBpm();
-    // cleanup the rowdata object we got from rekordbox
-    // so that we can just use our local containers
-    destroy_row_data(rowdata);
-    return bpm;
 }
 
 // callback for operateLongValueChange, this is used to catch bpm changes
@@ -104,6 +83,7 @@ static uintptr_t __fastcall olvc_callback(hook_arg_t hook_arg, func_args *args)
 {
     const char *name = *(const char **)args->arg3;
     static uint32_t old_bpm[4] = {0};
+    //info("olvc(%s, %u, %u)", name, (uint32_t)args->arg2, (uint32_t)args->arg4);
     // detect when the BPM changes
     if (name[0] != '@' || name[1] != 'B' || name[2] != 'P' ||
         name[3] != 'M' || name[4] != '\0') {
@@ -135,6 +115,6 @@ static void bpm_changed(uint32_t deck_idx, uint32_t old_bpm, uint32_t new_bpm)
         return;
     }
     info("BPM change deck %u: %.2f -> %.2f", deck_idx, old_bpm / 100.0, new_bpm / 100.0);
-    // Then we need to update the output files because notifyMasterChange isn't called
+    // Push a message to the output file writer indicating the deck changed bpm
     push_deck_update(deck_idx, UPDATE_TYPE_BPM);
 }

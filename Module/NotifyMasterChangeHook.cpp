@@ -12,8 +12,8 @@
 #include "Hook.h"
 #include "Log.h"
 
-#define NOTIFY_MASTER_CHANGE_SIG "\x40\x53\x48\x83\xEC\x30\x48\x8B\xD9\x48\x8B\x89\x40\x01\x00\x00\x48\x85\xC9\x0F"
-#define NOTIFY_MASTER_CHANGE_SIG_LEN (sizeof(NOTIFY_MASTER_CHANGE_SIG) - 1)
+// rbxfrm::SyncManager::notifyMasterChange I think
+#define NOTIFY_MASTER_CHANGE_SIG "40 53 48 83 EC 30 48 8B D9 48 8B 89 40 01 00 00 48 85 C9 0F"
 
 using namespace std;
 
@@ -166,7 +166,7 @@ bool hook_notify_master_change()
         func_offset = 0x169D240;
         break;
     default: // RBVER_661+
-        nmc_addr = sig_scan(NULL, NOTIFY_MASTER_CHANGE_SIG, NOTIFY_MASTER_CHANGE_SIG_LEN);
+        nmc_addr = sig_scan(NOTIFY_MASTER_CHANGE_SIG);
         break;
     };
     if (!nmc_addr) {

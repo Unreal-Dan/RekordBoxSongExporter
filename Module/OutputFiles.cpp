@@ -309,6 +309,7 @@ void run_listener()
                 // is there any realtime bpms used in this output file?
                 if ((outfile->format_tags & MASK_REALTIME_BPMS) == 0) {
                     // if not then skip it
+                        info("Nope1");
                     continue;
                 }
                 // otherwise there is realtime bpms so calculate the rt bitflag for current deck
@@ -319,10 +320,12 @@ void run_listener()
                     if (get_master() != deck_update.deck_idx || (outfile->format_tags & TAG_RT_MASTER_BPM) == 0) {
                         // we don't want to update this file because it doesn't have any realtime
                         // bpm tags or the deck number doesn't match the bpm tag
+                        info("Nope");
                         continue;
                     }
                 }
             }
+
             // log the track to the output file
             outfile->log_track(&track);
         }
@@ -408,6 +411,7 @@ output_file::output_file(const string &line)
     format = value;
     // initialize the format tags to 0
     format_tags = 0;
+
     // check for tags and set bitflags so that performing
     // replacements later will be optimized because we will
     // know exactly which tags need to be replaced

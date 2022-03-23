@@ -7,17 +7,13 @@
 #include "Log.h"
 
 // db::databaseif::getinstance();
-#define GET_INSTANCE_SIG "\x40\x57\x48\x83\xec\x30\x48\xc7\x44\x24\x20\xfe\xff\xff\xff\x48\x89\x5c\x24\x58\x48\x8b\x05\x90\x90\x90\x90\x48\x85\xc0"
-#define GET_INSTANCE_SIG_LEN (sizeof(GET_INSTANCE_SIG) - 1)
+#define GET_INSTANCE_SIG "40 57 48 83 ec 30 48 c7 44 24 20 fe ff ff ff 48 89 5c 24 58 48 8b 05 90 90 90 90 48 85 c0"
 // db::databaseif::getrowdatatrack(v8, v7, &a1a, 1u, 0)
-#define GET_ROW_DATA_TRACK_SIG "\x48\x89\x5c\x24\x08\x57\x48\x83\xec\x20\x48\x8b\x09\x49\x8b\xd8\x44\x8b\x44\x24\x50\x8b\xfa\x41\x8b\xd1"
-#define GET_ROW_DATA_TRACK_SIG_LEN (sizeof(GET_ROW_DATA_TRACK_SIG) - 1)
+#define GET_ROW_DATA_TRACK_SIG "48 89 5c 24 08 57 48 83 ec 20 48 8b 09 49 8b d8 44 8b 44 24 50 8b fa 41 8b d1"
 // db::rowdatatrack::rowdatatrack(rowdata);
-#define ROW_DATA_TRACK_SIG "\x48\x89\x4c\x24\x08\x53\x55\x56\x57\x41\x56\x48\x83\xec\x30\x48\xc7\x44\x24\x20\xfe\xff\xff\xff\x48\x8b\xf9\xbd\x01\x00\x00\x00"
-#define ROW_DATA_TRACK_SIG_LEN (sizeof(ROW_DATA_TRACK_SIG) - 1)
+#define ROW_DATA_TRACK_SIG "48 89 4c 24 08 53 55 56 57 41 56 48 83 ec 30 48 c7 44 24 20 fe ff ff ff 48 8b f9 bd 01 00 00 00"
 // db::rowdatatrack::~rowdatatrack(rowdata);
-#define DESTR_ROW_DATA_SIG "\x48\x89\x4c\x24\x08\x53\x55\x56\x57\x41\x56\x48\x83\xec\x30\x48\xc7\x44\x24\x20\xfe\xff\xff\xff\x4c\x8b\xf1\x48\x8d\x05\x90\x90\x90\x90\x48\x89\x01\x48"
-#define DESTR_ROW_DATA_SIG_LEN (sizeof(DESTR_ROW_DATA_SIG) - 1)
+#define DESTR_ROW_DATA_SIG "48 89 4c 24 08 53 55 56 57 41 56 48 83 ec 30 48 c7 44 24 20 fe ff ff ff 4c 8b f1 48 8d 05 90 90 90 90 48 89 01 48"
 
 // inst = db::DatabaseIF::getInstance();
 typedef void *(*get_instance_fn)();
@@ -87,10 +83,10 @@ bool init_row_data_funcs()
         break;
     default: // RBVER_661+
         // sig scan for each function
-        get_inst = (get_instance_fn)sig_scan(NULL, GET_INSTANCE_SIG, GET_INSTANCE_SIG_LEN);
-        get_rowdata = (get_rowdata_fn)sig_scan(NULL, GET_ROW_DATA_TRACK_SIG, GET_ROW_DATA_TRACK_SIG_LEN);
-        init_rowdata = (init_rowdata_fn)sig_scan(NULL, ROW_DATA_TRACK_SIG, ROW_DATA_TRACK_SIG_LEN);
-        destr_rowdata = (destr_rowdata_fn)sig_scan(NULL, DESTR_ROW_DATA_SIG, DESTR_ROW_DATA_SIG_LEN);
+        get_inst = (get_instance_fn)sig_scan(GET_INSTANCE_SIG);
+        get_rowdata = (get_rowdata_fn)sig_scan(GET_ROW_DATA_TRACK_SIG);
+        init_rowdata = (init_rowdata_fn)sig_scan(ROW_DATA_TRACK_SIG);
+        destr_rowdata = (destr_rowdata_fn)sig_scan(DESTR_ROW_DATA_SIG);
         break;
     }
     if (!get_inst) {

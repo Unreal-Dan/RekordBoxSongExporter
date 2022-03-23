@@ -70,6 +70,23 @@ Hook::~Hook()
     cs_close(&m_capstone_handle);
 }
 
+Hook *Hook::instant_hook(uintptr_t target_func, hook_callback_fn hook_func,
+    hook_arg_t arg, bool do_callback, uint32_t num_args)
+{
+    Hook *hook = new Hook(target_func, hook_func, arg);
+    if (!hook) {
+        error("Failed to allocate new hook object");
+        return NULL;
+    }
+    if (!hook->install_hook(do_callback, num_args)) {
+        error("Failed to install instant hook");
+        delete hook;
+        return NULL;
+    }
+    // success
+    return hook;
+}
+
 void Hook::init(uintptr_t target_func, hook_callback_fn hook_func, hook_arg_t arg)
 {
     m_target_func = target_func;
