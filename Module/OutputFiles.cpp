@@ -320,7 +320,9 @@ track_data::track_data(uint32_t deck_idx) : idx(deck_idx)
     // the bpm is an integer like 15150 which represents 151.50 bpm
     bpm = to_string(rowdata->getBpm());
     // so we just shove a dot in there and it's good
-    bpm.insert(bpm.length() - 2, ".");
+    if (bpm.length() > 2) {
+        bpm.insert(bpm.length() - 2, ".");
+    }
     // cleanup the rowdata object we got from rekordbox
     // so that we can just use our local containers
     destroy_row_data(rowdata);
