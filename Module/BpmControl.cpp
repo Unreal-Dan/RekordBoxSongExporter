@@ -32,24 +32,6 @@ static Hook olvc_hook;
 // djplay::DeviceComponent::operateLongValueChange
 #define DC_OLVC_SIG "48 8B C4 41 56 48 83 EC 60 48 C7 40 C8 FE FF FF FF 48 89 58 08 48 89 68 10 48 89 70 18 48 89 78 20 41"
 
-
-void *wait_keypress(void *arg)
-{
-    while (1) {
-        if (GetAsyncKeyState(VK_UP) & 1) {
-            info("Add 5 bpm to deck %u", get_master());
-            adjust_deck_bpm(get_master(), 5);
-        }
-        if (GetAsyncKeyState(VK_DOWN) & 1) {
-            info("Subtract 5 bpm from deck %u", get_master());
-            adjust_deck_bpm(get_master(), -5);
-        }
-
-        Sleep(100);
-    }
-    return NULL;
-}
-
 // initialize the bpm control system
 bool init_bpm_control()
 {
@@ -74,7 +56,6 @@ bool init_bpm_control()
         error("Failed to install set_tempo hook");
         return false;
     }
-    //CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)wait_keypress, NULL, 0, NULL);
     return true;
 }
 

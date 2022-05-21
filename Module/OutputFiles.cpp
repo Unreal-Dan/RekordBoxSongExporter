@@ -308,8 +308,6 @@ void run_listener()
             if (deck_update.type == UPDATE_TYPE_BPM) {
                 // is there any realtime bpms used in this output file?
                 if ((outfile->format_tags & MASK_REALTIME_BPMS) == 0) {
-                    // if not then skip it
-                        info("Nope1");
                     continue;
                 }
                 // otherwise there is realtime bpms so calculate the rt bitflag for current deck
@@ -320,7 +318,6 @@ void run_listener()
                     if (get_master() != deck_update.deck_idx || (outfile->format_tags & TAG_RT_MASTER_BPM) == 0) {
                         // we don't want to update this file because it doesn't have any realtime
                         // bpm tags or the deck number doesn't match the bpm tag
-                        info("Nope");
                         continue;
                     }
                 }
