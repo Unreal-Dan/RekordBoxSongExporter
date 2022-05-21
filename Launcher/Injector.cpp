@@ -117,7 +117,6 @@ bool Injector::launch_suspended()
     // Create Process on the exe passed in
     if (!CreateProcess(m_exe_path.c_str(), NULL, NULL, NULL, false,
         creation_flags, NULL, m_exe_basepath.c_str(), &si, &pi)) {
-        MessageBoxA(NULL, "Failed to launch exe", "Error", 0);
         return false;
     }
     m_process = pi.hProcess;
