@@ -6,9 +6,9 @@
 #define   error(msg, ...) log_msg("-", __FUNCTION__, msg, __VA_ARGS__)
 #define success(msg, ...) log_msg("+", NULL, msg, __VA_ARGS__)
 #else
-#define    info(msg, ...) 
-#define   error(msg, ...) 
-#define success(msg, ...) 
+#define    info(msg, ...)
+#define   error(msg, ...)
+#define success(msg, ...)
 #endif
 
 // log a message with a prefix in brackets

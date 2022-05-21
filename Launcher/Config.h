@@ -6,7 +6,7 @@
 #include <string>
 
 // The current version of RBSE
-#define RBSE_VERSION            "3.43"
+#define RBSE_VERSION            "3.6"
 // maximum length of output file names
 #define MAX_OUTFILE_NAME_LEN    64
 // maximum length of output formats
@@ -21,7 +21,6 @@
         "LastTrackTitle=0;1;0;%title%",                         \
         "LastTrackArtist=0;1;0;%artist%",                       \
         "TrackList=1;0;0;%time% %artist% - %title%",            \
-        "RotatingTrackList=2;2;5;%time% %artist% - %title%",    \
     }
 
 // the image base for various stuff
@@ -39,7 +38,10 @@ public:
 };
 
 // the currently loaded config
-extern Config config; 
+extern Config config;
+
+// get the folder of the launcher/config
+std::string get_launcher_folder();
 
 // load the global config from file
 bool config_load();

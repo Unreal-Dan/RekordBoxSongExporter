@@ -113,6 +113,10 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if exist $(OutputPath)$(SolutionName)$(Version).zip (  Del $(OutputPath)$(SolutionName)$(Version).zip )
+powershell.exe -command Compress-Archive -Path $(OutputPath)Launcher.exe,$(OutputPath)Module.dll,$(OutputPath)Server.exe,$(SolutionDir)README.md,$(SolutionDir)launcher_explained.png -DestinationPath $(OutputPath)$(SolutionName)$(Version).zip</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -145,6 +149,10 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if exist $(OutputPath)$(SolutionName)$(Version).zip (  Del $(OutputPath)$(SolutionName)$(Version).zip )
+powershell.exe -command Compress-Archive -Path $(OutputPath)Launcher.exe,$(OutputPath)Module.dll,$(OutputPath)Server.exe,$(SolutionDir)README.md,$(SolutionDir)launcher_explained.png -DestinationPath $(OutputPath)$(SolutionName)$(Version).zip</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Config.cpp" />

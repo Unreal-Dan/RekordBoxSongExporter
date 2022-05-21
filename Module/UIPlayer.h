@@ -1,7 +1,7 @@
 #pragma once
 #include <inttypes.h>
 
-// a deck/player, in code it's a djplay::UIPlayer
+// a deck/player, in Rekordbox it's a djplay::UIPlayer
 class djplayer_uiplayer
 {
 public:

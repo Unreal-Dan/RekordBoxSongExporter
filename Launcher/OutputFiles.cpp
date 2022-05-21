@@ -33,7 +33,7 @@ output_file::output_file(const string &line)
     format = value;
 }
 
-output_file::output_file() : 
+output_file::output_file() :
     // call line constructor with default output file format
     output_file(DEFAULT_OUTPUT_FILE)
 {

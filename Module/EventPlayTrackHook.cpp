@@ -16,6 +16,8 @@
 
 using namespace std;
 
+Hook g_play_track_hook;
+
 // NOTE: this is unused now, it was the old source of track information
 //       but it only has a few fields. The new source is handled in the
 //       output thread by looking up row track data
@@ -23,14 +25,14 @@ struct deck_struct
 {
     // this appears to be the same size for version 5.8.5 and 6.5.0
     uint8_t pad[0x138];
-    char *track_title; 
-    char *track_artist; 
-    char *track_genre; 
+    char *track_title;
+    char *track_artist;
+    char *track_genre;
     void *unkown1;
     void *unkown2;
-    char *track_composer; 
-    char *track_lyricist; 
-    char *track_label; 
+    char *track_composer;
+    char *track_lyricist;
+    char *track_label;
     uint8_t pad2[0x68];
 };
 
@@ -51,11 +53,12 @@ struct event_struct
 };
 
 // the actual hook function that eventPlay is redirected to
-void play_track_hook(event_struct *event)
+uintptr_t __fastcall play_track_hook(hook_arg_t hook_arg, func_args *args)
 {
+    event_struct *event = (event_struct *)args->arg1;
     // lets not segfault
     if (!event || !event->event_info || event->deck_idx > 8) {
-        return;
+        return 0;
     }
     // grab the deck idx for this play event
     // the deck index is offset by 1
@@ -64,14 +67,14 @@ void play_track_hook(event_struct *event)
     djplayer_uiplayer *player = lookup_player(deck_idx);
     // if we're loading the same song then it doesn't matter
     if (!player || get_track_id(deck_idx) == player->getTrackBrowserID()) {
-        return;
+        return 0;
     }
     // update the last track of this deck
     set_track_id(deck_idx, player->getTrackBrowserID());
     // if we're playing/cueing a new track on the master deck
     if (get_master() == deck_idx) {
         // Then we need to update the output files because notifyMasterChange isn't called
-        push_deck_update(deck_idx);
+        push_deck_update(deck_idx, UPDATE_TYPE_NORMAL);
         // we mark this deck as logged so notifyMasterChange doesn't log this track again
         set_logged(deck_idx, true);
         // the edge case where we loaded a track onto the master
@@ -82,6 +85,7 @@ void play_track_hook(event_struct *event)
         // the edge case where we loaded a track onto the master
         info("Played track on %d", deck_idx);
     }
+    return 0;
 }
 
 bool hook_event_play_track()
@@ -121,8 +125,9 @@ bool hook_event_play_track()
     }
     // determine address of target function to hook
     info("event_play_func: %p", ep_addr);
+    g_play_track_hook.init(ep_addr, play_track_hook, NULL);
     // install hook on event_play_addr that redirects to play_track_hook
-    if (!install_hook(ep_addr, play_track_hook, trampoline_len)) {
+    if (!g_play_track_hook.install_hook()) {
         error("Failed to hook eventPlay");
         return false;
     }

@@ -6,6 +6,7 @@
 #include "Config.h"
 #include "Log.h"
 
+// sig for a function that accesses the global g_MainComponent object
 #define MAIN_COMPONENT_SIG "\x49\x8B\xCE\x41\x2B\xFC\x41\x2B\xFF\x2B\xFD\x2B\xBC\x24\xC0\x00\x00\x00\x41\x2B\xFD"
 #define MAIN_COMPONENT_SIG_LEN (sizeof(MAIN_COMPONENT_SIG) - 1)
 
@@ -27,8 +28,8 @@ uint32_t djplayer_uiplayer::getTrackBrowserID()
     case RBVER_652:
     case RBVER_653:
     default:
-        // just going to set this going forward... hopefully it doesn't change
-        if (config.version >= RBVER_661) {
+        // use this offset for all versions after 650
+        if (config.version >= RBVER_650) {
             return *(uint32_t *)((uintptr_t)this + 0x368);
         }
         error("Unknown version");
@@ -65,7 +66,7 @@ uint32_t djplayer_uiplayer::getDeckBPM()
     // the djplay::DeviceComponent object which is in a massive list of other
     // device component objects. A device component appears to be any feature
     // on a deck that is polled by rekordbox, such as the bpm control, all the
-    // knobs, and buttons.  The device initialization can be found via the 
+    // knobs, and buttons.  The device initialization can be found via the
     // string "@BPM" inside djplay::UiPlayer::createDevice().
     void *bpmDevice = nullptr;
     void *bpmDeviceInner = nullptr;
@@ -81,8 +82,8 @@ uint32_t djplayer_uiplayer::getDeckBPM()
     case RBVER_652:
     case RBVER_653:
     default:
-        // dynamically locate the bpm device after 661
-        if (config.version >= RBVER_661) {
+        // dynamically locate the bpm device for all versions after 650
+        if (config.version >= RBVER_650) {
             static uintptr_t bpm_device_offset = 0;
             if (!bpm_device_offset) {
                 // this will iterate the list of devices and look for the device with
@@ -103,19 +104,19 @@ uint32_t djplayer_uiplayer::getDeckBPM()
 }
 
 // lookup a djplayer/deck by index (0 to 3)
-djplayer_uiplayer *lookup_player(uint32_t deck_idx) 
+djplayer_uiplayer *lookup_player(uint32_t deck_idx)
 {
     // there's only 4 decks in this object
-    if (deck_idx > 4) {
+    if (deck_idx >= 3) {
         deck_idx = 0;
     }
     // The main component is the global object that contains the UIManager object.
     // Inside the UIManager object is four consecutive UIPlayer pointers.
     //
     // To find the main component address look for "MainComponent", all three
-    // occurrences of the string will be the constructor of the MainComponent. 
+    // occurrences of the string will be the constructor of the MainComponent.
     //
-    // The third occurrence will be shortly after the new object has been zeroed 
+    // The third occurrence will be shortly after the new object has been zeroed
     // out and the global MainComponent will be initialized like this:
     //
     //    *(_WORD *)(v3 + 3144) = 0;
@@ -123,7 +124,7 @@ djplayer_uiplayer *lookup_player(uint32_t deck_idx)
     //    *(_QWORD *)(v3 + 3152) = 0i64;
     //    *(_QWORD *)(v3 + 3160) = 0i64;
     //    *(_QWORD *)(v3 + 3168) = 0i64;
-    //    gMainComponent = v3;              // The main component global 
+    //    gMainComponent = v3;              // The main component global
     //    sub_172A060(*(_QWORD *)(v3 + 1512), v3 + 1056);
     //
     // Just find v3 being assigned right after lots of members are set to 0.
@@ -131,7 +132,7 @@ djplayer_uiplayer *lookup_player(uint32_t deck_idx)
     // The second xref of gMainComponent should be a simple function returning
     // the pointer, this is MainComponent::getInstance()
     //
-    // To find the offset for the UIManager look for string "Layout" (capital L) and 
+    // To find the offset for the UIManager look for string "Layout" (capital L) and
     // the first occurrence should be shortly before a usage of MainComponent::getInstance()
     // the call right after utilizes the UIManager to call UIManager->InitSkin:
     //
@@ -139,20 +140,20 @@ djplayer_uiplayer *lookup_player(uint32_t deck_idx)
     //    djplay::UiManager::initSkin(*(v209 + 0x648), &v557, 0);
     //                                         ^ This is the UIManager offset
     //
-    // Then finally to get the pPlayers offset look for "WindowID" and at the 
+    // Then finally to get the pPlayers offset look for "WindowID" and at the
     // first occurrence, the bottom of the function looks like this:
     //
     //      djplay::UiManager::createObject(v8);
     //      *(_QWORD *)(v1 + 1608) = v8;
     //    }
     //    return sub_1049A00((unsigned __int64)&v17 ^ v26);
-    // 
+    //
     // At the start of djplay::UiManager::createObject() is assignments like this:
     //
     //    v4 = (__int64 *)(v1 + 0x50);
     //                          ^ the first UIPlayer offset
     //
-    // This is the first UiPlayer of four UiPlayers. It's not an array, they are 
+    // This is the first UiPlayer of four UiPlayers. It's not an array, they are
     // just consecutive members but they can be accessed like an array.
     static uintptr_t main_component = 0;
     static uintptr_t ui_manager = 0;
@@ -161,46 +162,58 @@ djplayer_uiplayer *lookup_player(uint32_t deck_idx)
         switch (config.version) {
         case RBVER_585:
             main_component = *(uintptr_t *)(rb_base() + 0x39D05D0);
-            ui_manager = *(uintptr_t *)(main_component + 0x638);
-            pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
             break;
         case RBVER_650:
             main_component = *(uintptr_t *)(rb_base() + 0x3F38108);
-            ui_manager = *(uintptr_t *)(main_component + 0x648);
-            pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
             break;
         case RBVER_651:
             main_component = *(uintptr_t *)(rb_base() + 0x3F649E8);
-            ui_manager = *(uintptr_t *)(main_component + 0x648);
-            pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
             break;
         case RBVER_652:
             main_component = *(uintptr_t *)(rb_base() + 0x3F8B318);
-            ui_manager = *(uintptr_t *)(main_component + 0x648);
-            pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
             break;
         case RBVER_653:
             main_component = *(uintptr_t *)(rb_base() + 0x3E4B308);
-            ui_manager = *(uintptr_t *)(main_component + 0x648);
-            pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
             break;
         default: // RBVER_661+
             // just going to set this going forward... hopefully it doesn't change
             if (config.version >= RBVER_661) {
                 // this sig will dump us 0x1D bytes before a reference to gMainComponent
                 uintptr_t main_component_ref = sig_scan(NULL, MAIN_COMPONENT_SIG, MAIN_COMPONENT_SIG_LEN);
+                if (!main_component_ref) {
+                    error("Failed to locate main component reference sig");
+                    return NULL;
+                }
                 // this is the offset to the EIP for gMainComponent
                 int32_t offset = *(int32_t *)(main_component_ref + 0x1D);
                 // the main component is offset bytes from the opcode after the reference
                 main_component = *(uintptr_t *)(main_component_ref + 0x21 + offset);
-                // ui manager and players are just offset of main component like normal
-                ui_manager = *(uintptr_t *)(main_component + 0x648);
-                pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
                 break;
             }
             error("Unknown version");
-            break;
+            return NULL;
         }
+        if (!main_component) {
+            error("Failed to locate main component");
+            return NULL;
+        }
+        // version 585 the uimanager is at 0x638, every version after is 0x648
+        if (config.version == RBVER_585) {
+            ui_manager = *(uintptr_t *)(main_component + 0x638);
+        } else {
+            ui_manager = *(uintptr_t *)(main_component + 0x648);
+        }
+        if (!ui_manager) {
+            error("UIManager is NULL");
+            return NULL;
+        }
+        // players are always at this offset in the uimanager
+        pPlayers = (djplayer_uiplayer **)(ui_manager + 0x50);
+        if (!pPlayers) {
+            error("Players are NULL");
+            return NULL;
+        }
+        // log the three pieces of info we found
         info("MainComponent: %p", main_component);
         info("UIManager: %p", ui_manager);
         info("Players: %p", pPlayers);

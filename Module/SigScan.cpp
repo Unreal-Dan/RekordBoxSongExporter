@@ -5,7 +5,6 @@
 #include "Log.h"
 
 static bool compare_sig(uintptr_t addr, const char *sig, size_t len);
-static bool get_code_start_end(const char *module_name, uintptr_t *start, uintptr_t *end);
 
 uintptr_t sig_scan(const char *module_name, const char *signature, size_t len)
 {
@@ -35,9 +34,6 @@ uintptr_t sig_scan(const char *module_name, const char *signature, size_t len)
             uintptr_t end = start + sec_hdr->SizeOfRawData - len;
             info("Searching %p -> %p for sig", start, end);
             for (uintptr_t i = start; i < end; i++) {
-                if ((i - start) >= 0x7A5310) {
-                    int a = 2;
-                }
                 if (compare_sig(i, signature, len)) {
                     success("Found sig @ %p", (void *)i);
                     return i;
@@ -66,9 +62,3 @@ static bool compare_sig(uintptr_t addr, const char *sig, size_t len)
     } while (len > 0);
     return true;
 }
-
-static bool get_code_start_end(const char *module_name, uintptr_t *start, uintptr_t *end)
-{
-   return false; 
-}
-

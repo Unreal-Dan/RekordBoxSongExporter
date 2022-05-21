@@ -15,6 +15,7 @@
 #include "Config.h"
 
 #pragma comment(lib, "Comctl32.lib")
+#pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "UxTheme.lib")
 #pragma comment(lib, "Winmm.lib")
 
@@ -143,8 +144,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, 
 
     // create the window
     hwnd = CreateWindow(wc.lpszClassName, "Rekordbox Song Exporter " RBSE_VERSION,
-        WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, 
-        (desktop.right/2) - 240, (desktop.bottom/2) - 84, 
+        WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+        (desktop.right/2) - 240, (desktop.bottom/2) - 84,
         420, 269, NULL, NULL, hInstance, NULL);
     if (!hwnd) {
         MessageBox(NULL, "Failed to open window", "Error", 0);
@@ -208,8 +209,8 @@ static LRESULT CALLBACK version_combo_subproc(HWND hwnd, UINT msg, WPARAM wParam
         return DefSubclassProc(hwnd, msg, wParam, lParam);
     }
     // the vertices for the dropdown triangle
-    static const POINT vertices[] = { 
-        {122, 10}, {132, 10}, {127, 15} 
+    static const POINT vertices[] = {
+        {122, 10}, {132, 10}, {127, 15}
     };
     HGDIOBJ oldbrush;
     HGDIOBJ oldpen;
@@ -228,7 +229,7 @@ static LRESULT CALLBACK version_combo_subproc(HWND hwnd, UINT msg, WPARAM wParam
 
     // draw the two rectangles
     Rectangle(hdc, 0, 0, rc.right, rc.bottom);
-    // redraw the text 
+    // redraw the text
     draw_combo_text(hwnd, hdc, rc);
     // draw the box around the dropdown button part
     Rectangle(hdc, rc.right - 25, rc.top + 2, rc.right - 24, rc.bottom - 2);
@@ -295,18 +296,18 @@ static void do_create(HWND hwnd)
             cur_sel = i;
         }
     }
-    // Send the CB_SETCURSEL message to display an initial item in the selection field  
+    // Send the CB_SETCURSEL message to display an initial item in the selection field
     ComboBox_SetCurSel(hwndVersionCombo, cur_sel);
     // for overriding background colors of dropdown
     SetWindowSubclass(hwndVersionCombo, version_combo_subproc, 0, 0);
 
     // create the server checkbox and ip textbox
-    hwndServerCheck = CreateWindow(WC_BUTTON, "Server", 
+    hwndServerCheck = CreateWindow(WC_BUTTON, "Server",
         WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX | BS_LEFTTEXT | WS_TABSTOP,
         198, 16, 65, 16, hwnd, (HMENU)SERVER_CHECK_ID, NULL, NULL);
 
     // create server ip entry
-    hwndServerEdit = CreateWindow(WC_EDIT, config.server_ip.c_str(), 
+    hwndServerEdit = CreateWindow(WC_EDIT, config.server_ip.c_str(),
         WS_VISIBLE | WS_CHILD | WS_BORDER | WS_TABSTOP,
         270, 14, 120, 20, hwnd, (HMENU)SERVER_EDIT_ID, NULL, NULL);
 
@@ -318,8 +319,8 @@ static void do_create(HWND hwnd)
     }
 
     // create the install path entry text box
-    hwndPathEdit = CreateWindow(WC_EDIT, "", 
-        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP, 
+    hwndPathEdit = CreateWindow(WC_EDIT, "",
+        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP,
         12, 42, 378, 21, hwnd, (HMENU)PATH_EDIT_ID, NULL, NULL);
 
     // default the path to same as chosen version there's configured path
@@ -333,7 +334,7 @@ static void do_create(HWND hwnd)
     //  begin output file configs
 
     // Create listbox of output files
-    hwndOutfilesList = CreateWindow(WC_LISTBOX, NULL, 
+    hwndOutfilesList = CreateWindow(WC_LISTBOX, NULL,
         WS_VISIBLE | WS_CHILD | WS_BORDER | WS_VSCROLL | LBS_NOTIFY | WS_TABSTOP,
         12, 70, 140, 128, hwnd, (HMENU)OUTFILES_LIST_ID, NULL, NULL);
 
@@ -354,8 +355,8 @@ static void do_create(HWND hwnd)
         83, 192, 69, 28, hwnd, (HMENU)ADD_BUTTON_ID, NULL, NULL);
 
     // Output file name edit textbox
-    hwndOutfileNameEdit = CreateWindow(WC_EDIT, "", 
-        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP, 
+    hwndOutfileNameEdit = CreateWindow(WC_EDIT, "",
+        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP,
         160, 70, 230, 20, hwnd, (HMENU)OUTFILENAME_EDIT_ID, NULL, NULL);
     EnableWindow(hwndOutfileNameEdit, false);
 
@@ -363,8 +364,8 @@ static void do_create(HWND hwnd)
     Edit_LimitText(hwndOutfileNameEdit, MAX_OUTFILE_NAME_LEN);
 
     // Output file format edit textbox
-    hwndOutfileFormatEdit = CreateWindow(WC_EDIT, "", 
-        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP, 
+    hwndOutfileFormatEdit = CreateWindow(WC_EDIT, "",
+        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP,
         160, 96, 230, 20, hwnd, (HMENU)OUTFILEFORMAT_EDIT_ID, NULL, NULL);
     EnableWindow(hwndOutfileFormatEdit, false);
 
@@ -390,24 +391,24 @@ static void do_create(HWND hwnd)
     EnableWindow(hwndPrependModeRadio, false);
 
     // Create the offset label
-    hwndOffsetLabel = CreateWindowEx(WS_EX_TRANSPARENT, WC_STATIC, "Offset:", 
-        WS_CHILD | WS_VISIBLE | SS_LEFT | WS_SYSMENU, 
+    hwndOffsetLabel = CreateWindowEx(WS_EX_TRANSPARENT, WC_STATIC, "Offset:",
+        WS_CHILD | WS_VISIBLE | SS_LEFT | WS_SYSMENU,
         162, 150, 46, 16, hwnd, NULL, NULL, NULL);
 
     // Create the offset text box
-    hwndOffsetEdit = CreateWindow(WC_EDIT, "", 
-        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_NUMBER | WS_TABSTOP, 
+    hwndOffsetEdit = CreateWindow(WC_EDIT, "",
+        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_NUMBER | WS_TABSTOP,
         210, 148, 40, 20, hwnd, (HMENU)OFFSET_EDIT_ID, NULL, NULL);
     EnableWindow(hwndOffsetEdit, false);
 
     // Create the max lines label
-    hwndMaxLinesLabel = CreateWindowEx(WS_EX_TRANSPARENT, WC_STATIC, "Max Lines:", 
-        WS_CHILD | WS_VISIBLE | SS_LEFT | WS_SYSMENU, 
+    hwndMaxLinesLabel = CreateWindowEx(WS_EX_TRANSPARENT, WC_STATIC, "Max Lines:",
+        WS_CHILD | WS_VISIBLE | SS_LEFT | WS_SYSMENU,
         272, 150, 76, 16, hwnd, NULL, NULL, NULL);
 
     // Create the max lines text box
-    hwndMaxLinesEdit = CreateWindow(WC_EDIT, "", 
-        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_NUMBER | WS_TABSTOP, 
+    hwndMaxLinesEdit = CreateWindow(WC_EDIT, "",
+        WS_VISIBLE | WS_CHILD | WS_BORDER | ES_NUMBER | WS_TABSTOP,
         350, 148, 40, 20, hwnd, (HMENU)MAXLINES_EDIT_ID, NULL, NULL);
     EnableWindow(hwndMaxLinesEdit, false);
 
@@ -417,14 +418,14 @@ static void do_create(HWND hwnd)
         160, 178, 230, 42, hwnd, (HMENU)LAUNCH_BUTTON_ID, NULL, NULL);
 
     // -----------------------------------------------------
-    // after everything is created send a message to select 
+    // after everything is created send a message to select
     // the first entry in the listbox if there is one
     if (num_output_files() > 0) {
         ListBox_SetCurSel(hwndOutfilesList, 0);
         // SetCurSel won't trigger the LBN_SELCHANGE event so we
         // just send it ourselves to trigger the selection
-        SendMessage(hwnd, WM_COMMAND, 
-            MAKEWPARAM(OUTFILES_LIST_ID, LBN_SELCHANGE), 
+        SendMessage(hwnd, WM_COMMAND,
+            MAKEWPARAM(OUTFILES_LIST_ID, LBN_SELCHANGE),
             (LPARAM)hwndOutfilesList);
     }
 }
@@ -453,8 +454,8 @@ static LRESULT do_button_paint(WPARAM wParam, LPARAM lParam)
     SetTextColor(hdc, textcolor);
     // labels, radio buttons, and checkboxes need transparency set
     // otherwise they have an ugly box around the text
-    if (lParam == (LPARAM)hwndOffsetLabel || 
-        lParam == (LPARAM)hwndMaxLinesLabel || 
+    if (lParam == (LPARAM)hwndOffsetLabel ||
+        lParam == (LPARAM)hwndMaxLinesLabel ||
         lParam == (LPARAM)hwndReplaceModeRadio ||
         lParam == (LPARAM)hwndAppendModeRadio ||
         lParam == (LPARAM)hwndPrependModeRadio ||
@@ -469,14 +470,15 @@ static LRESULT do_button_paint(WPARAM wParam, LPARAM lParam)
 // inject into the path specified in gui
 static void do_launch()
 {
+    Injector injector;
     // save the configurations
     config_save();
     // get the launch path for rekordbox
-    string path = get_window_text(hwndPathEdit);
     // launch rekordbox and inject the dll
-    if (!inject(path)) {
-        string msg = "Failed to inject into " + path;
-        MessageBox(NULL, msg.c_str(), "Error", 0);
+    injector.init(get_window_text(hwndPathEdit), get_launcher_folder() + "Module.dll");
+    // inject the dll
+    if (!injector.inject()) {
+        MessageBox(NULL, "Failed to inject", "Error", 0);
     }
 }
 
@@ -530,7 +532,7 @@ static void handle_click(HWND hwnd, WPARAM wParam, LPARAM lParam)
         }
         return;
     case REPLACE_RADIO_ID:
-        if (sel >= 0) { 
+        if (sel >= 0) {
             set_outfile_mode(sel, MODE_REPLACE);
             EnableWindow(hwndMaxLinesEdit, false);
             Edit_SetText(hwndMaxLinesEdit, "N/A");
@@ -662,9 +664,9 @@ static void do_command(HWND hwnd, WPARAM wParam, LPARAM lParam)
     case BN_CLICKED:
         handle_click(hwnd, wParam, lParam);
         break;
-    case LBN_SELCHANGE: 
+    case LBN_SELCHANGE:
     //case CBN_SELCHANGE:
-        // supposed to catch CBN_SELCHANGE for combobox and LBN_SELCHANGE 
+        // supposed to catch CBN_SELCHANGE for combobox and LBN_SELCHANGE
         // for listbox but they literally both expand to 1 so we can't
         // even have both in the same switch statement
         handle_selection_change(hwnd, wParam, lParam);

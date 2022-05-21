@@ -10,8 +10,6 @@
 #include "Versions.h"
 #include "Config.h"
 
-#pragma comment(lib, "Shlwapi.lib")
-
 using namespace std;
 
 // module base
@@ -21,16 +19,23 @@ HINSTANCE imageBase = (HINSTANCE)&__ImageBase;
 // currently loaded config
 Config config;
 
+string get_launcher_folder()
+{
+    char buffer[MAX_PATH] = { 0 };
+    // grab path of current executable
+    DWORD len = GetModuleFileName(NULL, buffer, MAX_PATH);
+    // strip off the filename
+    if (!len || !PathRemoveFileSpec(buffer)) {
+        MessageBoxA(NULL, "Failed to resolve module path", "Error", 0);
+        return string();
+    }
+    return string(buffer) + "\\";
+}
+
 // helper to get the config file path
 static string get_config_path()
 {
-    char path[MAX_PATH] = { 0 };
-    string configPath;
-    if (!GetModuleFileName(imageBase, path, sizeof(path)) || !PathRemoveFileSpec(path)) {
-        return configPath;
-    }
-    configPath = string(path) + "\\config.ini";
-    return configPath;
+    return get_launcher_folder() + "config.ini";
 }
 
 bool config_load()
@@ -49,7 +54,7 @@ bool config_load()
             // Detect new config file
             if (heading == "RBSongExporterConfig") {
                 is_legacy_config = true;
-            } 
+            }
             // start of output files section
             if (heading == "Output Files") {
                 break;

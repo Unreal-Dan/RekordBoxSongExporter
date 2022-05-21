@@ -24,9 +24,9 @@ CRITICAL_SECTION last_track_critsec;
 
 bool initialize_last_track_storage()
 {
-    // setup the critical section because our two hooks will be on 
+    // setup the critical section because our two hooks will be on
     // different threads and they will be sharing data
-    // we don't clean this up because we don't provide a way 
+    // we don't clean this up because we don't provide a way
     // to inject more than one of this dll anyway
     InitializeCriticalSection(&last_track_critsec);
     // yeah this can't fail right now but maybe in the future

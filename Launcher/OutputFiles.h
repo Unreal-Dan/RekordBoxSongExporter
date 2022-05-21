@@ -15,9 +15,9 @@ class output_file
 {
 public:
     // construct an output file by parsing a config line
-    output_file(const std::string &line); 
+    output_file(const std::string &line);
     // construct a default output file
-    output_file(); 
+    output_file();
 
     // serialize the output file data to a single config line
     std::string to_line();

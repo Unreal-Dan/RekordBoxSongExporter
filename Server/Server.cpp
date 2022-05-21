@@ -18,7 +18,7 @@ SOCKET ListenSocket = INVALID_SOCKET;
 SOCKET ClientSocket = INVALID_SOCKET;
 
 // initialize the server
-bool init_server() 
+bool init_server()
 {
     // Initialize Winsock
     int res = WSAStartup(MAKEWORD(2, 2), &wsaData);

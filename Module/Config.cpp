@@ -52,7 +52,7 @@ bool initialize_config()
             // Detect legacy config file
             if (heading == "RBSongExporterConfig") {
                 return false;
-            } 
+            }
             // start of output filessection
             if (heading == "Output Files") {
                 break;

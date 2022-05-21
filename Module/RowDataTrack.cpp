@@ -9,7 +9,7 @@
 // db::databaseif::getinstance();
 #define GET_INSTANCE_SIG "\x40\x57\x48\x83\xec\x30\x48\xc7\x44\x24\x20\xfe\xff\xff\xff\x48\x89\x5c\x24\x58\x48\x8b\x05\x90\x90\x90\x90\x48\x85\xc0"
 #define GET_INSTANCE_SIG_LEN (sizeof(GET_INSTANCE_SIG) - 1)
-// db::databaseif::getrowdatatrack(v8, v7, &a1a, 1u, 0) 
+// db::databaseif::getrowdatatrack(v8, v7, &a1a, 1u, 0)
 #define GET_ROW_DATA_TRACK_SIG "\x48\x89\x5c\x24\x08\x57\x48\x83\xec\x20\x48\x8b\x09\x49\x8b\xd8\x44\x8b\x44\x24\x50\x8b\xfa\x41\x8b\xd1"
 #define GET_ROW_DATA_TRACK_SIG_LEN (sizeof(GET_ROW_DATA_TRACK_SIG) - 1)
 // db::rowdatatrack::rowdatatrack(rowdata);
@@ -21,7 +21,7 @@
 
 // inst = db::DatabaseIF::getInstance();
 typedef void *(*get_instance_fn)();
-// db::DatabaseIF::getRowDataTrack(v8, v7, &a1a, 1u, 0) 
+// db::DatabaseIF::getRowDataTrack(v8, v7, &a1a, 1u, 0)
 typedef void *(*get_rowdata_fn)(void *thisptr, unsigned int idx, void *outRowData, unsigned int a3, unsigned int a4);
 // db::RowDataTrack::RowDataTrack(rowData);
 typedef void *(*init_rowdata_fn)(void *thisptr);
@@ -37,8 +37,8 @@ destr_rowdata_fn destr_rowdata = NULL;
 
 bool init_row_data_funcs()
 {
-    // best way to find these addresses is look for "_Loop.wav" then scroll up 
-    // to where there are several casts and something that looks like this: 
+    // best way to find these addresses is look for "_Loop.wav" then scroll up
+    // to where there are several casts and something that looks like this:
     //
     //     if ( v284 == 1 || (unsigned int)(v284 - 2) <= 1 )
     //       v285 = *(_DWORD *)(v283 + 32);
@@ -127,7 +127,7 @@ static row_data *new_row_data()
     //
     // That second call is the 'init_rowdata' address resolved in the above function,
     // it is called in many places but only sometimes called with malloc()'d memory.
-    // You will need to search to find a call to db::RowDataTrack::RowDataTrack() that 
+    // You will need to search to find a call to db::RowDataTrack::RowDataTrack() that
     // has a call to the allocator directly above it.
     //
     // The 0x488 is the size of the RowDataTrack object being allocated, so far I have
@@ -151,7 +151,11 @@ static row_data *new_row_data()
 row_data *lookup_row_data(uint32_t deck_idx)
 {
     // lookup a player for the deck
-    djplayer_uiplayer *uiplayer = lookup_player(deck_idx);
+    djplayer_uiplayer *player = lookup_player(deck_idx);
+    if (!player) {
+        error("Player %u is NULL", deck_idx);
+        return NULL;
+    }
     // allocate a block of memory for the rowdata
     row_data *rowdata = new_row_data();
     if (!rowdata) {
@@ -162,7 +166,7 @@ row_data *lookup_row_data(uint32_t deck_idx)
     init_rowdata(rowdata);
     // call getRowDataTrack on the browserID of the given player
     // inst->getRowDataTrack(browserid, rowdata, 1, 0)
-    get_rowdata(get_inst(), uiplayer->getTrackBrowserID(), rowdata, 1, 0);  
+    get_rowdata(get_inst(), player->getTrackBrowserID(), rowdata, 1, 0);
     // return the new rowdata object
     return rowdata;
 }
@@ -174,7 +178,7 @@ void destroy_row_data(row_data *rowdata)
         return;
     }
     // destruct then free the block of memory
-    destr_rowdata(rowdata); 
+    destr_rowdata(rowdata);
     free(rowdata);
 }
 
@@ -187,7 +191,7 @@ const char *row_data::getTitle()
     case RBVER_651: return getString(0x20);
     case RBVER_652: return getString(0x20);
     case RBVER_653: return getString(0x20);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getString(0x20);
         }
@@ -203,7 +207,7 @@ const char *row_data::getArtist()
     case RBVER_652: return getString(0xC0);
     case RBVER_653: return getString(0xC0);
     case RBVER_661: return getString(0xC0);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getString(0xC0);
         }
@@ -219,7 +223,7 @@ const char *row_data::getAlbum()
     case RBVER_652: return getString(0xF8);
     case RBVER_653: return getString(0xF8);
     case RBVER_661: return getString(0xF8);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getString(0xF8);
         }
@@ -235,7 +239,7 @@ const char *row_data::getGenre()
     case RBVER_652: return getString(0x170);
     case RBVER_653: return getString(0x170);
     case RBVER_661: return getString(0x170);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getString(0x170);
         }
@@ -251,7 +255,7 @@ const char *row_data::getLabel()
     case RBVER_652: return getString(0x1A8);
     case RBVER_653: return getString(0x1A8);
     case RBVER_661: return getString(0x1A8);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getString(0x1A8);
         }
@@ -267,7 +271,7 @@ const char *row_data::getKey()
     case RBVER_652: return getString(0x200);
     case RBVER_653: return getString(0x200);
     case RBVER_661: return getString(0x200);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getString(0x200);
         }
@@ -283,7 +287,7 @@ const char *row_data::getOrigArtist()
     case RBVER_652: return getString(0x280);
     case RBVER_653: return getString(0x280);
     case RBVER_661: return getString(0x280);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getString(0x280);
         }
@@ -299,7 +303,7 @@ const char *row_data::getRemixer()
     case RBVER_652: return getString(0x2B8);
     case RBVER_653: return getString(0x2B8);
     case RBVER_661: return getString(0x2B8);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getString(0x2B8);
         }
@@ -315,7 +319,7 @@ const char *row_data::getComposer()
     case RBVER_652: return getString(0x2F0);
     case RBVER_653: return getString(0x2F0);
     case RBVER_661: return getString(0x2F0);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getString(0x2F0);
         }
@@ -331,7 +335,7 @@ const char *row_data::getComment()
     case RBVER_652: return getString(0x318);
     case RBVER_653: return getString(0x318);
     case RBVER_661: return getString(0x318);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getString(0x318);
         }
@@ -347,7 +351,7 @@ const char *row_data::getMixName()
     case RBVER_652: return getString(0x348);
     case RBVER_653: return getString(0x348);
     case RBVER_661: return getString(0x348);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getString(0x348);
         }
@@ -363,7 +367,7 @@ const char *row_data::getLyricist()
     case RBVER_652: return getString(0x418);
     case RBVER_653: return getString(0x418);
     case RBVER_661: return getString(0x418);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getString(0x418);
         }
@@ -379,7 +383,7 @@ const char *row_data::getDateCreated()
     case RBVER_652: return getString(0x378);
     case RBVER_653: return getString(0x378);
     case RBVER_661: return getString(0x378);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getString(0x378);
         }
@@ -395,7 +399,7 @@ const char *row_data::getDateAdded()
     case RBVER_652: return getString(0x380);
     case RBVER_653: return getString(0x380);
     case RBVER_661: return getString(0x380);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getString(0x380);
         }
@@ -411,7 +415,7 @@ uint32_t row_data::getTrackNumber()
     case RBVER_652: return getValue<uint32_t>(0x308);
     case RBVER_653: return getValue<uint32_t>(0x308);
     case RBVER_661: return getValue<uint32_t>(0x308);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getValue<uint32_t>(0x308);
         }
@@ -427,7 +431,7 @@ uint32_t row_data::getBpm()
     case RBVER_652: return getValue<uint32_t>(0x360);
     case RBVER_653: return getValue<uint32_t>(0x360);
     case RBVER_661: return getValue<uint32_t>(0x360);
-    default:        
+    default:
         if (config.version >= RBVER_661) {
             return getValue<uint32_t>(0x360);
         }

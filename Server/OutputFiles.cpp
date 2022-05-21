@@ -16,7 +16,7 @@ using namespace std;
 #define MODE_APPEND     1
 #define MODE_PREPEND    2
 
-// a class to describe an output file that will be written 
+// a class to describe an output file that will be written
 class output_file
 {
 public:
@@ -37,7 +37,7 @@ public:
 private:
 
     // cache previous lines to support offset
-    // static because we want to hold onto the previous tracks so 
+    // static because we want to hold onto the previous tracks so
     // we can update the various multi-line logs and last_track
     deque<string> cached_lines;
 
@@ -82,7 +82,7 @@ bool init_output_files()
             break;
         }
         istringstream iss(config_str);
-        string line; 
+        string line;
         while (getline(iss, line)) {
             if (line == "config:end") {
                 done_config = true;
@@ -103,7 +103,7 @@ void log_track_to_output_file(uint32_t output_file_id, const string &track)
     output_files[output_file_id].log_track(track);
 }
 
-output_file::output_file(const string &line) 
+output_file::output_file(const string &line)
 {
     // format of a line is something like this:
     //  name=max_lines;offset;mode;format
@@ -127,7 +127,7 @@ output_file::output_file(const string &line)
     value = value.substr(pos + 1);
     // the full path of the output file
     path = OUTPUT_FOLDER "\\" + name + ".txt";
-    // clear the output file 
+    // clear the output file
     if (!clear_file(path)) {
         printf("Failed to clear output file: %s\n", path.c_str());
     }
@@ -227,7 +227,7 @@ bool output_file::block_copy(const string &source, const string &dest)
         // read block
         in.read(block, sizeof(block));
         amt_read = in.gcount();
-        // if there is no content to append then bail out 
+        // if there is no content to append then bail out
         // and don't add the newline or anything
         if (!amt_read) {
             break;
@@ -283,7 +283,7 @@ bool output_file::rewrite_file(const string &filename, const string &data)
 }
 
 // helper for in-place replacements
-bool output_file::replace(string& str, const string& from, const string& to) 
+bool output_file::replace(string& str, const string& from, const string& to)
 {
     size_t start_pos = str.find(from);
     if (start_pos == std::string::npos) {

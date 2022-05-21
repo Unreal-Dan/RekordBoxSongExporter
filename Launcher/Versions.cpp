@@ -50,7 +50,7 @@ const char *get_latest_version_number() {
     return versions[0].name + sizeof("Rekordbox");
 }
 
-// the latest version path of rekordbox 
+// the latest version path of rekordbox
 const char *get_latest_version_path() {
     return versions[0].path;
 }

@@ -1,6 +1,11 @@
 #pragma once
 #include <string>
 
+typedef enum deck_update_type_enum {
+    UPDATE_TYPE_NORMAL = 0, // a track changed and the master switched
+    UPDATE_TYPE_BPM = 1     // the bpm changed
+} deck_update_type_t;
+
 // initialize all the output files
 bool initialize_output_files();
 
@@ -13,9 +18,9 @@ size_t num_output_files();
 // get the output file config string at index
 std::string get_output_file_confline(size_t index);
 
-// Push the index of a deck which has changed into the queue 
+// Push the index of a deck which has changed into the queue
 // for the logging thread to log the track of that deck
-void push_deck_update(uint32_t deck_idx);
+void push_deck_update(uint32_t deck_idx, deck_update_type_t type);
 
 // run the listener loop which waits for messages to update te output files
 void run_listener();

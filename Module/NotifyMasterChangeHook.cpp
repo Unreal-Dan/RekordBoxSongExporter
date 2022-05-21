@@ -17,11 +17,13 @@
 
 using namespace std;
 
+Hook g_notify_master_change_hook;
+
 // this class acts as a version agnostic interface for the sync manager object
 class sync_manager
 {
 public:
-    // this retrieves the 'master id' which is the deck id of the sync master
+    // this retrieves the 'master id' which is the deck id of the sync master (0-3)
     uint32_t get_master_id()
     {
         // We have the pointer to the current sync master as well as the list of
@@ -37,9 +39,9 @@ public:
         }
         return 0;
     }
-    
+
     // using explicit cases for each version to improve readability
-    // even though a fallthrough could work 
+    // even though a fallthrough could work
     void **sync_master_list()
     {
         switch (config.version) {
@@ -48,7 +50,7 @@ public:
         case RBVER_651: return sm_6xx.syncMasterList;
         case RBVER_652: return sm_6xx.syncMasterList;
         case RBVER_653: return sm_6xx.syncMasterList;
-        default:        
+        default:
             if (config.version >= RBVER_661) {
                 return sm_6xx.syncMasterList;
             }
@@ -70,7 +72,7 @@ public:
             return NULL;
         }
     }
-    uint32_t num_sync_masters() 
+    uint32_t num_sync_masters()
     {
         switch (config.version) {
         case RBVER_585: return sm_585.numSyncMasters;
@@ -123,8 +125,9 @@ private:
 };
 
 // the actual hook function that notifyMasterChange is redirected to
-void notify_master_change_hook(sync_manager *syncManager)
+uintptr_t __fastcall notify_master_change_hook(hook_arg_t hook_arg, func_args *args)
 {
+    sync_manager *syncManager = (sync_manager *)args->arg1;
     // grab the master id we switched to, the master id is the same as the deck index
     uint32_t master_id = syncManager->get_master_id();
     // set the new master
@@ -132,10 +135,11 @@ void notify_master_change_hook(sync_manager *syncManager)
     info("Master Changed to %d", master_id);
     // make sure this deck hasn't already been logged since it changed
     if (get_logged(master_id)) {
-        return;
+        return 0;
     }
-    push_deck_update(master_id);
+    push_deck_update(master_id, UPDATE_TYPE_NORMAL);
     set_logged(master_id, true);
+    return 0;
 }
 
 bool hook_notify_master_change()
@@ -174,8 +178,9 @@ bool hook_notify_master_change()
     }
     // determine address of target function to hook
     info("notify_master_change: %p", nmc_addr);
+    g_notify_master_change_hook.init(nmc_addr, notify_master_change_hook, NULL);
     // install hook on notify_master_change that redirects to notify_master_change_hook
-    if (!install_hook(nmc_addr, notify_master_change_hook, trampoline_len)) {
+    if (!g_notify_master_change_hook.install_hook()) {
         error("Failed to hook notifyMasterChange");
         return false;
     }

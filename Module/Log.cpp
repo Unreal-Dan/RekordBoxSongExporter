@@ -3,6 +3,7 @@
 
 #include <string>
 
+#include "Hook.h"
 #include "Log.h"
 
 // log a message with a prefix in brackets

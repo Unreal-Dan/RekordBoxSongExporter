@@ -28,7 +28,7 @@ public:
     // initialize a new track with the index of the deck to load
     // the track information from
     track_data(uint32_t deck_idx);
-   
+
     uint32_t idx; // the deck index this track is loaded on
     string title;
     string artist;
@@ -48,9 +48,9 @@ public:
     string bpm;
 };
 
-// Bitflags to describe the various tags that can be used when a config is 
-// loaded the format is scanned for tags and a field is set with each tag 
-// to optimize replacements later on when the system has to replace fields 
+// Bitflags to describe the various tags that can be used when a config is
+// loaded the format is scanned for tags and a field is set with each tag
+// to optimize replacements later on when the system has to replace fields
 // as a track changes
 typedef enum out_tag_enum
 {
@@ -69,16 +69,31 @@ typedef enum out_tag_enum
     TAG_DATE_CREATED =  (1 << 12),
     TAG_DATE_ADDED =    (1 << 13),
     TAG_TRACK_NUMBER =  (1 << 14),
+    // original track bpm
     TAG_BPM =           (1 << 15),
     TAG_TIME =          (1 << 16),
+
+    // non-realtime bpms, do not trigger output file updates
     TAG_DECK1_BPM =     (1 << 17),
     TAG_DECK2_BPM =     (1 << 18),
     TAG_DECK3_BPM =     (1 << 19),
     TAG_DECK4_BPM =     (1 << 20),
     TAG_MASTER_BPM =    (1 << 21),
+
+    // realtime bpm tags which trigger updates when bpm changes
+    TAG_RT_DECK1_BPM =  (1 << 22),
+    TAG_RT_DECK2_BPM =  (1 << 23),
+    TAG_RT_DECK3_BPM =  (1 << 24),
+    TAG_RT_DECK4_BPM =  (1 << 25),
+    TAG_RT_MASTER_BPM = (1 << 26),
+
+    // mask for all realtime bpm flags
+    MASK_REALTIME_BPMS = (TAG_RT_DECK1_BPM | TAG_RT_DECK2_BPM |
+                         TAG_RT_DECK3_BPM | TAG_RT_DECK4_BPM |
+                         TAG_RT_MASTER_BPM),
 } out_tag_t;
 
-// a class to describe an output file that will be written 
+// a class to describe an output file that will be written
 class output_file
 {
 public:
@@ -109,14 +124,14 @@ private:
     static uint32_t id_counter;
 
     // cache previous lines to support offset
-    // static because we want to hold onto the previous tracks so 
+    // static because we want to hold onto the previous tracks so
     // we can update the various multi-line logs and last_track
     deque<string> cached_lines;
 
     // helper routines
 
     // helper to build output line based on configured output format
-    string build_output(const string &format, uint32_t format_tags, track_data *track);
+    string build_output(track_data *track);
     // update the various log files based on a track, only meant to be called
     // from the logging thread so making this static
     void update_output_file(const string &track_str);
@@ -138,16 +153,25 @@ private:
     string get_master_bpm();
 };
 
+// simple structure to describe the 'deck change' data, this is the data type
+// that is queued up to indicate a deck has changed somehow (new song, new bpm, etc)
+typedef struct deck_update_struct {
+    deck_update_struct(uint16_t deck_idx, deck_update_type_t type) :
+        deck_idx(deck_idx), type(type) { }
+    uint16_t deck_idx;       // the deck index of the update
+    deck_update_type_t type; // the type of update (bpm, track change, etc)
+} deck_update_t;
+
 // the ID counter for output files
 uint32_t output_file::id_counter = 0;
 
 // Pop the next deck change index out of the queue, only meant to
 // be called from the logging thread so making this static
-static uint32_t pop_deck_update();
+static deck_update_t pop_deck_update();
 
 // queue of indexes of decks that changed
 // For example if deck 1 changes then 1 gets pushed into this
-queue<uint32_t> deck_changes;
+queue<deck_update_t> deck_update_queue;
 
 // the list of output files loaded from the config
 vector<output_file> output_files;
@@ -155,7 +179,7 @@ vector<output_file> output_files;
 // critical section to protect track queue
 CRITICAL_SECTION track_list_critsec;
 // semaphore to signal when a deck has changed and there are
-// entries in the deck_changes queue
+// entries in the deck_update_queue queue
 HANDLE hLogSem;
 
 // initialize all the output files
@@ -163,7 +187,7 @@ bool initialize_output_files()
 {
     // critical section to ensure all output files update together
     InitializeCriticalSection(&track_list_critsec);
-    
+
     // semaphore will signal when there was a deck change and
     // a track needs to be logged to the output files
     hLogSem = CreateSemaphore(NULL, 0, 10000, "LoggingSemaphore");
@@ -217,14 +241,14 @@ std::string get_output_file_confline(size_t index)
     return output_files[index].confline;
 }
 
-// Push the index of a deck which has changed into the queue 
+// Push the index of a deck which has changed into the queue
 // for the logging thread to log the track of that deck
-void push_deck_update(uint32_t deck_idx)
+void push_deck_update(uint32_t deck_idx, deck_update_type_t type)
 {
     // Ensure the deck changes queue is protected by a lock
     EnterCriticalSection(&track_list_critsec);
     // prepend this new track to the list
-    deck_changes.push(deck_idx);
+    deck_update_queue.push(deck_update_t((uint16_t)deck_idx, type));
     // end of atomic operations
     LeaveCriticalSection(&track_list_critsec);
     // signal the semaphore to wake up the logging thread
@@ -237,20 +261,26 @@ void run_listener()
     // Only write to log files in this safe thread, for some reason windows 8.1
     // doesn't like when we call CreateFile inside the threads that we hook.
 
-    // This loop will wake up anytime a deck switches because the hook on 
-    // notifyMasterChange() will call push_deck_update(deck_idx) and that
-    // will push the deck index which changed and simultaneously signal the log 
+    // This loop will wake up anytime a deck switches because the hook on
+    // notifyMasterChange() will call push_deck_update(deck_idx, type) and that
+    // will push the deck index which changed and simultaneously signal the log
     // semaphore to wake this thread up
     while (WaitForSingleObject(hLogSem, INFINITE) == WAIT_OBJECT_0) {
         // pop the deck index that changed off the queue
-        uint32_t deck_idx = pop_deck_update();
+        deck_update_t deck_update = pop_deck_update();
 
-        // Create a new track via the deck index, this will actually lookup the 
-        // row data ID of the deck index and then use that ID to call rekordbox 
-        // functions and fetch the row data from the browser which is then used 
-        // to fetch the full track information and store it locally within the 
+        // sanity the deck index
+        if (deck_update.deck_idx > 3) {
+            error("Bad deck idx: %u", deck_update.deck_idx);
+            continue;
+        }
+
+        // Create a new track via the deck index, this will actually lookup the
+        // row data ID of the deck index and then use that ID to call rekordbox
+        // functions and fetch the row data from the browser which is then used
+        // to fetch the full track information and store it locally within the
         // track_data object
-        track_data track(deck_idx);
+        track_data track(deck_update.deck_idx);
 
 #ifdef _DEBUG
         info("Logging deck %u:", track.idx);
@@ -273,6 +303,26 @@ void run_listener()
 #endif
         // iterate the list of output files and populate them
         for (auto outfile = output_files.begin(); outfile != output_files.end(); ++outfile) {
+            // if this is a BPM update and this output file doesn't have any realtime bpm tags
+            // then just skip logging to this output file and check the rest
+            if (deck_update.type == UPDATE_TYPE_BPM) {
+                // is there any realtime bpms used in this output file?
+                if ((outfile->format_tags & MASK_REALTIME_BPMS) == 0) {
+                    // if not then skip it
+                    continue;
+                }
+                // otherwise there is realtime bpms so calculate the rt bitflag for current deck
+                uint32_t deck_bpm_tag = (TAG_RT_DECK1_BPM << deck_update.deck_idx);
+                // check to see if the realtime deck bitflag matches the format tags
+                if ((outfile->format_tags & deck_bpm_tag) == 0) {
+                    // if not then check if the master deck matches, and for the realtime master bpm tag
+                    if (get_master() != deck_update.deck_idx || (outfile->format_tags & TAG_RT_MASTER_BPM) == 0) {
+                        // we don't want to update this file because it doesn't have any realtime
+                        // bpm tags or the deck number doesn't match the bpm tag
+                        continue;
+                    }
+                }
+            }
             // log the track to the output file
             outfile->log_track(&track);
         }
@@ -281,16 +331,16 @@ void run_listener()
 
 // Pop the next deck change index out of the queue, only meant to
 // be called from the logging thread so making this static
-static uint32_t pop_deck_update()
+static deck_update_t pop_deck_update()
 {
     // Everything in this loop needs to happen at once otherwise
     EnterCriticalSection(&track_list_critsec);
     // First step is to grab the deck index which changed from the queue
-    uint32_t deck_idx = deck_changes.front();
-    deck_changes.pop();
+    deck_update_t deck_update = deck_update_queue.front();
+    deck_update_queue.pop();
     // end of atomic operations
     LeaveCriticalSection(&track_list_critsec);
-    return deck_idx;
+    return deck_update;
 }
 
 track_data::track_data(uint32_t deck_idx) : idx(deck_idx)
@@ -328,7 +378,7 @@ track_data::track_data(uint32_t deck_idx) : idx(deck_idx)
     destroy_row_data(rowdata);
 }
 
-output_file::output_file(const string &line) 
+output_file::output_file(const string &line)
 {
     // format of a line is something like this:
     //  name=max_lines;offset;mode;format
@@ -356,7 +406,9 @@ output_file::output_file(const string &line)
     value = value.substr(pos + 1);
     // the format is everything left over
     format = value;
-    // check for tags and set bitflags so that performing 
+    // initialize the format tags to 0
+    format_tags = 0;
+    // check for tags and set bitflags so that performing
     // replacements later will be optimized because we will
     // know exactly which tags need to be replaced
     if (format.find("%title%") != string::npos)         { format_tags |= TAG_TITLE; }
@@ -376,6 +428,7 @@ output_file::output_file(const string &line)
     if (format.find("%track_number%") != string::npos)  { format_tags |= TAG_TRACK_NUMBER; }
     if (format.find("%bpm%") != string::npos)           { format_tags |= TAG_BPM; }
     if (format.find("%time%") != string::npos)          { format_tags |= TAG_TIME; }
+    // these bpms are 'non-realtime' bpm flags that don't trigger output file updates
     if (format.find("%deck1_bpm%") != string::npos)     { format_tags |= TAG_DECK1_BPM; }
     if (format.find("%deck2_bpm%") != string::npos)     { format_tags |= TAG_DECK2_BPM; }
     if (config.version > RBVER_585) {
@@ -383,6 +436,14 @@ output_file::output_file(const string &line)
         if (format.find("%deck4_bpm%") != string::npos)     { format_tags |= TAG_DECK4_BPM; }
     }
     if (format.find("%master_bpm%") != string::npos) { format_tags |= TAG_MASTER_BPM; }
+    // these are 'realtime' bpm flags that will trigger output file updates
+    if (format.find("%rt_deck1_bpm%") != string::npos)     { format_tags |= TAG_RT_DECK1_BPM; }
+    if (format.find("%rt_deck2_bpm%") != string::npos)     { format_tags |= TAG_RT_DECK2_BPM; }
+    if (config.version > RBVER_585) {
+        if (format.find("%rt_deck3_bpm%") != string::npos)     { format_tags |= TAG_RT_DECK3_BPM; }
+        if (format.find("%rt_deck4_bpm%") != string::npos)     { format_tags |= TAG_RT_DECK4_BPM; }
+    }
+    if (format.find("%rt_master_bpm%") != string::npos) { format_tags |= TAG_RT_MASTER_BPM; }
     // the full path of the output file
     path = get_dll_path() + "\\" OUTPUT_FOLDER "\\" + name + ".txt";
     // only clear the output file if not server mode
@@ -396,7 +457,7 @@ output_file::output_file(const string &line)
 void output_file::log_track(track_data *track)
 {
     // build the string that will be logged to this output file
-    string track_str = build_output(format, format_tags, track);
+    string track_str = build_output(track);
 
     // server mode?
     if (config.use_server) {
@@ -408,14 +469,14 @@ void output_file::log_track(track_data *track)
         info("Sending track [%s] to file %s at server %s...",
             track_str.c_str(), name.c_str(), config.server_ip.c_str());
     } else {
-        // otherwise in non-server mode just directly update the log 
+        // otherwise in non-server mode just directly update the log
         // files with this new track
         update_output_file(track_str);
     }
 }
 
 // helper to build output line based on configured output format
-string output_file::build_output(const string &format, uint32_t format_tags, track_data *track)
+string output_file::build_output(track_data *track)
 {
     // start with the format
     string out = format;
@@ -445,6 +506,14 @@ string output_file::build_output(const string &format, uint32_t format_tags, tra
         if (format_tags & TAG_DECK4_BPM)    { replace(out, "%deck4_bpm%", get_deck_bpm(3)); }
     }
     if (format_tags & TAG_MASTER_BPM)   { replace(out, "%master_bpm%", get_master_bpm()); }
+    if (format_tags & TAG_RT_DECK1_BPM)    { replace(out, "%rt_deck1_bpm%", get_deck_bpm(0)); }
+    if (format_tags & TAG_RT_DECK2_BPM)    { replace(out, "%rt_deck2_bpm%", get_deck_bpm(1)); }
+    if (config.version > RBVER_585) {
+        if (format_tags & TAG_RT_DECK3_BPM)    { replace(out, "%rt_deck3_bpm%", get_deck_bpm(2)); }
+        if (format_tags & TAG_RT_DECK4_BPM)    { replace(out, "%rt_deck4_bpm%", get_deck_bpm(3)); }
+    }
+    if (format_tags & TAG_RT_MASTER_BPM)   { replace(out, "%rt_master_bpm%", get_master_bpm()); }
+
     return out;
 }
 
@@ -543,7 +612,7 @@ bool output_file::block_copy(const string &source, const string &dest)
         // read block
         in.read(block, sizeof(block));
         amt_read = in.gcount();
-        // if there is no content to append then bail out 
+        // if there is no content to append then bail out
         // and don't add the newline or anything
         if (!amt_read) {
             break;
@@ -599,7 +668,7 @@ bool output_file::rewrite_file(const string &filename, const string &data)
 }
 
 // helper for in-place replacements
-bool output_file::replace(string& str, const string& from, const string& to) 
+bool output_file::replace(string& str, const string& from, const string& to)
 {
     size_t start_pos = str.find(from);
     if (start_pos == string::npos) {
@@ -639,10 +708,12 @@ string output_file::get_timestamp_since_start()
 string output_file::get_deck_bpm(uint32_t deck)
 {
     char buf[256] = { 0 };
+    // lookup player will find us Rekordbox's 'djplay::uiPlayer' object for the given deck
     djplayer_uiplayer *player = lookup_player(deck);
     if (!player) {
         return string(buf);
     }
+    // then we can look into the uiPlayer object to find the deck bpm
     uint32_t bpm = player->getDeckBPM();
     if (bpm % 100) {
         if (snprintf(buf, sizeof(buf), "%u.%02u", bpm / 100, bpm % 100) < 1) {
@@ -659,5 +730,6 @@ string output_file::get_deck_bpm(uint32_t deck)
 // get master bpm as a string
 string output_file::get_master_bpm()
 {
+    // just fetch the deck bpm of the master deck ID
     return get_deck_bpm(get_master());
 }
