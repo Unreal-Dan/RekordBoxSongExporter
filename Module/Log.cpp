@@ -26,6 +26,10 @@ void log_msg(const char *prefix, const char *func, const char *fmt, ...)
     vsnprintf(buffer, sizeof(buffer) - 1, fmt, args);
     va_end(args);
 
+    size_t len = snprintf(final_buffer, sizeof(final_buffer), "[%s] %s%s%s\n", prefix, func ? func : "", func ? "(): " : "", buffer);
+
+#ifdef _DEBUG
+    // print to console with color
     CONSOLE_SCREEN_BUFFER_INFO info;
     GetConsoleScreenBufferInfo(out_handle, &info);
     switch (prefix[0]) {
@@ -40,9 +44,9 @@ void log_msg(const char *prefix, const char *func, const char *fmt, ...)
     default:
         break;
     }
-    size_t len = snprintf(final_buffer, sizeof(final_buffer), "[%s] %s%s%s\n", prefix, func ? func : "", func ? "(): " : "", buffer);
     printf("%s", final_buffer);
     SetConsoleTextAttribute(out_handle, info.wAttributes);
+#endif
     // open the log if not already open
     if (!log_handle && log_path.length() > 0) {
         log_handle = CreateFile(log_path.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, 

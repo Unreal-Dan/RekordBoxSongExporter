@@ -7,7 +7,7 @@
 #define success(msg, ...) log_msg("+", NULL, msg, __VA_ARGS__)
 #else
 #define    info(msg, ...)
-#define   error(msg, ...)
+#define   error(msg, ...) log_msg("-", __FUNCTION__, msg, __VA_ARGS__)
 #define success(msg, ...)
 #endif
 
