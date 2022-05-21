@@ -3,7 +3,6 @@
 #include <uxtheme.h>
 #include <CommCtrl.h>
 #include <inttypes.h>
-#include <CommCtrl.h>
 
 #include <vector>
 #include <string>
