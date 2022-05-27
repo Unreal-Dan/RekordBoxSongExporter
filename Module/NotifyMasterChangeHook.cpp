@@ -133,10 +133,13 @@ uintptr_t __fastcall notify_master_change_hook(hook_arg_t hook_arg, func_args *a
     // set the new master
     set_master(master_id);
     info("Master Changed to %d", master_id);
+    // master deck changed but track may not have changed
+    push_deck_update(master_id, UPDATE_TYPE_MASTER);
     // make sure this deck hasn't already been logged since it changed
     if (get_logged(master_id)) {
         return 0;
     }
+    // track changed
     push_deck_update(master_id, UPDATE_TYPE_NORMAL);
     set_logged(master_id, true);
     return 0;

@@ -6,6 +6,7 @@ typedef enum deck_update_type_enum {
     UPDATE_TYPE_BPM,        // the bpm changed
     UPDATE_TYPE_TIME,       // the time changed
     UPDATE_TYPE_TOTAL_TIME, // the total time changed
+    UPDATE_TYPE_MASTER,     // the master switched (track may not have changed)
 } deck_update_type_t;
 
 // initialize all the output files
