@@ -37,7 +37,7 @@ uint32_t djplayer_uiplayer::getTrackBrowserID()
     return 0;
 }
 
-uintptr_t djplayer_uiplayer::find_bpm_device_offset()
+uintptr_t djplayer_uiplayer::find_device_offset(const char *name)
 {
     // The start of the device list shouldn't change, but it might
     // To find the start of the device list just look at the djplayer object
@@ -50,8 +50,8 @@ uintptr_t djplayer_uiplayer::find_bpm_device_offset()
         uintptr_t device = *(uintptr_t *)device_ptr;
         if (device) {
             const char *device_name = *(const char **)(device + 0x10);
-            if (strcmp(device_name, "@BPM") == 0) {
-                return device_ptr - (uintptr_t)this;
+            if (strcmp(device_name, name) == 0) {
+              return device_ptr - (uintptr_t)this;
             }
         }
         device_ptr += 8;
@@ -88,7 +88,7 @@ uint32_t djplayer_uiplayer::getDeckBPM()
                 // this will iterate the list of devices and look for the device with
                 // the name @BPM instead of using a hardcoded offset which seems to
                 // change anytime new devices are added -- which seems not uncommon
-                bpm_device_offset = find_bpm_device_offset();
+                bpm_device_offset = find_device_offset("@BPM");
             }
             bpmDevice = *(void **)((uintptr_t)this + bpm_device_offset);
             // then the offsets for the bpm within the device should never change
@@ -100,6 +100,80 @@ uint32_t djplayer_uiplayer::getDeckBPM()
         break;
     }
     return bpm;
+}
+
+uint32_t djplayer_uiplayer::getDeckTime()
+{
+  // This was actually quite tough to find, the BPM is hidden inside the
+  // the djplay::DeviceComponent object which is in a massive list of other
+  // device component objects. A device component appears to be any feature
+  // on a deck that is polled by rekordbox, such as the bpm control, all the
+  // knobs, and buttons.  The device initialization can be found via the
+  // string "@BPM" inside djplay::UiPlayer::createDevice().
+  void *timeDevice = nullptr;
+  void *timeDeviceInner = nullptr;
+  uint32_t time = 0;
+  switch (config.version) {
+  case RBVER_585:
+    // no
+    return 0;
+  default:
+    // dynamically locate the bpm device for all versions after 650
+    if (config.version >= RBVER_650) {
+      static uintptr_t time_device_offset = 0;
+      if (!time_device_offset) {
+        // this will iterate the list of devices and look for the device with
+        // the name @BPM instead of using a hardcoded offset which seems to
+        // change anytime new devices are added -- which seems not uncommon
+        time_device_offset = find_device_offset("@CurrentTime");
+      }
+      timeDevice = *(void **)((uintptr_t)this + time_device_offset);
+      // then the offsets for the time within the device should never change
+      timeDeviceInner = *(void **)((uintptr_t)timeDevice + 0x80);
+      time = *(uint32_t *)((uintptr_t)timeDeviceInner + 0x154);
+      break;
+    }
+    error("Unknown version");
+    break;
+  }
+  return time;
+}
+
+uint32_t djplayer_uiplayer::getTotalTime()
+{
+  // This was actually quite tough to find, the BPM is hidden inside the
+  // the djplay::DeviceComponent object which is in a massive list of other
+  // device component objects. A device component appears to be any feature
+  // on a deck that is polled by rekordbox, such as the bpm control, all the
+  // knobs, and buttons.  The device initialization can be found via the
+  // string "@BPM" inside djplay::UiPlayer::createDevice().
+  void *timeDevice = nullptr;
+  void *timeDeviceInner = nullptr;
+  uint32_t time = 0;
+  switch (config.version) {
+  case RBVER_585:
+    // no
+    return 0;
+  default:
+    // dynamically locate the bpm device for all versions after 650
+    if (config.version >= RBVER_650) {
+      static uintptr_t total_time_device_offset = 0;
+      if (!total_time_device_offset) {
+        // this will iterate the list of devices and look for the device with
+        // the name @BPM instead of using a hardcoded offset which seems to
+        // change anytime new devices are added -- which seems not uncommon
+        total_time_device_offset = find_device_offset("@TotalTime");
+      }
+      timeDevice = *(void **)((uintptr_t)this + total_time_device_offset);
+      // then the offsets for the time within the device should never change
+      timeDeviceInner = *(void **)((uintptr_t)timeDevice + 0x80);
+      time = *(uint32_t *)((uintptr_t)timeDeviceInner + 0x154);
+      break;
+    }
+    error("Unknown version");
+    break;
+  }
+  return time;
 }
 
 // lookup a djplayer/deck by index (0 to 3)
@@ -221,4 +295,3 @@ djplayer_uiplayer *lookup_player(uint32_t deck_idx)
     // the UIManager object so we can access them like an array
     return pPlayers[deck_idx];
 }
-

@@ -25,6 +25,8 @@ static set_tempo_fn_t set_tempo = NULL;
 static uint32_t get_track_bpm_of_deck(uint32_t deck);
 static uintptr_t __fastcall olvc_callback(hook_arg_t hook_arg, func_args *args);
 static void bpm_changed(uint32_t deck, uint32_t old_bpm, uint32_t new_bpm);
+static void time_changed(uint32_t deck, uint32_t old_time, uint32_t new_time);
+static void total_time_changed(uint32_t deck_idx, uint32_t old_time, uint32_t new_time);
 
 // hook on operateLongValueChange to catch changes to tempo
 static Hook olvc_hook;
@@ -59,23 +61,78 @@ bool init_bpm_control()
     return true;
 }
 
+void total_time_callback(uint32_t deck_idx, uint32_t total_time)
+{
+  static uint32_t old_master = 0;
+  static uint32_t old_time[4] = { 0 };
+  uint32_t last_time = old_time[deck_idx];
+  if (total_time != last_time) {
+    total_time_changed(deck_idx, last_time, total_time);
+    old_time[deck_idx] = total_time;
+    old_master = get_master();
+    return;
+  }
+  if (get_master() != old_master) {
+    old_master = get_master();
+    old_time[deck_idx] = total_time;
+    total_time_changed(deck_idx, last_time, total_time);
+    return;
+  }
+}
+
+void current_time_callback(uint32_t deck_idx, uint32_t curtime)
+{
+  static uint32_t old_master = 0;
+  static uint32_t old_time[4] = { 0 };
+  uint32_t last_time = old_time[deck_idx];
+  if (curtime != last_time) {
+    time_changed(deck_idx, last_time, curtime);
+    old_time[deck_idx] = curtime;
+    old_master = get_master();
+    return;
+  }
+  if (get_master() != old_master) {
+    old_master = get_master();
+    old_time[deck_idx] = curtime;
+    time_changed(deck_idx, last_time, curtime);
+    return;
+  }
+}
+
+void bpm_callback(uint32_t deck_idx, uint32_t bpm)
+{
+  static uint32_t old_master = 0;
+  static uint32_t old_bpm[4] = { 0 };
+  uint32_t last_bpm = old_bpm[deck_idx];
+  if (bpm != last_bpm) {
+    bpm_changed(deck_idx, last_bpm, bpm);
+    old_bpm[deck_idx] = bpm;
+    return;
+  }
+  if (get_master() != old_master) {
+    old_master = get_master();
+    bpm_changed(deck_idx, last_bpm, bpm);
+    old_bpm[deck_idx] = bpm;
+    return;
+  }
+}
+
 // callback for operateLongValueChange, this is used to catch bpm changes
 static uintptr_t __fastcall olvc_callback(hook_arg_t hook_arg, func_args *args)
 {
     const char *name = *(const char **)args->arg3;
-    static uint32_t old_bpm[4] = {0};
     //info("olvc(%s, %u, %u)", name, (uint32_t)args->arg2, (uint32_t)args->arg4);
-    // detect when the BPM changes
-    if (name[0] != '@' || name[1] != 'B' || name[2] != 'P' ||
-        name[3] != 'M' || name[4] != '\0') {
-        return 0;
+    // detect current time changes
+    if (name[0] != '@') {
+      return 0;
     }
-    uint32_t deck_idx = (uint32_t)args->arg2 - 1;
-    uint32_t bpm = (uint32_t)args->arg4;
-    uint32_t last_bpm = old_bpm[deck_idx];
-    if (bpm != last_bpm) {
-        bpm_changed(deck_idx, last_bpm, bpm);
-        old_bpm[deck_idx] = bpm;
+    if (!strcmp(name, "@CurrentTime")) {
+      current_time_callback((uint32_t)args->arg2 - 1, (uint32_t)args->arg4);
+      // detect when the BPM changes
+    } else if (!strcmp(name, "@BPM")) {
+      bpm_callback((uint32_t)args->arg2 - 1, (uint32_t)args->arg4);
+    } else if (!strcmp(name, "@TotalTime")) {
+      total_time_callback((uint32_t)args->arg2 - 1, (uint32_t)args->arg4);
     }
     return 0;
 }
@@ -83,19 +140,29 @@ static uintptr_t __fastcall olvc_callback(hook_arg_t hook_arg, func_args *args)
 // callback for when the bpm changes on a deck
 static void bpm_changed(uint32_t deck_idx, uint32_t old_bpm, uint32_t new_bpm)
 {
-    // don't bother logging the initial bpm switch when first loading a track,
-    // this will happen before the track is loaded anyway so trying to push a deck
-    // update would just cause issues
-    if (!old_bpm) {
-        return;
-    }
-    // lookup a player for the deck
-    djplayer_uiplayer *player = lookup_player(deck_idx);
-    // make sure the player has a track loaded on it
-    if (!player || !player->getTrackBrowserID()) {
-        return;
-    }
-    info("BPM change deck %u: %.2f -> %.2f", deck_idx, old_bpm / 100.0, new_bpm / 100.0);
-    // Push a message to the output file writer indicating the deck changed bpm
-    push_deck_update(deck_idx, UPDATE_TYPE_BPM);
+  // lookup a player for the deck
+  djplayer_uiplayer *player = lookup_player(deck_idx);
+  // make sure the player has a track loaded on it
+  if (!player || !player->getTrackBrowserID()) {
+    return;
+  }
+  info("BPM change deck %u: %.2f -> %.2f", deck_idx, old_bpm / 100.0, new_bpm / 100.0);
+  // Push a message to the output file writer indicating the deck changed bpm
+  push_deck_update(deck_idx, UPDATE_TYPE_BPM);
+}
+
+static void time_changed(uint32_t deck_idx, uint32_t old_time, uint32_t new_time)
+{
+  // time change is special, don't bother looking up track info for time changes
+  //info("Time change deck %u: %u -> %u", deck_idx, old_time, new_time);
+  // Push a message to the output file writer indicating the deck changed bpm
+  push_deck_update(deck_idx, UPDATE_TYPE_TIME);
+}
+
+static void total_time_changed(uint32_t deck_idx, uint32_t old_time, uint32_t new_time)
+{
+  // time change is special, don't bother looking up track info for time changes
+  info("Total time change deck %u: %u -> %u", deck_idx, old_time, new_time);
+  // Push a message to the output file writer indicating the deck changed bpm
+  push_deck_update(deck_idx, UPDATE_TYPE_TOTAL_TIME);
 }

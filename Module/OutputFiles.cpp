@@ -25,9 +25,13 @@ using namespace std;
 class track_data
 {
 public:
+    track_data();
     // initialize a new track with the index of the deck to load
     // the track information from
     track_data(uint32_t deck_idx);
+
+    // load track data
+    void load(uint32_t deck_idx);
 
     uint32_t idx; // the deck index this track is loaded on
     string title;
@@ -52,7 +56,7 @@ public:
 // loaded the format is scanned for tags and a field is set with each tag
 // to optimize replacements later on when the system has to replace fields
 // as a track changes
-typedef enum out_tag_enum
+typedef enum out_tag_enum : uint64_t
 {
     TAG_TITLE =         (1 << 0),
     TAG_ARTIST =        (1 << 1),
@@ -91,6 +95,29 @@ typedef enum out_tag_enum
     MASK_REALTIME_BPMS = (TAG_RT_DECK1_BPM | TAG_RT_DECK2_BPM |
                          TAG_RT_DECK3_BPM | TAG_RT_DECK4_BPM |
                          TAG_RT_MASTER_BPM),
+
+    TAG_RT_DECK1_TIME = (1ULL << 27),
+    TAG_RT_DECK2_TIME = (1ULL << 28),
+    TAG_RT_DECK3_TIME = (1ULL << 29),
+    TAG_RT_DECK4_TIME = (1ULL << 30),
+    TAG_RT_MASTER_TIME = (1ULL << 31),
+
+    // mask for all realtime time flags
+    MASK_REALTIME_TIMES = (TAG_RT_DECK1_TIME | TAG_RT_DECK2_TIME |
+                           TAG_RT_DECK3_TIME | TAG_RT_DECK4_TIME |
+                           TAG_RT_MASTER_TIME),
+
+    TAG_RT_DECK1_TOTAL_TIME = (1ULL << 32),
+    TAG_RT_DECK2_TOTAL_TIME = (1ULL << 33),
+    TAG_RT_DECK3_TOTAL_TIME = (1ULL << 34),
+    TAG_RT_DECK4_TOTAL_TIME = (1ULL << 35),
+    TAG_RT_MASTER_TOTAL_TIME = (1ULL << 36),
+
+    // mask for all realtime time flags
+    MASK_REALTIME_TOTAL_TIMES = (TAG_RT_DECK1_TOTAL_TIME | TAG_RT_DECK2_TOTAL_TIME |
+                                 TAG_RT_DECK3_TOTAL_TIME | TAG_RT_DECK4_TOTAL_TIME |
+                                 TAG_RT_MASTER_TOTAL_TIME),
+
 } out_tag_t;
 
 // a class to describe an output file that will be written
@@ -111,7 +138,7 @@ public:
     // full path of the output file
     string path;
     // bitflags describing which %tags% are used
-    uint32_t format_tags;
+    uint64_t format_tags;
     uint32_t mode;
     uint32_t offset;
     uint32_t max_lines;
@@ -151,6 +178,12 @@ private:
     string get_deck_bpm(uint32_t deck);
     // get master bpm as a string
     string get_master_bpm();
+    // get time of a specific deck
+    string get_deck_time(uint32_t deck);
+    // get time of master deck
+    string get_master_time();
+    string get_deck_total_time(uint32_t deck);
+    string get_master_total_time();
 };
 
 // simple structure to describe the 'deck change' data, this is the data type
@@ -258,75 +291,120 @@ void push_deck_update(uint32_t deck_idx, deck_update_type_t type)
 // run the listener loop which waits for messages to update te output files
 void run_listener()
 {
-    // Only write to log files in this safe thread, for some reason windows 8.1
-    // doesn't like when we call CreateFile inside the threads that we hook.
+  // Only write to log files in this safe thread, for some reason windows 8.1
+  // doesn't like when we call CreateFile inside the threads that we hook.
 
-    // This loop will wake up anytime a deck switches because the hook on
-    // notifyMasterChange() will call push_deck_update(deck_idx, type) and that
-    // will push the deck index which changed and simultaneously signal the log
-    // semaphore to wake this thread up
-    while (WaitForSingleObject(hLogSem, INFINITE) == WAIT_OBJECT_0) {
-        // pop the deck index that changed off the queue
-        deck_update_t deck_update = pop_deck_update();
+  // This loop will wake up anytime a deck switches because the hook on
+  // notifyMasterChange() will call push_deck_update(deck_idx, type) and that
+  // will push the deck index which changed and simultaneously signal the log
+  // semaphore to wake this thread up
+  while (WaitForSingleObject(hLogSem, INFINITE) == WAIT_OBJECT_0) {
+    // pop the deck index that changed off the queue
+    deck_update_t deck_update = pop_deck_update();
 
-        // sanity the deck index
-        if (deck_update.deck_idx > 3) {
-            error("Bad deck idx: %u", deck_update.deck_idx);
-            continue;
-        }
-
-        // Create a new track via the deck index, this will actually lookup the
-        // row data ID of the deck index and then use that ID to call rekordbox
-        // functions and fetch the row data from the browser which is then used
-        // to fetch the full track information and store it locally within the
-        // track_data object
-        track_data track(deck_update.deck_idx);
-
-#ifdef _DEBUG
-        info("Logging deck %u:", track.idx);
-        if (track.title.length())        { info("\ttitle: %s", track.title.c_str()); }
-        if (track.artist.length())       { info("\tartist: %s", track.artist.c_str()); }
-        if (track.album.length())        { info("\talbum: %s", track.album.c_str()); }
-        if (track.genre.length())        { info("\tgenre: %s", track.genre.c_str()); }
-        if (track.label.length())        { info("\tlabel: %s", track.label.c_str()); }
-        if (track.key.length())          { info("\tkey: %s", track.key.c_str()); }
-        if (track.orig_artist.length())  { info("\torig artist: %s", track.orig_artist.c_str()); }
-        if (track.remixer.length())      { info("\tremixer: %s", track.remixer.c_str()); }
-        if (track.composer.length())     { info("\tcomposer: %s", track.composer.c_str()); }
-        if (track.comment.length())      { info("\tcomment: %s", track.comment.c_str()); }
-        if (track.mix_name.length())     { info("\tmix name: %s", track.mix_name.c_str()); }
-        if (track.lyricist.length())     { info("\tlyricist: %s", track.lyricist.c_str()); }
-        if (track.date_created.length()) { info("\tdate created: %s", track.date_created.c_str()); }
-        if (track.date_added.length())   { info("\tdate added: %s", track.date_added.c_str()); }
-        if (track.track_number.length()) { info("\ttrack number: %s", track.track_number.c_str()); }
-        if (track.bpm.length())          { info("\tbpm: %s", track.bpm.c_str()); }
-#endif
-        // iterate the list of output files and populate them
-        for (auto outfile = output_files.begin(); outfile != output_files.end(); ++outfile) {
-            // if this is a BPM update and this output file doesn't have any realtime bpm tags
-            // then just skip logging to this output file and check the rest
-            if (deck_update.type == UPDATE_TYPE_BPM) {
-                // is there any realtime bpms used in this output file?
-                if ((outfile->format_tags & MASK_REALTIME_BPMS) == 0) {
-                    continue;
-                }
-                // otherwise there is realtime bpms so calculate the rt bitflag for current deck
-                uint32_t deck_bpm_tag = (TAG_RT_DECK1_BPM << deck_update.deck_idx);
-                // check to see if the realtime deck bitflag matches the format tags
-                if ((outfile->format_tags & deck_bpm_tag) == 0) {
-                    // if not then check if the master deck matches, and for the realtime master bpm tag
-                    if (get_master() != deck_update.deck_idx || (outfile->format_tags & TAG_RT_MASTER_BPM) == 0) {
-                        // we don't want to update this file because it doesn't have any realtime
-                        // bpm tags or the deck number doesn't match the bpm tag
-                        continue;
-                    }
-                }
-            }
-
-            // log the track to the output file
-            outfile->log_track(&track);
-        }
+    // sanity the deck index
+    if (deck_update.deck_idx > 3) {
+      error("Bad deck idx: %u", deck_update.deck_idx);
+      continue;
     }
+
+    // Create a new track via the deck index, this will actually lookup the
+    // row data ID of the deck index and then use that ID to call rekordbox
+    // functions and fetch the row data from the browser which is then used
+    // to fetch the full track information and store it locally within the
+    // track_data object
+    track_data track;
+
+    // only load track data if it's a normal update
+    switch (deck_update.type) {
+    case UPDATE_TYPE_NORMAL:
+      track.load(deck_update.deck_idx);
+#ifdef _DEBUG
+      info("Logging deck %u:", track.idx);
+      if (track.title.length()) { info("\ttitle: %s", track.title.c_str()); }
+      if (track.artist.length()) { info("\tartist: %s", track.artist.c_str()); }
+      if (track.album.length()) { info("\talbum: %s", track.album.c_str()); }
+      if (track.genre.length()) { info("\tgenre: %s", track.genre.c_str()); }
+      if (track.label.length()) { info("\tlabel: %s", track.label.c_str()); }
+      if (track.key.length()) { info("\tkey: %s", track.key.c_str()); }
+      if (track.orig_artist.length()) { info("\torig artist: %s", track.orig_artist.c_str()); }
+      if (track.remixer.length()) { info("\tremixer: %s", track.remixer.c_str()); }
+      if (track.composer.length()) { info("\tcomposer: %s", track.composer.c_str()); }
+      if (track.comment.length()) { info("\tcomment: %s", track.comment.c_str()); }
+      if (track.mix_name.length()) { info("\tmix name: %s", track.mix_name.c_str()); }
+      if (track.lyricist.length()) { info("\tlyricist: %s", track.lyricist.c_str()); }
+      if (track.date_created.length()) { info("\tdate created: %s", track.date_created.c_str()); }
+      if (track.date_added.length()) { info("\tdate added: %s", track.date_added.c_str()); }
+      if (track.track_number.length()) { info("\ttrack number: %s", track.track_number.c_str()); }
+      if (track.bpm.length()) { info("\tbpm: %s", track.bpm.c_str()); }
+#endif
+      break;
+    case UPDATE_TYPE_BPM:
+    case UPDATE_TYPE_TIME:
+    case UPDATE_TYPE_TOTAL_TIME:
+      // do something special?
+      break;
+    }
+
+    // iterate the list of output files and populate them
+    for (auto outfile = output_files.begin(); outfile != output_files.end(); ++outfile) {
+      // if this is a BPM update and this output file doesn't have any realtime bpm tags
+      // then just skip logging to this output file and check the rest
+      if (deck_update.type == UPDATE_TYPE_BPM) {
+        // is there any realtime bpms used in this output file?
+        if ((outfile->format_tags & MASK_REALTIME_BPMS) == 0) {
+          continue;
+        }
+        // otherwise there is realtime bpms so calculate the rt bitflag for current deck
+        uint64_t deck_bpm_tag = (TAG_RT_DECK1_BPM << deck_update.deck_idx);
+        // check to see if the realtime deck bitflag matches the format tags
+        if ((outfile->format_tags & deck_bpm_tag) == 0) {
+          // if not then check if the master deck matches, and for the realtime master bpm tag
+          if (get_master() != deck_update.deck_idx || (outfile->format_tags & TAG_RT_MASTER_BPM) == 0) {
+            // we don't want to update this file because it doesn't have any realtime
+            // bpm tags or the deck number doesn't match the bpm tag
+            continue;
+          }
+        }
+      }
+      if (deck_update.type == UPDATE_TYPE_TIME) {
+        // is there any realtime bpms used in this output file?
+        if ((outfile->format_tags & MASK_REALTIME_TIMES) == 0) {
+          continue;
+        }
+        // otherwise there is realtime bpms so calculate the rt bitflag for current deck
+        uint64_t deck_bpm_tag = (TAG_RT_DECK1_TIME << deck_update.deck_idx);
+        // check to see if the realtime deck bitflag matches the format tags
+        if ((outfile->format_tags & deck_bpm_tag) == 0) {
+          // if not then check if the master deck matches, and for the realtime master bpm tag
+          if (get_master() != deck_update.deck_idx || (outfile->format_tags & TAG_RT_MASTER_TIME) == 0) {
+            // we don't want to update this file because it doesn't have any realtime
+            // bpm tags or the deck number doesn't match the bpm tag
+            continue;
+          }
+        }
+      }
+      if (deck_update.type == UPDATE_TYPE_TOTAL_TIME) {
+        // is there any realtime bpms used in this output file?
+        if ((outfile->format_tags & MASK_REALTIME_TOTAL_TIMES) == 0) {
+          continue;
+        }
+        // otherwise there is realtime bpms so calculate the rt bitflag for current deck
+        uint64_t deck_bpm_tag = (TAG_RT_DECK1_TOTAL_TIME << deck_update.deck_idx);
+        // check to see if the realtime deck bitflag matches the format tags
+        if ((outfile->format_tags & deck_bpm_tag) == 0) {
+          // if not then check if the master deck matches, and for the realtime master bpm tag
+          if (get_master() != deck_update.deck_idx || (outfile->format_tags & TAG_RT_MASTER_TOTAL_TIME) == 0) {
+            // we don't want to update this file because it doesn't have any realtime
+            // bpm tags or the deck number doesn't match the bpm tag
+            continue;
+          }
+        }
+      }
+      // log the track to the output file
+      outfile->log_track(&track);
+    }
+  }
 }
 
 // Pop the next deck change index out of the queue, only meant to
@@ -343,39 +421,55 @@ static deck_update_t pop_deck_update()
     return deck_update;
 }
 
-track_data::track_data(uint32_t deck_idx) : idx(deck_idx)
+track_data::track_data() :
+  idx(0), title(), artist(), album(), genre(),
+  label(), key(), orig_artist(), remixer(), composer(),
+  comment(), mix_name(), lyricist(), date_created(),
+  date_added(), track_number(), bpm()
 {
-    // lookup a rowdata object
-    row_data *rowdata = lookup_row_data(deck_idx);
-    if (!rowdata) {
-        return;
-    }
-    // steal all the track information so we have it stored in our own containers
-    title = rowdata->getTitle();
-    artist = rowdata->getArtist();
-    album = rowdata->getAlbum();
-    genre = rowdata->getGenre();
-    label = rowdata->getLabel();
-    key = rowdata->getKey();
-    orig_artist = rowdata->getOrigArtist();
-    remixer = rowdata->getRemixer();
-    composer = rowdata->getComposer();
-    comment = rowdata->getComment();
-    mix_name = rowdata->getMixName();
-    lyricist = rowdata->getLyricist();
-    date_created = rowdata->getDateCreated();
-    date_added = rowdata->getDateAdded();
-    // track number is an integer
-    track_number = to_string(rowdata->getTrackNumber());
-    // the bpm is an integer like 15150 which represents 151.50 bpm
-    bpm = to_string(rowdata->getBpm());
-    if (bpm.length() > 2) {
-        // so we just shove a dot in there and it's good
-        bpm.insert(bpm.length() - 2, ".");
-    }
-    // cleanup the rowdata object we got from rekordbox
-    // so that we can just use our local containers
-    destroy_row_data(rowdata);
+}
+
+track_data::track_data(uint32_t deck_idx) :
+  track_data()
+{
+  load(deck_idx);
+}
+
+void track_data::load(uint32_t deck_idx)
+{
+  // lookup a rowdata object
+  row_data *rowdata = lookup_row_data(deck_idx);
+  if (!rowdata) {
+    return;
+  }
+  // steal all the track information so we have it stored in our own containers
+  title = rowdata->getTitle();
+  artist = rowdata->getArtist();
+  album = rowdata->getAlbum();
+  genre = rowdata->getGenre();
+  label = rowdata->getLabel();
+  key = rowdata->getKey();
+  orig_artist = rowdata->getOrigArtist();
+  remixer = rowdata->getRemixer();
+  composer = rowdata->getComposer();
+  comment = rowdata->getComment();
+  mix_name = rowdata->getMixName();
+  lyricist = rowdata->getLyricist();
+  date_created = rowdata->getDateCreated();
+  date_added = rowdata->getDateAdded();
+  // track number is an integer
+  track_number = to_string(rowdata->getTrackNumber());
+  // the bpm is an integer like 15150 which represents 151.50 bpm
+  bpm = to_string(rowdata->getBpm());
+  if (bpm.length() > 2) {
+    // so we just shove a dot in there and it's good
+    bpm.insert(bpm.length() - 2, ".");
+  }
+  // cleanup the rowdata object we got from rekordbox
+  // so that we can just use our local containers
+  destroy_row_data(rowdata);
+  // set the track data index
+  idx = deck_idx;
 }
 
 output_file::output_file(const string &line)
@@ -445,6 +539,16 @@ output_file::output_file(const string &line)
         if (format.find("%rt_deck4_bpm%") != string::npos)     { format_tags |= TAG_RT_DECK4_BPM; }
     }
     if (format.find("%rt_master_bpm%") != string::npos) { format_tags |= TAG_RT_MASTER_BPM; }
+    if (format.find("%rt_deck1_time%") != string::npos)     { format_tags |= TAG_RT_DECK1_TIME; }
+    if (format.find("%rt_deck2_time%") != string::npos)     { format_tags |= TAG_RT_DECK2_TIME; }
+    if (format.find("%rt_deck3_time%") != string::npos) { format_tags |= TAG_RT_DECK3_TIME; }
+    if (format.find("%rt_deck4_time%") != string::npos) { format_tags |= TAG_RT_DECK4_TIME; }
+    if (format.find("%rt_master_time%") != string::npos) { format_tags |= TAG_RT_MASTER_TIME; }
+    if (format.find("%rt_deck1_total_time%") != string::npos)     { format_tags |= TAG_RT_DECK1_TOTAL_TIME; }
+    if (format.find("%rt_deck2_total_time%") != string::npos)     { format_tags |= TAG_RT_DECK2_TIME; }
+    if (format.find("%rt_deck3_total_time%") != string::npos) { format_tags |= TAG_RT_DECK3_TOTAL_TIME; }
+    if (format.find("%rt_deck4_total_time%") != string::npos) { format_tags |= TAG_RT_DECK4_TOTAL_TIME; }
+    if (format.find("%rt_master_total_time%") != string::npos) { format_tags |= TAG_RT_MASTER_TOTAL_TIME; }
     // the full path of the output file
     path = get_dll_path() + "\\" OUTPUT_FOLDER "\\" + name + ".txt";
     // only clear the output file if not server mode
@@ -481,24 +585,26 @@ string output_file::build_output(track_data *track)
 {
     // start with the format
     string out = format;
-    // only replace fields if the tag was previously detected in the format
-    // this is a major optimization to avoid attempting to relace every tag
-    if (format_tags & TAG_TITLE)        { replace(out, "%title%", track->title); }
-    if (format_tags & TAG_ARTIST)       { replace(out, "%artist%", track->artist); }
-    if (format_tags & TAG_ALBUM)        { replace(out, "%album%", track->album); }
-    if (format_tags & TAG_GENRE)        { replace(out, "%genre%", track->genre); }
-    if (format_tags & TAG_LABEL)        { replace(out, "%label%", track->label); }
-    if (format_tags & TAG_KEY)          { replace(out, "%key%", track->key); }
-    if (format_tags & TAG_ORIG_ARTIST)  { replace(out, "%orig_artist%", track->orig_artist); }
-    if (format_tags & TAG_REMIXER)      { replace(out, "%remixer%", track->remixer); }
-    if (format_tags & TAG_COMPOSER)     { replace(out, "%composer%", track->composer); }
-    if (format_tags & TAG_COMMENT)      { replace(out, "%comment%", track->comment); }
-    if (format_tags & TAG_MIX_NAME)     { replace(out, "%mix_name%", track->mix_name); }
-    if (format_tags & TAG_LYRICIST)     { replace(out, "%lyricist%", track->lyricist); }
-    if (format_tags & TAG_DATE_CREATED) { replace(out, "%date_created%", track->date_created); }
-    if (format_tags & TAG_DATE_ADDED)   { replace(out, "%date_added%", track->date_added); }
-    if (format_tags & TAG_TRACK_NUMBER) { replace(out, "%track_number%", track->track_number); }
-    if (format_tags & TAG_BPM)          { replace(out, "%bpm%", track->bpm); }
+    if (track) {
+      // only replace fields if the tag was previously detected in the format
+      // this is a major optimization to avoid attempting to relace every tag
+      if (format_tags & TAG_TITLE)        { replace(out, "%title%", track->title); }
+      if (format_tags & TAG_ARTIST)       { replace(out, "%artist%", track->artist); }
+      if (format_tags & TAG_ALBUM)        { replace(out, "%album%", track->album); }
+      if (format_tags & TAG_GENRE)        { replace(out, "%genre%", track->genre); }
+      if (format_tags & TAG_LABEL)        { replace(out, "%label%", track->label); }
+      if (format_tags & TAG_KEY)          { replace(out, "%key%", track->key); }
+      if (format_tags & TAG_ORIG_ARTIST)  { replace(out, "%orig_artist%", track->orig_artist); }
+      if (format_tags & TAG_REMIXER)      { replace(out, "%remixer%", track->remixer); }
+      if (format_tags & TAG_COMPOSER)     { replace(out, "%composer%", track->composer); }
+      if (format_tags & TAG_COMMENT)      { replace(out, "%comment%", track->comment); }
+      if (format_tags & TAG_MIX_NAME)     { replace(out, "%mix_name%", track->mix_name); }
+      if (format_tags & TAG_LYRICIST)     { replace(out, "%lyricist%", track->lyricist); }
+      if (format_tags & TAG_DATE_CREATED) { replace(out, "%date_created%", track->date_created); }
+      if (format_tags & TAG_DATE_ADDED)   { replace(out, "%date_added%", track->date_added); }
+      if (format_tags & TAG_TRACK_NUMBER) { replace(out, "%track_number%", track->track_number); }
+      if (format_tags & TAG_BPM)          { replace(out, "%bpm%", track->bpm); }
+    }
     if (format_tags & TAG_TIME)         { replace(out, "%time%", get_timestamp_since_start()); }
     if (format_tags & TAG_DECK1_BPM)    { replace(out, "%deck1_bpm%", get_deck_bpm(0)); }
     if (format_tags & TAG_DECK2_BPM)    { replace(out, "%deck2_bpm%", get_deck_bpm(1)); }
@@ -514,6 +620,16 @@ string output_file::build_output(track_data *track)
         if (format_tags & TAG_RT_DECK4_BPM)    { replace(out, "%rt_deck4_bpm%", get_deck_bpm(3)); }
     }
     if (format_tags & TAG_RT_MASTER_BPM)   { replace(out, "%rt_master_bpm%", get_master_bpm()); }
+    if (format_tags & TAG_RT_DECK1_TIME)    { replace(out, "%rt_deck1_time%", get_deck_time(0)); }
+    if (format_tags & TAG_RT_DECK2_TIME)    { replace(out, "%rt_deck2_time%", get_deck_time(1)); }
+    if (format_tags & TAG_RT_DECK3_TIME) { replace(out, "%rt_deck3_time%", get_deck_time(2)); }
+    if (format_tags & TAG_RT_DECK4_TIME) { replace(out, "%rt_deck4_time%", get_deck_time(3)); }
+    if (format_tags & TAG_RT_MASTER_TIME)   { replace(out, "%rt_master_time%", get_master_time()); }
+    if (format_tags & TAG_RT_DECK1_TOTAL_TIME)    { replace(out, "%rt_deck1_total_time%", get_deck_total_time(0)); }
+    if (format_tags & TAG_RT_DECK2_TOTAL_TIME)    { replace(out, "%rt_deck2_total_time%", get_deck_total_time(1)); }
+    if (format_tags & TAG_RT_DECK3_TOTAL_TIME) { replace(out, "%rt_deck3_total_time%", get_deck_total_time(2)); }
+    if (format_tags & TAG_RT_DECK4_TOTAL_TIME) { replace(out, "%rt_deck4_total_time%", get_deck_total_time(3)); }
+    if (format_tags & TAG_RT_MASTER_TOTAL_TIME)   { replace(out, "%rt_master_total_time%", get_master_total_time()); }
 
     return out;
 }
@@ -733,4 +849,40 @@ string output_file::get_master_bpm()
 {
     // just fetch the deck bpm of the master deck ID
     return get_deck_bpm(get_master());
+}
+
+// get time of a specific deck (0 - 3) as a string
+string output_file::get_deck_time(uint32_t deck)
+{
+    // lookup player will find us Rekordbox's 'djplay::uiPlayer' object for the given deck
+    djplayer_uiplayer *player = lookup_player(deck);
+    if (!player) {
+        return string("0");
+    }
+    return to_string(player->getDeckTime());
+}
+
+// get master time as a string
+string output_file::get_master_time()
+{
+    // just fetch the deck time of the master deck ID
+    return get_deck_time(get_master());
+}
+
+// get total time of a specific deck (0 - 3) as a string
+string output_file::get_deck_total_time(uint32_t deck)
+{
+    // lookup player will find us Rekordbox's 'djplay::uiPlayer' object for the given deck
+    djplayer_uiplayer *player = lookup_player(deck);
+    if (!player) {
+        return string("0");
+    }
+    return to_string(player->getTotalTime());
+}
+
+// get master time as a string
+string output_file::get_master_total_time()
+{
+    // just fetch the deck time of the master deck ID
+    return get_deck_total_time(get_master());
 }
