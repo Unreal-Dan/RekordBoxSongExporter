@@ -548,21 +548,21 @@ output_file::output_file(const string &line)
   if (format.find("%rt_deck1_bpm%") != string::npos)     { format_tags |= TAG_RT_DECK1_BPM; }
   if (format.find("%rt_deck2_bpm%") != string::npos)     { format_tags |= TAG_RT_DECK2_BPM; }
   if (config.version > RBVER_585) {
-      if (format.find("%rt_deck3_bpm%") != string::npos)     { format_tags |= TAG_RT_DECK3_BPM; }
-      if (format.find("%rt_deck4_bpm%") != string::npos)     { format_tags |= TAG_RT_DECK4_BPM; }
+      if (format.find("%rt_deck3_bpm%") != string::npos) { format_tags |= TAG_RT_DECK3_BPM; }
+      if (format.find("%rt_deck4_bpm%") != string::npos) { format_tags |= TAG_RT_DECK4_BPM; }
   }
-  if (format.find("%rt_master_bpm%") != string::npos) { format_tags |= TAG_RT_MASTER_BPM; }
+  if (format.find("%rt_master_bpm%") != string::npos)     { format_tags |= TAG_RT_MASTER_BPM; }
   if (format.find("%rt_deck1_time%") != string::npos)     { format_tags |= TAG_RT_DECK1_TIME; }
   if (format.find("%rt_deck2_time%") != string::npos)     { format_tags |= TAG_RT_DECK2_TIME; }
-  if (format.find("%rt_deck3_time%") != string::npos) { format_tags |= TAG_RT_DECK3_TIME; }
-  if (format.find("%rt_deck4_time%") != string::npos) { format_tags |= TAG_RT_DECK4_TIME; }
-  if (format.find("%rt_master_time%") != string::npos) { format_tags |= TAG_RT_MASTER_TIME; }
-  if (format.find("%rt_deck1_total_time%") != string::npos)     { format_tags |= TAG_RT_DECK1_TOTAL_TIME; }
-  if (format.find("%rt_deck2_total_time%") != string::npos)     { format_tags |= TAG_RT_DECK2_TIME; }
+  if (format.find("%rt_deck3_time%") != string::npos)     { format_tags |= TAG_RT_DECK3_TIME; }
+  if (format.find("%rt_deck4_time%") != string::npos)     { format_tags |= TAG_RT_DECK4_TIME; }
+  if (format.find("%rt_master_time%") != string::npos)    { format_tags |= TAG_RT_MASTER_TIME; }
+  if (format.find("%rt_deck1_total_time%") != string::npos) { format_tags |= TAG_RT_DECK1_TOTAL_TIME; }
+  if (format.find("%rt_deck2_total_time%") != string::npos) { format_tags |= TAG_RT_DECK2_TIME; }
   if (format.find("%rt_deck3_total_time%") != string::npos) { format_tags |= TAG_RT_DECK3_TOTAL_TIME; }
   if (format.find("%rt_deck4_total_time%") != string::npos) { format_tags |= TAG_RT_DECK4_TOTAL_TIME; }
   if (format.find("%rt_master_total_time%") != string::npos) { format_tags |= TAG_RT_MASTER_TOTAL_TIME; }
-  if (format.find("%master_deck%") != string::npos) { format_tags |= TAG_RT_MASTER_DECK; }
+  if (format.find("%rt_master_deck%") != string::npos) { format_tags |= TAG_RT_MASTER_DECK; }
   // the full path of the output file
   path = get_dll_path() + "\\" OUTPUT_FOLDER "\\" + name + ".txt";
   // only clear the output file if not server mode
@@ -644,7 +644,7 @@ string output_file::build_output(track_data *track)
   if (format_tags & TAG_RT_DECK3_TOTAL_TIME) { replace(out, "%rt_deck3_total_time%", get_deck_total_time(2)); }
   if (format_tags & TAG_RT_DECK4_TOTAL_TIME) { replace(out, "%rt_deck4_total_time%", get_deck_total_time(3)); }
   if (format_tags & TAG_RT_MASTER_TOTAL_TIME)   { replace(out, "%rt_master_total_time%", get_master_total_time()); }
-  if (format_tags & TAG_RT_MASTER_DECK)   { replace(out, "%master_deck%", to_string(get_master())); }
+  if (format_tags & TAG_RT_MASTER_DECK)   { replace(out, "%rt_master_deck%", to_string(get_master())); }
 
   return out;
 }
