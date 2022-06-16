@@ -99,11 +99,6 @@ The available placeholders in the output format include (so far):
     %date_added%        The date added
     %track_number%      The track number
     %bpm%               The original track bpm (not deck bpm)
-    %master_bpm%        The current master deck BPM
-    %deck1_bpm%         The current BPM on deck 1
-    %deck2_bpm%         The current BPM on deck 2
-    %deck3_bpm%         The current BPM on deck 3
-    %deck4_bpm%         The current BPM on deck 4
     %time%              The current timestamp (hh:mm:ss)
 
     %deck1_bpm%         The BPM of deck 1 at the time the track changes
