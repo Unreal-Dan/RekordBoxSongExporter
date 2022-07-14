@@ -8,6 +8,9 @@
 #include "Hook.h"
 #include "Log.h"
 
+// TODO: This module is no longer just bpm control, this module feeds data for
+//       various differnet purposes. This needs to be refactored and renamed.
+
 // sig for djengine::djengineIF::getinstance()
 #define DJENG_GET_INST_SIG "40 53 48 83 EC 30 48 C7 44 24 20 FE FF FF FF 48 8B 05 90 90 90 90 48 85 C0 75 6B 48 8D 1D"
 

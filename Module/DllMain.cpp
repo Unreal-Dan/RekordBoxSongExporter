@@ -3,7 +3,6 @@
 #include <stdio.h>
 
 #include "NotifyMasterChangeHook.h"
-#include "EventPlayTrackHook.h"
 #include "DjEngineInterface.h"
 #include "LastTrackStorage.h"
 #include "NetworkClient.h"
@@ -129,10 +128,6 @@ static DWORD mainThread(void *param)
         }
     }
 
-    // hook when we press the play/cue button and a new track has been loaded
-    if (!hook_event_play_track()) {
-        return 1;
-    }
     // hook when the master changes
     if (!hook_notify_master_change()) {
         return 1;

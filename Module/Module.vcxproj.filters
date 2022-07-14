@@ -27,9 +27,6 @@
     <ClCompile Include="Log.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="EventPlayTrackHook.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Config.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -69,9 +66,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Log.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EventPlayTrackHook.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Config.h">
