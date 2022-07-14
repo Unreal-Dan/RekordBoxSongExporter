@@ -90,6 +90,7 @@ uintptr_t __fastcall play_track_hook(hook_arg_t hook_arg, func_args *args)
 
 bool hook_event_play_track()
 {
+    return true;
     // offset of eventPlayTrack from base of rekordbox.exe
     // and the number of bytes to copy out into a trampoline
     uint32_t trampoline_len = 0x13;

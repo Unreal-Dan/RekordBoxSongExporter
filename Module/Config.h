@@ -25,6 +25,7 @@ typedef enum rbox_version_enum
     RBVER_661, // 6.6.1
     RBVER_662, // 6.6.2
     RBVER_663, // 6.6.3
+    RBVER_664, // 6.6.4
 
     RBVER_COUNT // the number of versions supported
 } rbox_version_t;

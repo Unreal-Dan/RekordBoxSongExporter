@@ -4,6 +4,7 @@
 #include "BpmControl.h"
 #include "UIPlayer.h"
 #include "SigScan.h"
+#include "Config.h"
 #include "Hook.h"
 #include "Log.h"
 
@@ -133,6 +134,32 @@ static uintptr_t __fastcall olvc_callback(hook_arg_t hook_arg, func_args *args)
       bpm_callback((uint32_t)args->arg2 - 1, (uint32_t)args->arg4);
     } else if (!strcmp(name, "@TotalTime")) {
       total_time_callback((uint32_t)args->arg2 - 1, (uint32_t)args->arg4);
+    } else if (!strcmp(name, "PlayPause")) {
+      // grab the deck idx for this play event
+      // the deck index is offset by 1
+      uint32_t deck_idx = (args->arg4 <= NUM_DECKS) ? args->arg4 - 1 : 0;
+      // we should be able to fetch a uiplayer object for this deck idx
+      djplayer_uiplayer *player = lookup_player(deck_idx);
+      // if we're loading the same song then it doesn't matter
+      if (!player || get_track_id(deck_idx) == player->getTrackBrowserID()) {
+        return 0;
+      }
+      // update the last track of this deck
+      set_track_id(deck_idx, player->getTrackBrowserID());
+      // if we're playing/cueing a new track on the master deck
+      if (get_master() == deck_idx) {
+        // Then we need to update the output files because notifyMasterChange isn't called
+        push_deck_update(deck_idx, UPDATE_TYPE_NORMAL);
+        // we mark this deck as logged so notifyMasterChange doesn't log this track again
+        set_logged(deck_idx, true);
+        // the edge case where we loaded a track onto the master
+        info("Played track on Master %d", deck_idx);
+      } else {
+        // otherwise we simply mark this deck for logging by notifyMasterChange
+        set_logged(deck_idx, false);
+        // the edge case where we loaded a track onto the master
+        info("Played track on %d", deck_idx);
+      }
     }
     return 0;
 }

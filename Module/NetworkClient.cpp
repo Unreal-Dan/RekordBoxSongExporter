@@ -47,25 +47,29 @@ bool init_network_client()
         return false;
     }
     info("Attempting to connect to %s", config.server_ip.c_str());
-    // attempt to connect till one succeeds
-    for (ptr = addrs; ptr != NULL; ptr = ptr->ai_next) {
-        sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
-        if (sock == INVALID_SOCKET) {
-            error("socket failed with error: %d", WSAGetLastError());
-            freeaddrinfo(addrs);
-            WSACleanup();
-            return false;
-        }
-        if (connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen) == SOCKET_ERROR) {
-            // try again
-            error("Connect failed");
-            closesocket(sock);
-            sock = INVALID_SOCKET;
-            continue;
-        }
-        // Success!
-        break;
-    }
+    time_t start = GetTickCount64();
+    // loop till connection is made or timeout
+    do {
+      // attempt to connect till one succeeds
+      for (ptr = addrs; ptr != NULL; ptr = ptr->ai_next) {
+          sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+          if (sock == INVALID_SOCKET) {
+              error("socket failed with error: %d", WSAGetLastError());
+              freeaddrinfo(addrs);
+              WSACleanup();
+              return false;
+          }
+          if (connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen) == SOCKET_ERROR) {
+              // try again
+              error("Connect failed");
+              closesocket(sock);
+              sock = INVALID_SOCKET;
+              continue;
+          }
+          // Success!
+          break;
+      }
+    } while (sock == INVALID_SOCKET && (GetTickCount64() - start) < 60000); // 60 seconds
     freeaddrinfo(addrs);
     if (sock == INVALID_SOCKET) {
         error("Unable to connect to server");
