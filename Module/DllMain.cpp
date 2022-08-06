@@ -7,8 +7,8 @@
 #include "LastTrackStorage.h"
 #include "NetworkClient.h"
 #include "RowDataTrack.h"
+#include "OlvcCallback.h"
 #include "OutputFiles.h"
-#include "BpmControl.h"
 #include "SigScan.h"
 #include "Config.h"
 #include "Hook.h"
@@ -117,7 +117,7 @@ static DWORD mainThread(void *param)
         return 1;
     }
     // initialize the bpm change hook
-    if (!init_bpm_control()) {
+    if (!init_olvc_callback()) {
         return 1;
     }
 

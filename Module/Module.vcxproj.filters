@@ -48,7 +48,7 @@
     <ClCompile Include="SigScan.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="BpmControl.cpp">
+    <ClCompile Include="OlvcCallback.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SemitoneKeyControl.cpp">
@@ -89,7 +89,7 @@
     <ClInclude Include="SigScan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="BpmControl.h">
+    <ClInclude Include="OlvcCallback.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SemitoneKeyControl.h">

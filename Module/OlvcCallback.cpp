@@ -1,7 +1,7 @@
 #include "LastTrackStorage.h"
 #include "RowDataTrack.h"
+#include "OlvcCallback.h"
 #include "OutputFiles.h"
-#include "BpmControl.h"
 #include "UIPlayer.h"
 #include "SigScan.h"
 #include "Config.h"
@@ -31,6 +31,7 @@ static uintptr_t __fastcall olvc_callback(hook_arg_t hook_arg, func_args *args);
 static void bpm_changed(uint32_t deck, uint32_t old_bpm, uint32_t new_bpm);
 static void time_changed(uint32_t deck, uint32_t old_time, uint32_t new_time);
 static void total_time_changed(uint32_t deck_idx, uint32_t old_time, uint32_t new_time);
+static void load_track(uint32_t deck_idx);
 
 // hook on operateLongValueChange to catch changes to tempo
 static Hook olvc_hook;
@@ -38,8 +39,8 @@ static Hook olvc_hook;
 // djplay::DeviceComponent::operateLongValueChange
 #define DC_OLVC_SIG "48 8B C4 41 56 48 83 EC 60 48 C7 40 C8 FE FF FF FF 48 89 58 08 48 89 68 10 48 89 70 18 48 89 78 20 41"
 
-// initialize the bpm control system
-bool init_bpm_control()
+// initialize the OperateLongValueChange hook
+bool init_olvc_callback()
 {
     // sig for djengine::djengineIF::getinstance()
     get_instance = (get_instance_fn_t)sig_scan(DJENG_GET_INST_SIG);
@@ -65,7 +66,7 @@ bool init_bpm_control()
     return true;
 }
 
-void total_time_callback(uint32_t deck_idx, uint32_t total_time)
+static void total_time_callback(uint32_t deck_idx, uint32_t total_time)
 {
   static uint32_t old_master = 0;
   static uint32_t old_time[4] = { 0 };
@@ -84,7 +85,7 @@ void total_time_callback(uint32_t deck_idx, uint32_t total_time)
   }
 }
 
-void current_time_callback(uint32_t deck_idx, uint32_t curtime)
+static void current_time_callback(uint32_t deck_idx, uint32_t curtime)
 {
   static uint32_t old_master = 0;
   static uint32_t old_time[4] = { 0 };
@@ -103,7 +104,7 @@ void current_time_callback(uint32_t deck_idx, uint32_t curtime)
   }
 }
 
-void bpm_callback(uint32_t deck_idx, uint32_t bpm)
+static void bpm_callback(uint32_t deck_idx, uint32_t bpm)
 {
   static uint32_t old_master = 0;
   static uint32_t old_bpm[4] = { 0 };
@@ -137,32 +138,6 @@ static uintptr_t __fastcall olvc_callback(hook_arg_t hook_arg, func_args *args)
       bpm_callback((uint32_t)args->arg2 - 1, (uint32_t)args->arg4);
     } else if (!strcmp(name, "@TotalTime")) {
       total_time_callback((uint32_t)args->arg2 - 1, (uint32_t)args->arg4);
-    } else if (!strcmp(name, "PlayPause")) {
-      // grab the deck idx for this play event
-      // the deck index is offset by 1
-      uint32_t deck_idx = (args->arg4 <= NUM_DECKS) ? args->arg4 - 1 : 0;
-      // we should be able to fetch a uiplayer object for this deck idx
-      djplayer_uiplayer *player = lookup_player(deck_idx);
-      // if we're loading the same song then it doesn't matter
-      if (!player || get_track_id(deck_idx) == player->getTrackBrowserID()) {
-        return 0;
-      }
-      // update the last track of this deck
-      set_track_id(deck_idx, player->getTrackBrowserID());
-      // if we're playing/cueing a new track on the master deck
-      if (get_master() == deck_idx) {
-        // Then we need to update the output files because notifyMasterChange isn't called
-        push_deck_update(deck_idx, UPDATE_TYPE_NORMAL);
-        // we mark this deck as logged so notifyMasterChange doesn't log this track again
-        set_logged(deck_idx, true);
-        // the edge case where we loaded a track onto the master
-        info("Played track on Master %d", deck_idx);
-      } else {
-        // otherwise we simply mark this deck for logging by notifyMasterChange
-        set_logged(deck_idx, false);
-        // the edge case where we loaded a track onto the master
-        info("Played track on %d", deck_idx);
-      }
     }
     return 0;
 }
@@ -195,4 +170,33 @@ static void total_time_changed(uint32_t deck_idx, uint32_t old_time, uint32_t ne
   info("Total time change deck %u: %u -> %u", deck_idx, old_time, new_time);
   // Push a message to the output file writer indicating the deck changed bpm
   push_deck_update(deck_idx, UPDATE_TYPE_TOTAL_TIME);
+
+  // TODO: find better place to call load_track, for now this will work
+  load_track(deck_idx);
+}
+
+static void load_track(uint32_t deck_idx)
+{
+  // we should be able to fetch a uiplayer object for this deck idx
+  djplayer_uiplayer *player = lookup_player(deck_idx);
+  // if we're loading the same song then it doesn't matter
+  if (!player || get_track_id(deck_idx) == player->getTrackBrowserID()) {
+    return;
+  }
+  // update the last track of this deck
+  set_track_id(deck_idx, player->getTrackBrowserID());
+  // if we're playing/cueing a new track on the master deck
+  if (get_master() == deck_idx) {
+    // Then we need to update the output files because notifyMasterChange isn't called
+    push_deck_update(deck_idx, UPDATE_TYPE_NORMAL);
+    // we mark this deck as logged so notifyMasterChange doesn't log this track again
+    set_logged(deck_idx, true);
+    // the edge case where we loaded a track onto the master
+    info("Played track on Master %d", deck_idx);
+  } else {
+    // otherwise we simply mark this deck for logging by notifyMasterChange
+    set_logged(deck_idx, false);
+    // the edge case where we loaded a track onto the master
+    info("Played track on %d", deck_idx);
+  }
 }
