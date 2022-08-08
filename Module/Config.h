@@ -17,6 +17,8 @@ typedef enum rbox_version_enum
 {
     RBVER_UNK = -1,
 
+    // We retain entries for these version but they are no longer supported
+    // in this version of the software, only legacy
     RBVER_585, // 5.8.5
     RBVER_650, // 6.5.0
     RBVER_651, // 6.5.1
@@ -25,6 +27,8 @@ typedef enum rbox_version_enum
     RBVER_661, // 6.6.1
     RBVER_662, // 6.6.2
     RBVER_663, // 6.6.3
+
+    // only supporting this version+
     RBVER_664, // 6.6.4
 
     RBVER_COUNT // the number of versions supported

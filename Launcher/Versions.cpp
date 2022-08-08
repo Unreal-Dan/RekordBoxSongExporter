@@ -6,14 +6,15 @@ using namespace std;
 version_path versions[] = {
     // Friendly name     Default installation path
     { "Rekordbox 6.6.4", "C:\\Program Files\\Pioneer\\rekordbox 6.6.4\\rekordbox.exe" },
-    { "Rekordbox 6.6.3", "C:\\Program Files\\Pioneer\\rekordbox 6.6.3\\rekordbox.exe" },
-    { "Rekordbox 6.6.2", "C:\\Program Files\\Pioneer\\rekordbox 6.6.2\\rekordbox.exe" },
-    { "Rekordbox 6.6.1", "C:\\Program Files\\Pioneer\\rekordbox 6.6.1\\rekordbox.exe" },
-    { "Rekordbox 6.5.3", "C:\\Program Files\\Pioneer\\rekordbox 6.5.3\\rekordbox.exe" },
-    { "Rekordbox 6.5.2", "C:\\Program Files\\Pioneer\\rekordbox 6.5.2\\rekordbox.exe" },
-    { "Rekordbox 6.5.1", "C:\\Program Files\\Pioneer\\rekordbox 6.5.1\\rekordbox.exe" },
-    { "Rekordbox 6.5.0", "C:\\Program Files\\Pioneer\\rekordbox 6.5.0\\rekordbox.exe" },
-    { "Rekordbox 5.8.5", "C:\\Program Files\\Pioneer\\rekordbox 5.8.5\\rekordbox.exe" },
+    // Less than 6.6.4 no longer supported in this build
+    //{ "Rekordbox 6.6.3", "C:\\Program Files\\Pioneer\\rekordbox 6.6.3\\rekordbox.exe" },
+    //{ "Rekordbox 6.6.2", "C:\\Program Files\\Pioneer\\rekordbox 6.6.2\\rekordbox.exe" },
+    //{ "Rekordbox 6.6.1", "C:\\Program Files\\Pioneer\\rekordbox 6.6.1\\rekordbox.exe" },
+    //{ "Rekordbox 6.5.3", "C:\\Program Files\\Pioneer\\rekordbox 6.5.3\\rekordbox.exe" },
+    //{ "Rekordbox 6.5.2", "C:\\Program Files\\Pioneer\\rekordbox 6.5.2\\rekordbox.exe" },
+    //{ "Rekordbox 6.5.1", "C:\\Program Files\\Pioneer\\rekordbox 6.5.1\\rekordbox.exe" },
+    //{ "Rekordbox 6.5.0", "C:\\Program Files\\Pioneer\\rekordbox 6.5.0\\rekordbox.exe" },
+    //{ "Rekordbox 5.8.5", "C:\\Program Files\\Pioneer\\rekordbox 5.8.5\\rekordbox.exe" },
 };
 
 #define NUM_VERSIONS (sizeof(versions) / sizeof(versions[0]))
