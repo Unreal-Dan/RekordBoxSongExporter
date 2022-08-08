@@ -6,6 +6,7 @@
 #include "DjEngineInterface.h"
 #include "LastTrackStorage.h"
 #include "NetworkClient.h"
+#include "LoadFileHook.h"
 #include "RowDataTrack.h"
 #include "OlvcCallback.h"
 #include "OutputFiles.h"
@@ -131,6 +132,9 @@ static DWORD mainThread(void *param)
     // hook when the master changes
     if (!hook_notify_master_change()) {
         return 1;
+    }
+    if (!hook_load_file()) {
+      return 1;
     }
 
     // success

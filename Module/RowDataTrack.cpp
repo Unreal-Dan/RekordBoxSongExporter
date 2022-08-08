@@ -1,5 +1,6 @@
 #include <inttypes.h>
 
+#include "LastTrackStorage.h"
 #include "RowDataTrack.h"
 #include "UIPlayer.h"
 #include "SigScan.h"
@@ -146,12 +147,6 @@ static row_data *new_row_data()
 // lookup a new rowdata object
 row_data *lookup_row_data(uint32_t deck_idx)
 {
-    // lookup a player for the deck
-    djplayer_uiplayer *player = lookup_player(deck_idx);
-    if (!player) {
-        error("Player %u is NULL", deck_idx);
-        return NULL;
-    }
     // allocate a block of memory for the rowdata
     row_data *rowdata = new_row_data();
     if (!rowdata) {
@@ -162,7 +157,7 @@ row_data *lookup_row_data(uint32_t deck_idx)
     init_rowdata(rowdata);
     // call getRowDataTrack on the browserID of the given player
     // inst->getRowDataTrack(browserid, rowdata, 1, 0)
-    get_rowdata(get_inst(), player->getTrackBrowserID(), rowdata, 1, 0);
+    get_rowdata(get_inst(), get_track_id(deck_idx), rowdata, 1, 0);
     // return the new rowdata object
     return rowdata;
 }

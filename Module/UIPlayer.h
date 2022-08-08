@@ -20,3 +20,8 @@ private:
 
 // lookup a djplayer/deck by index (0 to 3)
 djplayer_uiplayer *lookup_player(uint32_t deck_idx);
+
+// lookup the index of a player by pointer
+uint32_t lookup_player_idx(djplayer_uiplayer *player);
+
+

@@ -170,33 +170,4 @@ static void total_time_changed(uint32_t deck_idx, uint32_t old_time, uint32_t ne
   info("Total time change deck %u: %u -> %u", deck_idx, old_time, new_time);
   // Push a message to the output file writer indicating the deck changed bpm
   push_deck_update(deck_idx, UPDATE_TYPE_TOTAL_TIME);
-
-  // TODO: find better place to call load_track, for now this will work
-  load_track(deck_idx);
-}
-
-static void load_track(uint32_t deck_idx)
-{
-  // we should be able to fetch a uiplayer object for this deck idx
-  djplayer_uiplayer *player = lookup_player(deck_idx);
-  // if we're loading the same song then it doesn't matter
-  if (!player || get_track_id(deck_idx) == player->getTrackBrowserID()) {
-    return;
-  }
-  // update the last track of this deck
-  set_track_id(deck_idx, player->getTrackBrowserID());
-  // if we're playing/cueing a new track on the master deck
-  if (get_master() == deck_idx) {
-    // Then we need to update the output files because notifyMasterChange isn't called
-    push_deck_update(deck_idx, UPDATE_TYPE_NORMAL);
-    // we mark this deck as logged so notifyMasterChange doesn't log this track again
-    set_logged(deck_idx, true);
-    // the edge case where we loaded a track onto the master
-    info("Played track on Master %d", deck_idx);
-  } else {
-    // otherwise we simply mark this deck for logging by notifyMasterChange
-    set_logged(deck_idx, false);
-    // the edge case where we loaded a track onto the master
-    info("Played track on %d", deck_idx);
-  }
 }
