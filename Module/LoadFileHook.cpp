@@ -22,7 +22,6 @@ using namespace std;
 
 Hook g_load_file_hook;
 
-// TODO: When loading a track onto the same deck that's already playing it logs the old track instead of new track
 static void load_track(djplayer_uiplayer *player, uint32_t track_id)
 {
   uint32_t deck_idx = lookup_player_idx(player);
