@@ -37,14 +37,15 @@ static void load_track(djplayer_uiplayer *player, uint32_t track_id)
     // Then we need to update the output files because notifyMasterChange isn't called
     push_deck_update(deck_idx, UPDATE_TYPE_NORMAL);
     // we mark this deck as logged so notifyMasterChange doesn't log this track again
+    // for example if they transition to another deck and back we don't want duplicate logs
     set_logged(deck_idx, true);
     // the edge case where we loaded a track onto the master
-    info("Played track on Master %d", deck_idx);
+    info("Loaded track on Master %d", deck_idx);
   } else {
     // otherwise we simply mark this deck for logging by notifyMasterChange
     set_logged(deck_idx, false);
-    // the edge case where we loaded a track onto the master
-    info("Played track on %d", deck_idx);
+    // a track was loaded onto a deck
+    info("Loaded track on %d", deck_idx);
   }
 }
 
