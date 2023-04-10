@@ -1,7 +1,7 @@
 # Rekord Box Song Exporter
 A hack for Rekordbox on Windows 64bit only.  
 Officially Supported Rekordbox Versions: 6.6.4,  6.6.3,  6.6.2,  6.6.1,  6.5.3,  6.5.2,  6.5.1,  6.5.0,  5.8.5  
-Rekordbox versions past 6.6.4 *should* work on RBSE 6.7+  
+Rekordbox versions past 6.6.4 *should* work on RBSE 6.6.7+  
 Tested on Win10 and Win8.1
 
 ### You can find prebuilt releases [here](https://github.com/Unreal-Dan/RekordBoxSongExporter/releases)
