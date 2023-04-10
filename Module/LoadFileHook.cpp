@@ -18,6 +18,9 @@
 // djplay::UiPlayer::eventLoadFile
 #define EVENT_LOAD_FILE_SIG "4C 89 4C 24 20 4C 89 44 24 18 48 89 54 24 10 48 89 4C 24 08 55 53 56 57 41 54 41 55 41 56 41 57 48 8B EC 48 83 EC 78 48 C7 45 D8 FE FF FF FF 48 8B F1 33 FF 83 BD A8 00 00 00 01"
 
+// new djplay::UiPlayer::eventLoadFile 7th call above str 'EXPORT_DECKLOAD'
+#define EVENT_LOAD_FILE_SIG_670 "4C 89 4C 24 20 4C 89 44 24 18 48 89 54 24 10 48 89 4C 24 08 55 53 56 57 41 54 41 55 41 56 41 57 48 8D 6C 24 F9"
+
 using namespace std;
 
 Hook g_load_file_hook;
@@ -72,7 +75,13 @@ bool hook_load_file()
   uintptr_t lf_addr = 0;
   switch (config.version) {
   default: // Unfortunately after 6.6.4 this changed and I don't want to go back and do older verisons
+  case RBVER_664:
+  case RBVER_6610:
+  case RBVER_6611:
     lf_addr = sig_scan(EVENT_LOAD_FILE_SIG);
+    break;
+  case RBVER_670:
+    lf_addr = sig_scan(EVENT_LOAD_FILE_SIG_670);
     break;
   };
   if (!lf_addr) {

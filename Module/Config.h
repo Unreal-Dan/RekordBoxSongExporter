@@ -30,6 +30,9 @@ typedef enum rbox_version_enum
 
     // only supporting this version+
     RBVER_664, // 6.6.4
+    RBVER_6610, // 6.6.10
+    RBVER_6611, // 6.6.11
+    RBVER_670, // 6.7.0
 
     RBVER_COUNT // the number of versions supported
 } rbox_version_t;

@@ -42,11 +42,15 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
     // pause on the entrypoint and inject the module then resume rekordbox
     switch (fdwReason) {
     case DLL_PROCESS_ATTACH:
-        // hook the uimanager initialization function to wait for rekordbox to initialize
-        if (!hook_uimanager_init()) {
-            MessageBox(NULL, "Failed to hook initialization", "Error", 0);
-            return FALSE;
-        }
+      if (!initialize_log()) {
+        return false;
+      }
+      CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)mainThread, NULL, 0, NULL);
+        //// hook the uimanager initialization function to wait for rekordbox to initialize
+        //if (!hook_uimanager_init()) {
+        //    MessageBox(NULL, "Failed to hook initialization", "Error", 0);
+        //    return FALSE;
+        //}
         break;
     case DLL_THREAD_ATTACH:
         break;
