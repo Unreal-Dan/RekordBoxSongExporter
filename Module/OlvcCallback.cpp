@@ -37,7 +37,7 @@ static void load_track(uint32_t deck_idx);
 static Hook olvc_hook;
 
 // djplay::DeviceComponent::operateLongValueChange
-#define DC_OLVC_SIG "48 8B C4 41 56 48 83 EC 60 48 C7 40 C8 FE FF FF FF 48 89 58 08 48 89 68 10 48 89 70 18 48 89 78 20 41"
+#define DC_OLVC_SIG "48 8B C4 41 56 48 83 EC 60 48 C7 40 C8 FE FF FF FF 48 89 58 08 48 89 68 10 48 89 70 18 48 89 78 20 41 8B"
 
 // initialize the OperateLongValueChange hook
 bool init_olvc_callback()
@@ -60,7 +60,7 @@ bool init_olvc_callback()
     }
     olvc_hook.init(olvc, olvc_callback, NULL);
     if (!olvc_hook.install_hook()) {
-        error("Failed to install set_tempo hook");
+        error("Failed to install olvc_hook");
         return false;
     }
     return true;
