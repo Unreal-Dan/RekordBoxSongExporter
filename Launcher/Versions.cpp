@@ -5,6 +5,7 @@ using namespace std;
 // list of supported versions
 version_path versions[] = {
     // Friendly name     Default installation path
+    { "Rekordbox 6.7.5", "C:\\Program Files\\Pioneer\\rekordbox 6.7.5\\rekordbox.exe" },
     { "Rekordbox 6.7.0", "C:\\Program Files\\Pioneer\\rekordbox 6.7.0\\rekordbox.exe" },
     { "Rekordbox 6.6.11", "C:\\Program Files\\Pioneer\\rekordbox 6.6.11\\rekordbox.exe" },
     { "Rekordbox 6.6.10", "C:\\Program Files\\Pioneer\\rekordbox 6.6.10\\rekordbox.exe" },

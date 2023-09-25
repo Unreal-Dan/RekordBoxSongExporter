@@ -74,13 +74,14 @@ bool hook_load_file()
   // and the number of bytes to copy out into a trampoline
   uintptr_t lf_addr = 0;
   switch (config.version) {
-  default: // Unfortunately after 6.6.4 this changed and I don't want to go back and do older verisons
   case RBVER_664:
   case RBVER_6610:
   case RBVER_6611:
     lf_addr = sig_scan(EVENT_LOAD_FILE_SIG);
     break;
+  default: // Unfortunately after 6.6.4 this changed and I don't want to go back and do older verisons
   case RBVER_670:
+  case RBVER_675:
     lf_addr = sig_scan(EVENT_LOAD_FILE_SIG_670);
     break;
   };

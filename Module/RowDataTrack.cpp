@@ -138,7 +138,8 @@ static row_data *new_row_data()
     case RBVER_653:
     case RBVER_661:
     default: // RBVER_661+ just guess
-        rowdata = calloc(1, 0x488);
+        // this used to be 0x488 but it was crashing so I upped it to 0x512, should be enough
+        rowdata = calloc(1, 0x512);
         break;
     }
     return (row_data *)rowdata;
