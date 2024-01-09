@@ -90,9 +90,18 @@ uint32_t djplayer_uiplayer::getDeckBPM()
         // change anytime new devices are added -- which seems not uncommon
         bpm_device_offset = find_device_offset("@BPM");
       }
+      if (!bpm_device_offset) {
+        break;
+      }
       bpmDevice = *(void **)((uintptr_t)this + bpm_device_offset);
+      if (!bpmDevice) {
+        break;
+      }
       // then the offsets for the bpm within the device should never change
       bpmDeviceInner = *(void **)((uintptr_t)bpmDevice + 0x80);
+      if (!bpmDeviceInner) {
+        break;
+      }
       bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + 0x154);
       break;
     }
