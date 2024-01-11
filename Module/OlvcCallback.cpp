@@ -8,6 +8,8 @@
 #include "Hook.h"
 #include "Log.h"
 
+#include <chrono>
+
 // TODO: This module is no longer just bpm control, this module feeds data for
 //       various differnet purposes. This needs to be refactored and renamed.
 
@@ -145,15 +147,35 @@ static uintptr_t __fastcall olvc_callback(hook_arg_t hook_arg, func_args *args)
 // callback for when the bpm changes on a deck
 static void bpm_changed(uint32_t deck_idx, uint32_t old_bpm, uint32_t new_bpm)
 {
-  // lookup a player for the deck
-  djplayer_uiplayer *player = lookup_player(deck_idx);
-  // make sure the player has a track loaded on it
-  if (!player || !player->getTrackBrowserID()) {
-    return;
-  }
-  info("BPM change deck %u: %.2f -> %.2f", deck_idx, old_bpm / 100.0, new_bpm / 100.0);
-  // Push a message to the output file writer indicating the deck changed bpm
-  push_deck_update(deck_idx, UPDATE_TYPE_BPM);
+    // keep track of 8 last call times, one for each possible deck
+    static std::chrono::steady_clock::time_point lastCallTime[8];
+
+    // adjust period to be some measure of time in milliseconds to ratelimit to
+    // 1000 / 15 = 15 times per second
+    const auto period = std::chrono::milliseconds(1000 / 15);
+
+    // grab curtime and calculate elapsed since last update on this deck
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = now - lastCallTime[deck_idx];
+
+    // if we haven't waited long enough to queue the bpm change, then just discard this change
+    if (elapsed < period) {
+        // Discard the call as it is within the rate limit period
+        return;
+    }
+
+    // otherwise update the last call time and proceed with queuing the bpm change
+    lastCallTime[deck_idx] = now;
+
+    // lookup a player for the deck
+    djplayer_uiplayer *player = lookup_player(deck_idx);
+    // make sure the player has a track loaded on it
+    if (!player || !player->getTrackBrowserID()) {
+        return;
+    }
+    info("BPM change deck %u: %.2f -> %.2f", deck_idx, old_bpm / 100.0, new_bpm / 100.0);
+    // Push a message to the output file writer indicating the deck changed bpm
+    push_deck_update(deck_idx, UPDATE_TYPE_BPM);
 }
 
 static void time_changed(uint32_t deck_idx, uint32_t old_time, uint32_t new_time)
