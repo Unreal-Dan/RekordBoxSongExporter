@@ -29,9 +29,9 @@ static set_tempo_fn_t set_tempo = NULL;
 static uint32_t get_track_bpm_of_deck(uint32_t deck);
 static uintptr_t __fastcall olvc_callback(hook_arg_t hook_arg, func_args *args);
 static void bpm_changed(uint32_t deck, uint32_t old_bpm, uint32_t new_bpm);
+static void rounded_bpm_changed(uint32_t deck_idx, uint32_t old_bpm, uint32_t new_bpm);
 static void time_changed(uint32_t deck, uint32_t old_time, uint32_t new_time);
 static void total_time_changed(uint32_t deck_idx, uint32_t old_time, uint32_t new_time);
-static void load_track(uint32_t deck_idx);
 
 // hook on operateLongValueChange to catch changes to tempo
 static Hook olvc_hook;
@@ -108,16 +108,26 @@ static void bpm_callback(uint32_t deck_idx, uint32_t bpm)
 {
   static uint32_t old_master = 0;
   static uint32_t old_bpm[4] = { 0 };
+  static uint32_t old_rounded_bpm[4] = { 0 };
   uint32_t last_bpm = old_bpm[deck_idx];
+  uint32_t last_rounded_bpm = old_rounded_bpm[deck_idx];
+  uint32_t rounded_bpm = (bpm + 50) - ((bpm + 50) % 100);
   if (bpm != last_bpm) {
     bpm_changed(deck_idx, last_bpm, bpm);
     old_bpm[deck_idx] = bpm;
+    if (rounded_bpm != last_rounded_bpm) {
+      rounded_bpm_changed(deck_idx, last_bpm, bpm);
+      old_rounded_bpm[deck_idx] = rounded_bpm;
+    }
     return;
   }
+  // if the master switches then technically the 'master' bpm needs updating
   if (get_master() != old_master) {
     old_master = get_master();
     bpm_changed(deck_idx, last_bpm, bpm);
+    rounded_bpm_changed(deck_idx, last_bpm, bpm);
     old_bpm[deck_idx] = bpm;
+    old_rounded_bpm[deck_idx] = rounded_bpm;
     return;
   }
 }
@@ -140,6 +150,20 @@ static uintptr_t __fastcall olvc_callback(hook_arg_t hook_arg, func_args *args)
       total_time_callback((uint32_t)args->arg2 - 1, (uint32_t)args->arg4);
     }
     return 0;
+}
+
+// callback for when the rounded bpm changes on a deck
+static void rounded_bpm_changed(uint32_t deck_idx, uint32_t old_bpm, uint32_t new_bpm)
+{
+  // lookup a player for the deck
+  djplayer_uiplayer *player = lookup_player(deck_idx);
+  // make sure the player has a track loaded on it
+  if (!player || !player->getTrackBrowserID()) {
+    return;
+  }
+  info("Rounded BPM change deck %u: %.2f -> %.2f", deck_idx, old_bpm / 100.0, new_bpm / 100.0);
+  // Push a message to the output file writer indicating the deck changed bpm
+  push_deck_update(deck_idx, UPDATE_TYPE_ROUNDED_BPM);
 }
 
 // callback for when the bpm changes on a deck

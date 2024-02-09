@@ -12,6 +12,9 @@
 // name of output folder
 #define OUTPUT_FOLDER   "OutputFiles"
 
+// the number of server updates that can be sent per second
+#define DEFAULT_UPDATE_RATE 500
+
 // enum of versions we support
 typedef enum rbox_version_enum
 {
@@ -42,7 +45,7 @@ typedef enum rbox_version_enum
 class Config
 {
 public:
-    Config() : version(RBVER_UNK), use_server(false), server_ip(), output_files() {}
+    Config() : version(RBVER_UNK), use_server(false), server_ip(), output_files(), update_rate(500) {}
     // the version loaded from config
     rbox_version_t version;
     // whether to use server mode
@@ -51,6 +54,8 @@ public:
     std::string server_ip;
     // a vector of output file config strings
     std::vector<std::string> output_files;
+    // a secret update_rate config for maxing out the server command update rate
+    uint32_t update_rate;
 };
 
 // global config object

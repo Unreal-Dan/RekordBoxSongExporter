@@ -3,6 +3,8 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <chrono>
+#include <mutex>
 #include <deque>
 #include <queue>
 
@@ -121,6 +123,18 @@ typedef enum out_tag_enum : uint64_t
   // the master deck index itself
   TAG_RT_MASTER_DECK = (1ULL << 37),
 
+  // realtime rounded bpm tags which trigger updates when rounded bpm changes
+  TAG_RT_DECK1_ROUNDED_BPM =  (1ULL << 38),
+  TAG_RT_DECK2_ROUNDED_BPM =  (1ULL << 39),
+  TAG_RT_DECK3_ROUNDED_BPM =  (1ULL << 40),
+  TAG_RT_DECK4_ROUNDED_BPM =  (1ULL << 41),
+  TAG_RT_MASTER_ROUNDED_BPM = (1ULL << 42),
+
+  // mask for all realtime bpm flags
+  MASK_REALTIME_ROUNDED_BPMS = (TAG_RT_DECK1_ROUNDED_BPM | TAG_RT_DECK2_ROUNDED_BPM |
+                                TAG_RT_DECK3_ROUNDED_BPM | TAG_RT_DECK4_ROUNDED_BPM |
+                                TAG_RT_MASTER_ROUNDED_BPM),
+
 } out_tag_t;
 
 // a class to describe an output file that will be written
@@ -158,6 +172,9 @@ private:
   // we can update the various multi-line logs and last_track
   deque<string> cached_lines;
 
+  uint32_t msg_count;
+  std::chrono::steady_clock::time_point last_reset = chrono::steady_clock::now();
+
   // helper routines
 
   // helper to build output line based on configured output format
@@ -179,8 +196,12 @@ private:
   string get_timestamp_since_start();
   // get bpm of a specific deck as a string
   string get_deck_bpm(uint32_t deck);
+  // get the rounded bpm of a specific deck as a string
+  string get_deck_rounded_bpm(uint32_t deck);
   // get master bpm as a string
   string get_master_bpm();
+  // get master rounded bpm as a string
+  string get_master_rounded_bpm();
   // get time of a specific deck
   string get_deck_time(uint32_t deck);
   // get time of master deck
@@ -374,6 +395,23 @@ void run_listener()
           }
         }
       }
+      if (deck_update.type == UPDATE_TYPE_ROUNDED_BPM) {
+        // is there any realtime bpms used in this output file?
+        if ((outfile->format_tags & MASK_REALTIME_ROUNDED_BPMS) == 0) {
+          continue;
+        }
+        // otherwise there is realtime bpms so calculate the rt bitflag for current deck
+        uint64_t deck_bpm_tag = (TAG_RT_DECK1_ROUNDED_BPM << deck_update.deck_idx);
+        // check to see if the realtime deck bitflag matches the format tags
+        if ((outfile->format_tags & deck_bpm_tag) == 0) {
+          // if not then check if the master deck matches, and for the realtime master bpm tag
+          if (get_master() != deck_update.deck_idx || (outfile->format_tags & TAG_RT_MASTER_ROUNDED_BPM) == 0) {
+            // we don't want to update this file because it doesn't have any realtime
+            // bpm tags or the deck number doesn't match the bpm tag
+            continue;
+          }
+        }
+      }
       if (deck_update.type == UPDATE_TYPE_TIME) {
         // is there any realtime bpms used in this output file?
         if ((outfile->format_tags & MASK_REALTIME_TIMES) == 0) {
@@ -551,7 +589,14 @@ output_file::output_file(const string &line)
       if (format.find("%rt_deck3_bpm%") != string::npos) { format_tags |= TAG_RT_DECK3_BPM; }
       if (format.find("%rt_deck4_bpm%") != string::npos) { format_tags |= TAG_RT_DECK4_BPM; }
   }
+  if (format.find("%rt_deck1_rounded_bpm%") != string::npos)     { format_tags |= TAG_RT_DECK1_ROUNDED_BPM; }
+  if (format.find("%rt_deck2_rounded_bpm%") != string::npos)     { format_tags |= TAG_RT_DECK2_ROUNDED_BPM; }
+  if (config.version > RBVER_585) {
+      if (format.find("%rt_deck3_rounded_bpm%") != string::npos) { format_tags |= TAG_RT_DECK3_ROUNDED_BPM; }
+      if (format.find("%rt_deck4_rounded_bpm%") != string::npos) { format_tags |= TAG_RT_DECK4_ROUNDED_BPM; }
+  }
   if (format.find("%rt_master_bpm%") != string::npos)     { format_tags |= TAG_RT_MASTER_BPM; }
+  if (format.find("%rt_master_rounded_bpm%") != string::npos)     { format_tags |= TAG_RT_MASTER_ROUNDED_BPM; }
   if (format.find("%rt_deck1_time%") != string::npos)     { format_tags |= TAG_RT_DECK1_TIME; }
   if (format.find("%rt_deck2_time%") != string::npos)     { format_tags |= TAG_RT_DECK2_TIME; }
   if (format.find("%rt_deck3_time%") != string::npos)     { format_tags |= TAG_RT_DECK3_TIME; }
@@ -580,13 +625,25 @@ void output_file::log_track(track_data *track)
 
   // server mode?
   if (config.use_server) {
-    // in server mode send the filename + track to the server for logging
-    string message = to_string(id) + ":" + track_str;
-    if (!send_network_message(message.c_str())) {
-      // possible disconnection?
+    auto now = chrono::steady_clock::now();
+    auto elapsed = chrono::duration_cast<chrono::seconds>(now - last_reset).count();
+    if (elapsed >= 1) {
+      msg_count = 0;
+      last_reset = now;
     }
-    info("Sending track [%s] to file %s at server %s...",
-      track_str.c_str(), name.c_str(), config.server_ip.c_str());
+    if (msg_count < config.update_rate) {
+      msg_count++;
+      string message = to_string(id) + ":" + track_str;
+      if (!send_network_message(message.c_str())) {
+        // Handle possible disconnection
+      }
+      info("Sending track [%s] to file %s at server %s...",
+        track_str.c_str(), name.c_str(), config.server_ip.c_str());
+    } else {
+      // Rate limit exceeded, handle accordingly, e.g., logging, queuing, etc.
+      info("Rate limit exceeded. Track [%s] to file %s at server %s not sent.",
+        track_str.c_str(), name.c_str(), config.server_ip.c_str());
+    }
   } else {
     // otherwise in non-server mode just directly update the log
     // files with this new track
@@ -633,7 +690,14 @@ string output_file::build_output(track_data *track)
     if (format_tags & TAG_RT_DECK3_BPM)    { replace(out, "%rt_deck3_bpm%", get_deck_bpm(2)); }
     if (format_tags & TAG_RT_DECK4_BPM)    { replace(out, "%rt_deck4_bpm%", get_deck_bpm(3)); }
   }
+  if (format_tags & TAG_RT_DECK1_ROUNDED_BPM)    { replace(out, "%rt_deck1_rounded_bpm%", get_deck_rounded_bpm(0)); }
+  if (format_tags & TAG_RT_DECK2_ROUNDED_BPM)    { replace(out, "%rt_deck2_rounded_bpm%", get_deck_rounded_bpm(1)); }
+  if (config.version > RBVER_585) {
+    if (format_tags & TAG_RT_DECK3_ROUNDED_BPM)    { replace(out, "%rt_deck3_rounded_bpm%", get_deck_rounded_bpm(2)); }
+    if (format_tags & TAG_RT_DECK4_ROUNDED_BPM)    { replace(out, "%rt_deck4_rounded_bpm%", get_deck_rounded_bpm(3)); }
+  }
   if (format_tags & TAG_RT_MASTER_BPM)   { replace(out, "%rt_master_bpm%", get_master_bpm()); }
+  if (format_tags & TAG_RT_MASTER_ROUNDED_BPM)   { replace(out, "%rt_master_rounded_bpm%", get_master_rounded_bpm()); }
   if (format_tags & TAG_RT_DECK1_TIME)    { replace(out, "%rt_deck1_time%", get_deck_time(0)); }
   if (format_tags & TAG_RT_DECK2_TIME)    { replace(out, "%rt_deck2_time%", get_deck_time(1)); }
   if (format_tags & TAG_RT_DECK3_TIME) { replace(out, "%rt_deck3_time%", get_deck_time(2)); }
@@ -859,11 +923,36 @@ string output_file::get_deck_bpm(uint32_t deck)
   return string(buf);
 }
 
+// get bpm of a specific deck (0 - 3) as a string
+string output_file::get_deck_rounded_bpm(uint32_t deck)
+{
+  char buf[256] = { 0 };
+  // lookup player will find us Rekordbox's 'djplay::uiPlayer' object for the given deck
+  djplayer_uiplayer *player = lookup_player(deck);
+  if (!player) {
+    return string(buf);
+  }
+  // then we can look into the uiPlayer object to find the deck bpm
+  uint32_t bpm = player->getDeckBPM();
+  uint32_t rounded_bpm = (bpm + 50) - ((bpm + 50) % 100);
+  if (snprintf(buf, sizeof(buf), "%u", rounded_bpm / 100) < 1) {
+    return string("0");
+  }
+  return string(buf);
+}
+
 // get master bpm as a string
 string output_file::get_master_bpm()
 {
   // just fetch the deck bpm of the master deck ID
   return get_deck_bpm(get_master());
+}
+
+// get master bpm as a string
+string output_file::get_master_rounded_bpm()
+{
+  // just fetch the deck bpm of the master deck ID
+  return get_deck_rounded_bpm(get_master());
 }
 
 // get time of a specific deck (0 - 3) as a string

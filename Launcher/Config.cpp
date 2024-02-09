@@ -79,6 +79,8 @@ bool config_load()
             config.use_server = (strtoul(value.c_str(), NULL, 10) != 0);
         } else if (key == "server_ip") {
             config.server_ip = value;
+        } else if (key == "update_rate") {
+            // not support in UI right now
         }
     }
     // use the new version number and latest version of rekordbox

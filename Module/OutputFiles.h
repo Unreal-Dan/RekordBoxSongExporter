@@ -4,6 +4,7 @@
 typedef enum deck_update_type_enum {
     UPDATE_TYPE_NORMAL = 0, // a track changed and the master switched
     UPDATE_TYPE_BPM,        // the bpm changed
+    UPDATE_TYPE_ROUNDED_BPM,// the rounded bpm changed
     UPDATE_TYPE_TIME,       // the time changed
     UPDATE_TYPE_TOTAL_TIME, // the total time changed
     UPDATE_TYPE_MASTER,     // the master switched (track may not have changed)
