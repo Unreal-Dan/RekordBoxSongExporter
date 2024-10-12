@@ -177,12 +177,12 @@ It is suggested you review the example output files that come with the Launcher 
 
  3. You may close the launcher once the module has been injected into Rekordbox.
 
- 4. Once the hack is loaded a folder called OutputFiles will appear.
- 
-    4a. If you're running locally the folder will appear in the same location as as the launcher/module
-   
-    4b. If you're running the Server then the folder will appear in the same location as the Server
- 
+ 4. Once the hack is loaded a folder called OutputFiles will appear.  
+
+    4a. If you're running locally the folder will appear in the same location as as the launcher/module  
+
+    4b. If you're running the Server then the folder will appear in the same location as the Server  
+
  5. Create a GDI text object in OBS and point it at one of the output files
  
  6. Make sure to enable chatlog mode on the GDI text object
