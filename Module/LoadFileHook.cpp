@@ -63,8 +63,7 @@ struct songinfo6_struct
 
 struct songinfo7_struct
 {
-  uintptr_t unk0;
-  uintptr_t unk8;
+  uint8_t pad[0x20];
   uintptr_t track_browser_id;
 };
 

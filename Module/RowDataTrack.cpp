@@ -217,255 +217,368 @@ void destroy_row_data(row_data *rowdata)
 const char *row_data::getTitle()
 {
     switch (config.version) {
-    case RBVER_585: return getString(0x18);
-    case RBVER_650: return getString(0x20);
-    case RBVER_651: return getString(0x20);
-    case RBVER_652: return getString(0x20);
-    case RBVER_653: return getString(0x20);
+    case RBVER_585:
+      return getString(0x18);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getString(0x20);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getString(0x20);
-        }
-        return "";
+      return getString(0x20);
     }
 }
 const char *row_data::getArtist()
 {
     switch (config.version) {
-    case RBVER_585: return getString(0xB0);
-    case RBVER_650: return getString(0xC0);
-    case RBVER_651: return getString(0xC0);
-    case RBVER_652: return getString(0xC0);
-    case RBVER_653: return getString(0xC0);
-    case RBVER_661: return getString(0xC0);
+    case RBVER_585:
+      return getString(0xB0);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getString(0xC0);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getString(0xC0);
-        }
-        return "";
+      return getString(0xC0);
     }
 }
 const char *row_data::getAlbum()
 {
     switch (config.version) {
-    case RBVER_585: return getString(0xE0);
-    case RBVER_650: return getString(0xF8);
-    case RBVER_651: return getString(0xF8);
-    case RBVER_652: return getString(0xF8);
-    case RBVER_653: return getString(0xF8);
-    case RBVER_661: return getString(0xF8);
+    case RBVER_585:
+      return getString(0xE0);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getString(0xF8);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getString(0xF8);
-        }
-        return "";
+      return getString(0xF8);
     }
 }
 const char *row_data::getGenre()
 {
     switch (config.version) {
-    case RBVER_585: return getString(0x148);
-    case RBVER_650: return getString(0x170);
-    case RBVER_651: return getString(0x170);
-    case RBVER_652: return getString(0x170);
-    case RBVER_653: return getString(0x170);
-    case RBVER_661: return getString(0x170);
+    case RBVER_585:
+      return getString(0x148);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getString(0x170);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getString(0x170);
-        }
-        return "";
+      return getString(0x170);
     }
 }
 const char *row_data::getLabel()
 {
     switch (config.version) {
-    case RBVER_585: return getString(0x178);
-    case RBVER_650: return getString(0x1A8);
-    case RBVER_651: return getString(0x1A8);
-    case RBVER_652: return getString(0x1A8);
-    case RBVER_653: return getString(0x1A8);
-    case RBVER_661: return getString(0x1A8);
+    case RBVER_585:
+      return getString(0x178);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getString(0x1A8);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getString(0x1A8);
-        }
-        return "";
+      return getString(0x1A8);
     }
 }
 const char *row_data::getKey()
 {
     switch (config.version) {
-    case RBVER_585: return getString(0x1C8);
-    case RBVER_650: return getString(0x200);
-    case RBVER_651: return getString(0x200);
-    case RBVER_652: return getString(0x200);
-    case RBVER_653: return getString(0x200);
-    case RBVER_661: return getString(0x200);
+    case RBVER_585:
+      return getString(0x1C8);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getString(0x200);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getString(0x200);
-        }
-        return "";
+      return getString(0x200);
     }
 }
 const char *row_data::getOrigArtist()
 {
     switch (config.version) {
-    case RBVER_585: return getString(0x238);
-    case RBVER_650: return getString(0x280);
-    case RBVER_651: return getString(0x280);
-    case RBVER_652: return getString(0x280);
-    case RBVER_653: return getString(0x280);
-    case RBVER_661: return getString(0x280);
+    case RBVER_585:
+      return getString(0x238);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getString(0x280);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getString(0x280);
-        }
-        return "";
+      return getString(0x280);
     }
 }
 const char *row_data::getRemixer()
 {
     switch (config.version) {
-    case RBVER_585: return getString(0x268);
-    case RBVER_650: return getString(0x2B8);
-    case RBVER_651: return getString(0x2B8);
-    case RBVER_652: return getString(0x2B8);
-    case RBVER_653: return getString(0x2B8);
-    case RBVER_661: return getString(0x2B8);
+    case RBVER_585:
+      return getString(0x268);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getString(0x2B8);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getString(0x2B8);
-        }
-        return "";
+      return getString(0x2F0);
     }
 }
 const char *row_data::getComposer()
 {
     switch (config.version) {
-    case RBVER_585: return getString(0x298);
-    case RBVER_650: return getString(0x2F0);
-    case RBVER_651: return getString(0x2F0);
-    case RBVER_652: return getString(0x2F0);
-    case RBVER_653: return getString(0x2F0);
-    case RBVER_661: return getString(0x2F0);
+    case RBVER_585:
+      return getString(0x298);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getString(0x2F0);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getString(0x2F0);
-        }
-        return "";
+      return getString(0x328);
     }
 }
 const char *row_data::getComment()
 {
     switch (config.version) {
-    case RBVER_585: return getString(0x2C0);
-    case RBVER_650: return getString(0x318);
-    case RBVER_651: return getString(0x318);
-    case RBVER_652: return getString(0x318);
-    case RBVER_653: return getString(0x318);
-    case RBVER_661: return getString(0x318);
+    case RBVER_585:
+      return getString(0x2C0);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getString(0x318);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getString(0x318);
-        }
-        return "";
+      return getString(0x350);
     }
 }
 const char *row_data::getMixName()
 {
     switch (config.version) {
-    case RBVER_585: return getString(0x2F0);
-    case RBVER_650: return getString(0x348);
-    case RBVER_651: return getString(0x348);
-    case RBVER_652: return getString(0x348);
-    case RBVER_653: return getString(0x348);
-    case RBVER_661: return getString(0x348);
+    case RBVER_585:
+      return getString(0x2F0);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getString(0x348);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getString(0x348);
-        }
-        return "";
+      return getString(0x380);
     }
 }
 const char *row_data::getLyricist()
 {
     switch (config.version) {
-    case RBVER_585: return getString(0x3B8);
-    case RBVER_650: return getString(0x418);
-    case RBVER_651: return getString(0x418);
-    case RBVER_652: return getString(0x418);
-    case RBVER_653: return getString(0x418);
-    case RBVER_661: return getString(0x418);
+    case RBVER_585:
+      return getString(0x3B8);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getString(0x418);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getString(0x418);
-        }
-        return "";
+      return getString(0x448);
     }
 }
 const char *row_data::getDateCreated()
 {
     switch (config.version) {
-    case RBVER_585: return getString(0x320);
-    case RBVER_650: return getString(0x378);
-    case RBVER_651: return getString(0x378);
-    case RBVER_652: return getString(0x378);
-    case RBVER_653: return getString(0x378);
-    case RBVER_661: return getString(0x378);
+    case RBVER_585:
+      return getString(0x320);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getString(0x378);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getString(0x378);
-        }
-        return "";
+      return getString(0x3b8);
     }
 }
 const char *row_data::getDateAdded()
 {
     switch (config.version) {
-    case RBVER_585: return getString(0x328);
-    case RBVER_650: return getString(0x380);
-    case RBVER_651: return getString(0x380);
-    case RBVER_652: return getString(0x380);
-    case RBVER_653: return getString(0x380);
-    case RBVER_661: return getString(0x380);
+    case RBVER_585:
+      return getString(0x328);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getString(0x380);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getString(0x380);
-        }
-        return "";
+      return getString(0x3b8);
     }
 }
 uint32_t row_data::getTrackNumber()
 {
     switch (config.version) {
-    case RBVER_585: return getValue<uint32_t>(0x2B0);
-    case RBVER_650: return getValue<uint32_t>(0x308);
-    case RBVER_651: return getValue<uint32_t>(0x308);
-    case RBVER_652: return getValue<uint32_t>(0x308);
-    case RBVER_653: return getValue<uint32_t>(0x308);
-    case RBVER_661: return getValue<uint32_t>(0x308);
+    case RBVER_585:
+      return getValue<uint32_t>(0x2B0);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getValue<uint32_t>(0x308);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getValue<uint32_t>(0x308);
-        }
-        return 0;
+      return getValue<uint32_t>(0x340);
     }
 }
 uint32_t row_data::getBpm()
 {
     switch (config.version) {
-    case RBVER_585: return getValue<uint32_t>(0x308);
-    case RBVER_650: return getValue<uint32_t>(0x360);
-    case RBVER_651: return getValue<uint32_t>(0x360);
-    case RBVER_652: return getValue<uint32_t>(0x360);
-    case RBVER_653: return getValue<uint32_t>(0x360);
-    case RBVER_661: return getValue<uint32_t>(0x360);
+    case RBVER_585:
+      return getValue<uint32_t>(0x308);
+    case RBVER_650:
+    case RBVER_651:
+    case RBVER_652:
+    case RBVER_653:
+    case RBVER_661:
+    case RBVER_662:
+    case RBVER_663:
+    case RBVER_664:
+    case RBVER_6610:
+    case RBVER_6611:
+    case RBVER_670:
+    case RBVER_675:
+      return getValue<uint32_t>(0x360);
+    case RBVER_708:
     default:
-        if (config.version >= RBVER_661) {
-            return getValue<uint32_t>(0x360);
-        }
-        return 0;
+      return getValue<uint32_t>(0x398);
     }
 }
