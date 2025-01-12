@@ -7,6 +7,24 @@
 #include "Config.h"
 #include "Log.h"
 
+// best way to find these signatures is look for "_Loop.wav" then scroll up
+// to where there are several casts and something that looks like this:
+//
+//     if ( v284 == 1 || (unsigned int)(v284 - 2) <= 1 )    // look for this line
+//       v285 = *(_DWORD *)(v283 + 32);
+//     db::RowDataTrack::RowDataTrack((__int64)&v560);      // 3rd function
+//     v286 = db::DatabaseIF::getInstance();                // 1st function
+//     LODWORD(v530) = 0;
+//     if ( db::DatabaseIF::getRowDataTrack(v286) )         // 2nd function
+//     {
+//       sub_1622970(&v547, &v561);
+//       sub_1622970(&v546, &v562);
+//       sub_1622970(&v540, &v563);
+//       sub_1622970(&v545, &v565);
+//       sub_1622970(&v551, &v564);
+//     }
+//     db::RowDataTrack::DestructRowDataTrack(&v560);       // 4th function
+
 // db::databaseif::getinstance();
 #define GET_INSTANCE_SIG "40 57 48 83 ec 30 48 c7 44 24 20 fe ff ff ff 48 89 5c 24 58 48 8b 05 90 90 90 90 48 85 c0"
 // db::databaseif::getrowdatatrack(v8, v7, &a1a, 1u, 0)
@@ -15,6 +33,13 @@
 #define ROW_DATA_TRACK_SIG "48 89 4c 24 08 53 55 56 57 41 56 48 83 ec 30 48 c7 44 24 20 fe ff ff ff 48 8b f9 bd 01 00 00 00"
 // db::rowdatatrack::~rowdatatrack(rowdata);
 #define DESTR_ROW_DATA_SIG "48 89 4c 24 08 53 55 56 57 41 56 48 83 ec 30 48 c7 44 24 20 fe ff ff ff 4c 8b f1 48 8d 05 90 90 90 90 48 89 01 48"
+
+// same sigs for 7.0.1:
+#define GET_INSTANCE_SIG_701 "48 89 5c 24 18 57 48 83 ec 30 48 8b 05 90 90 90 90 90 48 85 c0 0f 85 a2"
+// this is actually a sig for an inner version of getRowDataTrack, just deref rcx/this first
+#define GET_ROW_DATA_TRACK_SIG_701 "48 89 5c 24 08 57 48 83 ec 20 49 8b d8 8b fa 44"
+#define ROW_DATA_TRACK_SIG_701 "48 89 5c 24 18 48 89 4c 24 08 55 56 57 48 83 ec 20 48 8b f1"
+#define DESTR_ROW_DATA_SIG_701 "48 89 5c 24 08 57 48 83 ec 20 48 8d 05 90 90 90 90 48 8b d9 48 89 01 48 8d 05 90 90 90 90 48 89 41 38 48 81 c1 c0 04 00 00 e8 90 90 90 90 48"
 
 // inst = db::DatabaseIF::getInstance();
 typedef void *(*get_instance_fn)();
@@ -34,23 +59,6 @@ destr_rowdata_fn destr_rowdata = NULL;
 
 bool init_row_data_funcs()
 {
-    // best way to find these addresses is look for "_Loop.wav" then scroll up
-    // to where there are several casts and something that looks like this:
-    //
-    //     if ( v284 == 1 || (unsigned int)(v284 - 2) <= 1 )
-    //       v285 = *(_DWORD *)(v283 + 32);
-    //     db::RowDataTrack::RowDataTrack((__int64)&v560);      // 3rd function
-    //     v286 = db::DatabaseIF::getInstance();                // 1st function
-    //     LODWORD(v530) = 0;
-    //     if ( db::DatabaseIF::getRowDataTrack(v286) )         // 2nd function
-    //     {
-    //       sub_1622970(&v547, &v561);
-    //       sub_1622970(&v546, &v562);
-    //       sub_1622970(&v540, &v563);
-    //       sub_1622970(&v545, &v565);
-    //       sub_1622970(&v551, &v564);
-    //     }
-    //     db::RowDataTrack::DestructRowDataTrack(&v560);       // 4th function
     switch (config.version) {
     case RBVER_585:
         get_inst = (get_instance_fn)(rb_base() + 0x39F2F0);
@@ -82,12 +90,26 @@ bool init_row_data_funcs()
         init_rowdata = (init_rowdata_fn)(rb_base() + 0x2419B0);
         destr_rowdata = (destr_rowdata_fn)(rb_base() + 0x242040);
         break;
-    default: // RBVER_661+
-        // sig scan for each function
+    case RBVER_661: // 6.6.1
+    case RBVER_662: // 6.6.2
+    case RBVER_663: // 6.6.3
+    case RBVER_664: // 6.6.4
+    case RBVER_6610: // 6.6.10
+    case RBVER_6611: // 6.6.11
+    case RBVER_670: // 6.7.0
+    case RBVER_675: // 6.7.5
         get_inst = (get_instance_fn)sig_scan(GET_INSTANCE_SIG);
         get_rowdata = (get_rowdata_fn)sig_scan(GET_ROW_DATA_TRACK_SIG);
         init_rowdata = (init_rowdata_fn)sig_scan(ROW_DATA_TRACK_SIG);
         destr_rowdata = (destr_rowdata_fn)sig_scan(DESTR_ROW_DATA_SIG);
+        break;
+    case RBVER_701:
+    default: // RBVER_701+
+        get_inst = (get_instance_fn)sig_scan(GET_INSTANCE_SIG_701);
+        get_rowdata = (get_rowdata_fn)sig_scan(GET_ROW_DATA_TRACK_SIG_701);
+        init_rowdata = (init_rowdata_fn)sig_scan(ROW_DATA_TRACK_SIG_701);
+        destr_rowdata = (destr_rowdata_fn)sig_scan(DESTR_ROW_DATA_SIG_701);
+        // sig scan for each function
         break;
     }
     if (!get_inst) {
@@ -156,9 +178,19 @@ row_data *lookup_row_data(uint32_t deck_idx)
     }
     // construct a RowDataTrack in the block of memory provided by the rowdata class
     init_rowdata(rowdata);
+
+    // in rbver 701+ the getRowDataTrack function has a tiny thunk wrapper which derefernces rcx
+    // so instead of sigging that func because it's 2 opcodes, we sig the inner func and just deref
+    // rcx before calling it ourselves
+    void *inst = nullptr;
+    if (config.version >= RBVER_701) {
+      inst = *(void **)get_inst();
+    } else {
+      inst = get_inst();
+    }
     // call getRowDataTrack on the browserID of the given player
     // inst->getRowDataTrack(browserid, rowdata, 1, 0)
-    get_rowdata(get_inst(), get_track_id(deck_idx), rowdata, 1, 0);
+    get_rowdata(inst, get_track_id(deck_idx), rowdata, 1, 0);
     // return the new rowdata object
     return rowdata;
 }

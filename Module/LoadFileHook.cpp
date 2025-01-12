@@ -84,6 +84,9 @@ bool hook_load_file()
   case RBVER_675:
     lf_addr = sig_scan(EVENT_LOAD_FILE_SIG_670);
     break;
+  case RBVER_701:
+    lf_addr = sig_scan(EVENT_LOAD_FILE_SIG_670);
+    break;
   };
   if (!lf_addr) {
     error("Failed to locate LoadFile");

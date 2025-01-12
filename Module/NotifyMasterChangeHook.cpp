@@ -12,6 +12,8 @@
 #include "Hook.h"
 #include "Log.h"
 
+// to find this sig, look for "ve -> 0 a: %d" then it is one of the calls to that function...
+// Alternatively, memory scan for the current master deck the detect what writes to that address
 // rbxfrm::SyncManager::notifyMasterChange I think
 #define NOTIFY_MASTER_CHANGE_SIG "40 53 48 83 EC 30 48 8B D9 48 8B 89 40 01 00 00 48 85 C9 0F"
 

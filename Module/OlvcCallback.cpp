@@ -36,26 +36,53 @@ static void total_time_changed(uint32_t deck_idx, uint32_t old_time, uint32_t ne
 // hook on operateLongValueChange to catch changes to tempo
 static Hook olvc_hook;
 
+// to find this sig look for "BrowseBasicView" then in the first function, a constructor, the 
+// second vtable to be lea'd will be a vtable with this function at index 12:
+//
+// .text:000000014102C0F0 48 8D 15 71 1E EE 01                       lea     rdx, aBrowsebasicvie ; "BrowseBasicView"
+// .text:000000014102C0F7 48 8D 4C 24 48                             lea     rcx, [rsp+38h+arg_8]
+// .text:000000014102C0FC E8 CF EB 3D 01                             call    sub_14240ACD0
+// .text:000000014102C101 45 33 C9                                   xor     r9d, r9d
+// .text:000000014102C104 4C 8B C0                                   mov     r8, rax
+// .text:000000014102C107 33 D2                                      xor     edx, edx
+// .text:000000014102C109 48 8D 8E E0 00 00 00                       lea     rcx, [rsi+0E0h]
+// .text:000000014102C110 E8 DB 30 ED 00                             call    sub_141EFF1F0
+// .text:000000014102C115 90                                         nop
+// .text:000000014102C116                            ;   try {
+// .text:000000014102C116 48 8D 05 53 26 EE 01                       lea     rax, off_142F0E770
+// .text:000000014102C11D 48 89 06                                   mov     [rsi], rax
+// .text:000000014102C120 48 8D 05 C1 27 EE 01                       lea     rax, olvc_vtable  ;  <<<< here is the vtable
 // djplay::DeviceComponent::operateLongValueChange
 #define DC_OLVC_SIG "48 8B C4 41 56 48 83 EC 60 48 C7 40 C8 FE FF FF FF 48 89 58 08 48 89 68 10 48 89 70 18 48 89 78 20 41 8B"
+// same sig for 701+
+#define DC_OLVC_SIG_701 "48 89 5c 24 08 48 89 6c 24 10 48 89 74 24 18 48 89 7c 24 20 41 56 48 83 ec 60 41 8b f1"
 
 // initialize the OperateLongValueChange hook
 bool init_olvc_callback()
 {
-    // sig for djengine::djengineIF::getinstance()
-    get_instance = (get_instance_fn_t)sig_scan(DJENG_GET_INST_SIG);
-    if (!get_instance) {
-        error("Failed to locate djengineIF::getInstance");
-        return false;
-    }
+    //// sig for djengine::djengineIF::getinstance()
+    //get_instance = (get_instance_fn_t)sig_scan(DJENG_GET_INST_SIG);
+    //if (!get_instance) {
+    //    error("Failed to locate djengineIF::getInstance");
+    //    return false;
+    //}
     // sig for djengine::djengineIF::setTempo(uint32_t deck, float tempo_percent)
-    set_tempo = (set_tempo_fn_t)sig_scan(DJENG_SET_TEMPO_SIG);
-    if (!set_tempo) {
-        error("Failed to locate djengineIF::setTempo");
-        return false;
+    //set_tempo = (set_tempo_fn_t)sig_scan(DJENG_SET_TEMPO_SIG);
+    //if (!set_tempo) {
+    //    error("Failed to locate djengineIF::setTempo");
+    //    return false;
+    //}
+    uintptr_t olvc = 0;
+    switch (config.version) {
+    default:
+      olvc = sig_scan(DC_OLVC_SIG);
+      break;
+    case RBVER_701:
+      olvc = sig_scan(DC_OLVC_SIG_701);
+      break;
     }
-    uintptr_t olvc = sig_scan(DC_OLVC_SIG);
     if (!olvc) {
+        error("Failed to locate OnLongValueChange");
         return false;
     }
     olvc_hook.init(olvc, olvc_callback, NULL);
