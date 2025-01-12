@@ -1,6 +1,12 @@
+/*************************************************************
+ * log.cpp (Injected DLL)
+ * 
+ * 1. Connects to the named pipe that the launcher created.
+ * 2. Any log messages will be written to that pipe, so the
+ *    launcher can display them in its own console.
+ *************************************************************/
 #include <Windows.h>
 #include <stdio.h>
-
 #include <string>
 
 #include "Config.h"
@@ -9,9 +15,58 @@
 
 using namespace std;
 
-// console handle
+// We'll track a pipe handle for our log output
+static HANDLE pipe_handle = INVALID_HANDLE_VALUE;
+
+// Try to connect to the named pipe that the launcher is waiting on
+static bool connect_to_pipe()
+{
+    const char* PIPE_NAME = R"(\\.\pipe\rbse_log_pipe)";
+
+    while (true)
+    {
+        pipe_handle = CreateFileA(
+            PIPE_NAME,
+            GENERIC_WRITE,
+            0,
+            nullptr,
+            OPEN_EXISTING,
+            0,
+            nullptr
+        );
+
+        if (pipe_handle != INVALID_HANDLE_VALUE)
+        {
+            // Connected to the launcher
+            return true;
+        }
+
+        if (GetLastError() == ERROR_PIPE_BUSY)
+        {
+            // Wait up to 5 seconds for pipe to become free
+            if (!WaitNamedPipeA(PIPE_NAME, 5000))
+                return false;
+        }
+        else
+        {
+            // Some other error (pipe not found, etc.)
+            return false;
+        }
+    }
+}
+
+// Free the pipe handle if open
+static void close_pipe()
+{
+    if (pipe_handle != INVALID_HANDLE_VALUE) {
+        CloseHandle(pipe_handle);
+        pipe_handle = INVALID_HANDLE_VALUE;
+    }
+}
+
+// console handle (not used for a console in the target)
 HANDLE out_handle = NULL;
-// output file log
+// output file log (also optional if you want file logging)
 HANDLE log_handle = NULL;
 // path of outfile
 string log_path;
@@ -26,44 +81,25 @@ void log_msg(const char *prefix, const char *func, const char *fmt, ...)
     vsnprintf(buffer, sizeof(buffer) - 1, fmt, args);
     va_end(args);
 
-    size_t len = snprintf(final_buffer, sizeof(final_buffer), "[%s] %s%s%s\n", prefix, func ? func : "", func ? "(): " : "", buffer);
+    size_t len = snprintf(
+        final_buffer,
+        sizeof(final_buffer),
+        "[%s] %s%s%s\n",
+        prefix,
+        func ? func : "",
+        func ? "(): " : "",
+        buffer
+    );
 
-#ifdef _DEBUG
-    // print to console with color
-    CONSOLE_SCREEN_BUFFER_INFO info;
-    GetConsoleScreenBufferInfo(out_handle, &info);
-    switch (prefix[0]) {
-    case '+':
-        SetConsoleTextAttribute(out_handle, FOREGROUND_INTENSITY|FOREGROUND_GREEN);
-        break;
-    case '-':
-        SetConsoleTextAttribute(out_handle, FOREGROUND_INTENSITY|FOREGROUND_RED);
-        break;
-    case '*':
-        SetConsoleTextAttribute(out_handle, FOREGROUND_INTENSITY);
-    default:
-        break;
+    // If not connected to the launcher yet, try now.
+    if (pipe_handle == INVALID_HANDLE_VALUE) {
+        connect_to_pipe();
     }
-    printf("%s", final_buffer);
-    SetConsoleTextAttribute(out_handle, info.wAttributes);
-#endif
-    // open the log if not already open
-    if (!log_handle && log_path.length() > 0) {
-        log_handle = CreateFile(log_path.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, 
-            NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-        if (!log_handle) {
-            error("Failed to open log: %d", GetLastError());
-            return;
-        }
-        // truncate
-        SetEndOfFile(log_handle);
-    }
-    if (log_handle) {
+
+    // If connected, write to the pipe
+    if (pipe_handle != INVALID_HANDLE_VALUE) {
         DWORD written = 0;
-        if (WriteFile(log_handle, final_buffer, len, &written, NULL)) {
-            return;
-        }
-        FlushFileBuffers(log_handle);
+        WriteFile(pipe_handle, final_buffer, (DWORD)len, &written, NULL);
     }
 }
 
@@ -71,15 +107,46 @@ void log_msg(const char *prefix, const char *func, const char *fmt, ...)
 bool initialize_log()
 {
 #ifdef _DEBUG
-    FILE *con = NULL;
-    if (!AllocConsole() || freopen_s(&con, "CONOUT$", "w", stdout) != 0) {
-        error("Failed to initialize console");
-        return false;
+    // Detach from any existing console in the target
+    FreeConsole();
+
+    // Force the target's stdout/stderr to go to NUL
+    HANDLE hNullOut = CreateFile(
+        "NUL:",
+        GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        nullptr
+    );
+    if (hNullOut != INVALID_HANDLE_VALUE) {
+        SetStdHandle(STD_OUTPUT_HANDLE, hNullOut);
+        SetStdHandle(STD_ERROR_HANDLE,  hNullOut);
     }
-    out_handle = GetStdHandle(STD_OUTPUT_HANDLE);
-    success("Initialized console");
 #endif
-    log_path = get_dll_path() + "\\log.txt";
-    info("Log path: %s", log_path.c_str());
+
+    // If you also want file logging, set log_path and open the file
+    // Example:
+    // log_path = get_dll_path() + "\\log.txt";
+    // ...
+
+    // Attempt to connect immediately so the first log message doesn't block
+    connect_to_pipe();
+
+    uint8_t *attachC = (uint8_t *)GetProcAddress(GetModuleHandle("kernelbase.dll"), "AttachConsole");
+    DWORD oldProt;
+    VirtualProtect(attachC, 1, PAGE_EXECUTE_READWRITE, &oldProt);
+    *attachC = 0xc3;
+
+
+    // For example:
+    info("Injected logger initialized.");
     return true;
+}
+
+// On DLL unload, clean up the pipe
+void shutdown_log()
+{
+    close_pipe();
 }

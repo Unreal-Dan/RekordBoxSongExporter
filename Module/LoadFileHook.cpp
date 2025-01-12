@@ -21,6 +21,9 @@
 // new djplay::UiPlayer::eventLoadFile 7th call above str 'EXPORT_DECKLOAD'
 #define EVENT_LOAD_FILE_SIG_670 "4C 89 4C 24 20 4C 89 44 24 18 48 89 54 24 10 48 89 4C 24 08 55 53 56 57 41 54 41 55 41 56 41 57 48 8D 6C 24 F9"
 
+// find "ShowPanel_MIX_POINT_LINK" then look at all calls and bp them then load a file only one is called
+#define EVENT_LOAD_FILE_SIG_708 "48 8B C4 55 53 56 57 41 54 41 55 41 56 41 57 48 8D A8 E8 FE FF FF 48 81 EC D8 01 00 00 C5 F8 29 70 A8 C5 F8 29 78 98 C5 78 29 40 88"
+
 using namespace std;
 
 Hook g_load_file_hook;
@@ -52,26 +55,37 @@ static void load_track(djplayer_uiplayer *player, uint32_t track_id)
   }
 }
 
-struct songinfo_struct
+struct songinfo6_struct
 {
   uintptr_t unk0;
   uintptr_t track_browser_id;
 };
 
-// the actual hook function that notifyMasterChange is redirected to
+struct songinfo7_struct
+{
+  uintptr_t unk0;
+  uintptr_t unk8;
+  uintptr_t track_browser_id;
+};
+
 uintptr_t __fastcall load_file_hook(hook_arg_t hook_arg, func_args *args)
 {
   djplayer_uiplayer *uiplayer = (djplayer_uiplayer *)args->arg1;
-  songinfo_struct *songinfo = (songinfo_struct *)args->arg2;
-  info("Track Browser ID: %x", songinfo->track_browser_id);
-  load_track(uiplayer, songinfo->track_browser_id);
+  uintptr_t trackid = 0;
+  if (config.version >= RBVER_708) {
+    songinfo7_struct *songinfo = (songinfo7_struct *)args->arg2;
+    trackid = songinfo->track_browser_id;
+  } else {
+    songinfo6_struct *songinfo = (songinfo6_struct *)args->arg2;
+    trackid = songinfo->track_browser_id;
+  }
+  info("Track Browser ID: %x", trackid);
+  load_track(uiplayer, trackid);
   return 0;
 }
 
 bool hook_load_file()
 {
-  // offset of notifyMasterChange from base of rekordbox.exe
-  // and the number of bytes to copy out into a trampoline
   uintptr_t lf_addr = 0;
   switch (config.version) {
   case RBVER_664:
@@ -84,8 +98,8 @@ bool hook_load_file()
   case RBVER_675:
     lf_addr = sig_scan(EVENT_LOAD_FILE_SIG_670);
     break;
-  case RBVER_701:
-    lf_addr = sig_scan(EVENT_LOAD_FILE_SIG_670);
+  case RBVER_708:
+    lf_addr = sig_scan(EVENT_LOAD_FILE_SIG_708);
     break;
   };
   if (!lf_addr) {
@@ -95,7 +109,6 @@ bool hook_load_file()
   // determine address of target function to hook
   info("LoadFile: %p", lf_addr);
   g_load_file_hook.init(lf_addr, load_file_hook, NULL);
-  // install hook on notify_master_change that redirects to notify_master_change_hook
   if (!g_load_file_hook.install_hook()) {
     error("Failed to hook LoadFile");
     return false;

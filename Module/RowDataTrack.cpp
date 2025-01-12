@@ -103,7 +103,7 @@ bool init_row_data_funcs()
         init_rowdata = (init_rowdata_fn)sig_scan(ROW_DATA_TRACK_SIG);
         destr_rowdata = (destr_rowdata_fn)sig_scan(DESTR_ROW_DATA_SIG);
         break;
-    case RBVER_701:
+    case RBVER_708:
     default: // RBVER_701+
         get_inst = (get_instance_fn)sig_scan(GET_INSTANCE_SIG_701);
         get_rowdata = (get_rowdata_fn)sig_scan(GET_ROW_DATA_TRACK_SIG_701);
@@ -161,7 +161,8 @@ static row_data *new_row_data()
     case RBVER_661:
     default: // RBVER_661+ just guess
         // this used to be 0x488 but it was crashing so I upped it to 0x512, should be enough
-        rowdata = calloc(1, 0x512);
+        // I later upped it to 0x1024 because why the hell not screw memory
+        rowdata = calloc(1, 0x1024);
         break;
     }
     return (row_data *)rowdata;
@@ -183,14 +184,20 @@ row_data *lookup_row_data(uint32_t deck_idx)
     // so instead of sigging that func because it's 2 opcodes, we sig the inner func and just deref
     // rcx before calling it ourselves
     void *inst = nullptr;
-    if (config.version >= RBVER_701) {
+    if (config.version >= RBVER_708) {
       inst = *(void **)get_inst();
     } else {
       inst = get_inst();
     }
+    uint32_t trackid = get_track_id(deck_idx);
+    if (!trackid) {
+      destroy_row_data(rowdata);
+      // I don't think the trackid should ever be 0 but idk
+      return nullptr;
+    }
     // call getRowDataTrack on the browserID of the given player
     // inst->getRowDataTrack(browserid, rowdata, 1, 0)
-    get_rowdata(inst, get_track_id(deck_idx), rowdata, 1, 0);
+    get_rowdata(inst, trackid, rowdata, 1, 0);
     // return the new rowdata object
     return rowdata;
 }

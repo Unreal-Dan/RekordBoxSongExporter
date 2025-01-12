@@ -16,6 +16,7 @@
 // Alternatively, memory scan for the current master deck the detect what writes to that address
 // rbxfrm::SyncManager::notifyMasterChange I think
 #define NOTIFY_MASTER_CHANGE_SIG "40 53 48 83 EC 30 48 8B D9 48 8B 89 40 01 00 00 48 85 C9 0F"
+#define NOTIFY_MASTER_CHANGE_SIG_7 "40 53 48 83 EC 30 48 8B 91 A0 01 00 00 48 8B D9 48 85 D2 0F 84 8D 01 00 00 F6 C2 03"
 
 using namespace std;
 
@@ -52,11 +53,18 @@ public:
         case RBVER_651: return sm_6xx.syncMasterList;
         case RBVER_652: return sm_6xx.syncMasterList;
         case RBVER_653: return sm_6xx.syncMasterList;
+        case RBVER_661: // 6.6.1
+        case RBVER_662: // 6.6.2
+        case RBVER_663: // 6.6.3
+        case RBVER_664: // 6.6.4
+        case RBVER_6610: // 6.6.10
+        case RBVER_6611: // 6.6.11
+        case RBVER_670: // 6.7.0
+        case RBVER_675: // 6.7.5
+          return sm_6xx.syncMasterList;
+        case RBVER_708: // 7.0.8
         default:
-            if (config.version >= RBVER_661) {
-                return sm_6xx.syncMasterList;
-            }
-            return NULL;
+          return sm_7xx.syncMasterList;
         }
     }
     void *cur_sync_master()
@@ -67,11 +75,18 @@ public:
         case RBVER_651: return sm_6xx.curSyncMaster;
         case RBVER_652: return sm_6xx.curSyncMaster;
         case RBVER_653: return sm_6xx.curSyncMaster;
+        case RBVER_661: // 6.6.1
+        case RBVER_662: // 6.6.2
+        case RBVER_663: // 6.6.3
+        case RBVER_664: // 6.6.4
+        case RBVER_6610: // 6.6.10
+        case RBVER_6611: // 6.6.11
+        case RBVER_670: // 6.7.0
+        case RBVER_675: // 6.7.5
+          return sm_6xx.curSyncMaster;
+        case RBVER_708: // 7.0.8
         default:
-            if (config.version >= RBVER_661) {
-                return sm_6xx.curSyncMaster;
-            }
-            return NULL;
+          return sm_7xx.curSyncMaster;
         }
     }
     uint32_t num_sync_masters()
@@ -82,11 +97,18 @@ public:
         case RBVER_651: return sm_6xx.numSyncMasters;
         case RBVER_652: return sm_6xx.numSyncMasters;
         case RBVER_653: return sm_6xx.numSyncMasters;
+        case RBVER_661: // 6.6.1
+        case RBVER_662: // 6.6.2
+        case RBVER_663: // 6.6.3
+        case RBVER_664: // 6.6.4
+        case RBVER_6610: // 6.6.10
+        case RBVER_6611: // 6.6.11
+        case RBVER_670: // 6.7.0
+        case RBVER_675: // 6.7.5
+          return sm_6xx.numSyncMasters;
+        case RBVER_708: // 7.0.8
         default:
-            if (config.version >= RBVER_661) {
-                return sm_6xx.numSyncMasters;
-            }
-            return 0;
+          return sm_7xx.numSyncMasters;
         }
     }
 private:
@@ -115,6 +137,20 @@ private:
         // the number of sync masters in the list
         uint32_t numSyncMasters;
     };
+    // This structure seems to stay the same for all 6.x.x versions
+    struct sync_manager_7xx
+    {
+        // this pad is 0xF8 is the previous major versions
+        uint8_t pad[0x168];
+        // the current sync master
+        void *curSyncMaster;
+        // the list of sync masters
+        void **syncMasterList;
+        uint32_t unknown;
+        // the number of sync masters in the list
+        uint32_t numSyncMasters;
+    };
+
 
     // anonymous union of sync manager versions
     union
@@ -123,6 +159,8 @@ private:
         sync_manager_585 sm_585;
         // sync manager is the same for 6.x.x versions
         sync_manager_6xx sm_6xx;
+        // sync manager for 7.0.8+
+        sync_manager_7xx sm_7xx;
     };
 };
 
@@ -134,7 +172,7 @@ uintptr_t __fastcall notify_master_change_hook(hook_arg_t hook_arg, func_args *a
     uint32_t master_id = syncManager->get_master_id();
     // set the new master
     set_master(master_id);
-    info("Master Changed to %d", master_id);
+    info("(SyncManager: %p) Master Changed to %d", syncManager, master_id);
     // master deck changed but track may not have changed
     push_deck_update(master_id, UPDATE_TYPE_MASTER);
     // make sure this deck hasn't already been logged since it changed
@@ -170,8 +208,20 @@ bool hook_notify_master_change()
     case RBVER_653:
         func_offset = 0x169D240;
         break;
-    default: // RBVER_661+
+    case RBVER_661: // 6.6.1
+    case RBVER_662: // 6.6.2
+    case RBVER_663: // 6.6.3
+    case RBVER_664: // 6.6.4
+    case RBVER_6610: // 6.6.10
+    case RBVER_6611: // 6.6.11
+    case RBVER_670: // 6.7.0
+    case RBVER_675: // 6.7.5
         nmc_addr = sig_scan(NOTIFY_MASTER_CHANGE_SIG);
+        break;
+    case RBVER_708: // 7.0.8
+    default: // 7+
+        nmc_addr = sig_scan(NOTIFY_MASTER_CHANGE_SIG_7);
+        break;
         break;
     };
     if (!nmc_addr) {

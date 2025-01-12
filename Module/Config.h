@@ -39,7 +39,7 @@ typedef enum rbox_version_enum
     RBVER_675, // 6.7.5
 
     // version 7+
-    RBVER_701, // 7.0.1
+    RBVER_708, // 7.0.8
 
     RBVER_COUNT // the number of versions supported
 } rbox_version_t;

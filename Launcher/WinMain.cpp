@@ -7,6 +7,7 @@
 #include <vector>
 #include <string>
 
+#include "ModuleLogger.h"
 #include "OutputFiles.h"
 #include "Injector.h"
 #include "resource.h"
@@ -114,8 +115,6 @@ static void do_create(HWND hwnd);
 static void do_destroy(HWND hwnd);
 static void do_paint(HWND hwnd);
 static LRESULT do_button_paint(WPARAM wParam, LPARAM lParam);
-static void do_save_config();
-static void do_inject();
 static void handle_click(HWND hwnd, WPARAM wParam, LPARAM lParam);
 static void handle_selection_change(HWND hwnd, WPARAM wParam, LPARAM lParam);
 static void handle_edit_change(HWND hwnd, WPARAM wParam, LPARAM lParam);
@@ -150,6 +149,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, 
         MessageBox(NULL, "Failed to open window", "Error", 0);
         return 0;
     }
+
+#if _DEBUG
+    InitModuleLogger();
+#endif
 
     // main message loop
     ShowWindow(hwnd, nCmdShow);

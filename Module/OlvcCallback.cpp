@@ -77,7 +77,7 @@ bool init_olvc_callback()
     default:
       olvc = sig_scan(DC_OLVC_SIG);
       break;
-    case RBVER_701:
+    case RBVER_708:
       olvc = sig_scan(DC_OLVC_SIG_701);
       break;
     }

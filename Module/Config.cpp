@@ -31,7 +31,7 @@ const char *rbver_strings[RBVER_COUNT] = {
     "6.6.11", // RBVER_6611
     "6.7.0", // RBVER_670
     "6.7.5", // RBVER_675
-    "7.0.1", // RBVER_701
+    "7.0.8", // RBVER_708
 };
 
 // global config object
