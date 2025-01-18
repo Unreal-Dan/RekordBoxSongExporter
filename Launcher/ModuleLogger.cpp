@@ -5,7 +5,7 @@
 #include <iostream>
 
 // Pipe name shared with the injected DLL
-static const char* PIPE_NAME = R"(\\.\pipe\rbse_log_pipe)";
+static const char *PIPE_NAME = R"(\\.\pipe\rbse_log_pipe)";
 
 // Continuously read from the pipe in a separate thread
 void ModuleLoggerThread()

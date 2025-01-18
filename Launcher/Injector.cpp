@@ -113,7 +113,7 @@ bool Injector::launch_suspended()
     PROCESS_INFORMATION pi;
     memset(&si, 0, sizeof(si));
     memset(&pi, 0, sizeof(pi));
-    DWORD creation_flags = CREATE_SUSPENDED | CREATE_NEW_CONSOLE;
+    DWORD creation_flags = CREATE_SUSPENDED;
     // Create Process on the exe passed in
     if (!CreateProcess(m_exe_path.c_str(), NULL, NULL, NULL, false,
         creation_flags, NULL, m_exe_basepath.c_str(), &si, &pi)) {

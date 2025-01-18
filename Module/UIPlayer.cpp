@@ -83,12 +83,13 @@ uint32_t djplayer_uiplayer::getDeckBPM()
   // string "@BPM" inside djplay::UiPlayer::createDevice().
   void *bpmDevice = nullptr;
   void *bpmDeviceInner = nullptr;
+  const uint32_t dataOffset = (config.version >= RBVER_708) ? 0x298 : 0x154;
   uint32_t bpm = 0;
   switch (config.version) {
   case RBVER_585:
     bpmDevice = *(void **)((uintptr_t)this + 0xA90);
     bpmDeviceInner = *(void **)((uintptr_t)bpmDevice + 0x80);
-    bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + 0x154);
+    bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + dataOffset);
     break;
   case RBVER_650:
   case RBVER_651:
@@ -116,7 +117,7 @@ uint32_t djplayer_uiplayer::getDeckBPM()
       if (!bpmDeviceInner) {
         break;
       }
-      bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + 0x154);
+      bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + dataOffset);
       break;
     }
     error("Unknown version");
@@ -135,6 +136,7 @@ uint32_t djplayer_uiplayer::getDeckTime()
   // string "@BPM" inside djplay::UiPlayer::createDevice().
   void *timeDevice = nullptr;
   void *timeDeviceInner = nullptr;
+  const uint32_t dataOffset = (config.version >= RBVER_708) ? 0x298 : 0x154;
   uint32_t time = 0;
   switch (config.version) {
   case RBVER_585:
@@ -153,7 +155,7 @@ uint32_t djplayer_uiplayer::getDeckTime()
       timeDevice = *(void **)((uintptr_t)this + time_device_offset);
       // then the offsets for the time within the device should never change
       timeDeviceInner = *(void **)((uintptr_t)timeDevice + 0x80);
-      time = *(uint32_t *)((uintptr_t)timeDeviceInner + 0x154);
+      time = *(uint32_t *)((uintptr_t)timeDeviceInner + dataOffset);
       break;
     }
     error("Unknown version");
@@ -172,6 +174,7 @@ uint32_t djplayer_uiplayer::getTotalTime()
   // string "@BPM" inside djplay::UiPlayer::createDevice().
   void *timeDevice = nullptr;
   void *timeDeviceInner = nullptr;
+  const uint32_t dataOffset = (config.version >= RBVER_708) ? 0x298 : 0x154;
   uint32_t time = 0;
   switch (config.version) {
   case RBVER_585:
@@ -190,7 +193,7 @@ uint32_t djplayer_uiplayer::getTotalTime()
       timeDevice = *(void **)((uintptr_t)this + total_time_device_offset);
       // then the offsets for the time within the device should never change
       timeDeviceInner = *(void **)((uintptr_t)timeDevice + 0x80);
-      time = *(uint32_t *)((uintptr_t)timeDeviceInner + 0x154);
+      time = *(uint32_t *)((uintptr_t)timeDeviceInner + dataOffset);
       break;
     }
     error("Unknown version");
@@ -350,7 +353,7 @@ static djplayer_uiplayer **get_player_list()
 djplayer_uiplayer *lookup_player(uint32_t deck_idx)
 {
   // there's only 4 decks in this object
-  if (deck_idx >= 3) {
+  if (deck_idx > 3) {
     deck_idx = 0;
   }
   // pPlayers is really just the first of four consecutive UIPlayers in
