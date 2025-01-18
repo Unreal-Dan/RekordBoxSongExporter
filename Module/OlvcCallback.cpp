@@ -60,18 +60,6 @@ static Hook olvc_hook;
 // initialize the OperateLongValueChange hook
 bool init_olvc_callback()
 {
-    //// sig for djengine::djengineIF::getinstance()
-    //get_instance = (get_instance_fn_t)sig_scan(DJENG_GET_INST_SIG);
-    //if (!get_instance) {
-    //    error("Failed to locate djengineIF::getInstance");
-    //    return false;
-    //}
-    // sig for djengine::djengineIF::setTempo(uint32_t deck, float tempo_percent)
-    //set_tempo = (set_tempo_fn_t)sig_scan(DJENG_SET_TEMPO_SIG);
-    //if (!set_tempo) {
-    //    error("Failed to locate djengineIF::setTempo");
-    //    return false;
-    //}
     uintptr_t olvc = 0;
     switch (config.version) {
     default:
