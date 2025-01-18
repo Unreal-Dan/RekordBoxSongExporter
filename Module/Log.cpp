@@ -114,9 +114,6 @@ bool initialize_log()
   }
 #endif
 
-  // Attempt to connect immediately so the first log message doesn't block
-  connect_to_pipe();
-
 #ifdef _DEBUG
   // patch out AttachConsole it seems the logging library of rekordbox uses that
   // to attach to any existing console and direct logging to there -- this causes
@@ -127,6 +124,9 @@ bool initialize_log()
   VirtualProtect(attachC, 1, PAGE_EXECUTE_READWRITE, &oldProt);
   *attachC = 0xc3;
 #endif
+
+  // Attempt to connect immediately so the first log message doesn't block
+  connect_to_pipe();
 
   // For example:
   info("Injected logger initialized.");
