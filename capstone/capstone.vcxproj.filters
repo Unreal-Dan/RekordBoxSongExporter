@@ -68,5 +68,58 @@
     <ClInclude Include="arch\X86\X86Module.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="arch\X86\qsort.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="arch\X86\X86BaseInfo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="arch\X86\X86DisassemblerDecoderCommon.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="arch\X86\X86GenAsmWriter.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="arch\X86\X86GenAsmWriter_reduce.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="arch\X86\X86GenAsmWriter1.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="arch\X86\X86GenAsmWriter1_reduce.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="arch\X86\X86GenDisassemblerTables.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="arch\X86\X86GenDisassemblerTables_reduce.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="arch\X86\X86GenInstrInfo.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="arch\X86\X86GenInstrInfo_reduce.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="arch\X86\X86GenRegisterInfo.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="arch\X86\X86ImmSize.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="arch\X86\X86MappingInsn.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="arch\X86\X86MappingInsn_reduce.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="arch\X86\X86MappingInsnOp.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="arch\X86\X86MappingInsnOp_reduce.inc">
+      <Filter>Header Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

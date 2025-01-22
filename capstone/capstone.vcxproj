@@ -25,11 +25,30 @@
     <ClCompile Include="utils.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="arch\X86\qsort.h" />
+    <ClInclude Include="arch\X86\X86BaseInfo.h" />
     <ClInclude Include="arch\X86\X86Disassembler.h" />
     <ClInclude Include="arch\X86\X86DisassemblerDecoder.h" />
+    <ClInclude Include="arch\X86\X86DisassemblerDecoderCommon.h" />
     <ClInclude Include="arch\X86\X86InstPrinter.h" />
     <ClInclude Include="arch\X86\X86Mapping.h" />
     <ClInclude Include="arch\X86\X86Module.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="arch\X86\X86GenAsmWriter.inc" />
+    <None Include="arch\X86\X86GenAsmWriter1.inc" />
+    <None Include="arch\X86\X86GenAsmWriter1_reduce.inc" />
+    <None Include="arch\X86\X86GenAsmWriter_reduce.inc" />
+    <None Include="arch\X86\X86GenDisassemblerTables.inc" />
+    <None Include="arch\X86\X86GenDisassemblerTables_reduce.inc" />
+    <None Include="arch\X86\X86GenInstrInfo.inc" />
+    <None Include="arch\X86\X86GenInstrInfo_reduce.inc" />
+    <None Include="arch\X86\X86GenRegisterInfo.inc" />
+    <None Include="arch\X86\X86ImmSize.inc" />
+    <None Include="arch\X86\X86MappingInsn.inc" />
+    <None Include="arch\X86\X86MappingInsnOp.inc" />
+    <None Include="arch\X86\X86MappingInsnOp_reduce.inc" />
+    <None Include="arch\X86\X86MappingInsn_reduce.inc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
