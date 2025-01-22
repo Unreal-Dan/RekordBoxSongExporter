@@ -88,7 +88,7 @@ uintptr_t __fastcall load_file_hook(hook_arg_t hook_arg, func_args *args)
     trackid = songinfo->track_browser_id;
   }
   info("Track Browser ID: %x", trackid);
-  load_track(uiplayer, trackid);
+  load_track(uiplayer, (uint32_t)trackid);
   return 0;
 }
 

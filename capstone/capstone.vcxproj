@@ -24,6 +24,13 @@
     <ClCompile Include="SStream.c" />
     <ClCompile Include="utils.c" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="arch\X86\X86Disassembler.h" />
+    <ClInclude Include="arch\X86\X86DisassemblerDecoder.h" />
+    <ClInclude Include="arch\X86\X86InstPrinter.h" />
+    <ClInclude Include="arch\X86\X86Mapping.h" />
+    <ClInclude Include="arch\X86\X86Module.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

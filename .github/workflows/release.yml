@@ -1,0 +1,164 @@
+name: Release
+
+# Trigger this workflow manually. You can also trigger on push to master if desired.
+on:
+  workflow_dispatch:
+
+env:
+  # Path to the solution file relative to the root of the project.
+  SOLUTION_FILE_PATH: .
+  # Build configuration and Platform.
+  BUILD_CONFIGURATION: Release
+  PLATFORM: x64
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository with tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Ensures full history and tags are available
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v1.0.2
+
+      - name: Restore NuGet packages
+        run: nuget restore ${{ env.SOLUTION_FILE_PATH }}
+
+      - name: Build x64 Release
+        run: msbuild /m /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform=${{ env.PLATFORM }} ${{ env.SOLUTION_FILE_PATH }}
+
+      - name: Determine version and create tag if needed (with logging)
+        id: version
+        shell: cmd
+        run: |
+          @echo off
+          setlocal enabledelayedexpansion
+
+          echo -------------------------------------------
+          echo  Starting version detection...
+          echo -------------------------------------------
+
+          REM -- Get the latest tag merged into HEAD, sorted by version.
+          set "LATEST_TAG="
+          for /f "delims=" %%t in ('git tag --merged HEAD --sort=-v:refname') do (
+              set "LATEST_TAG=%%t"
+              echo Found merged tag: %%t
+              goto GotLatestTag
+          )
+          :GotLatestTag
+          if not defined LATEST_TAG (
+              echo No merged tags found on HEAD.
+          ) else (
+              echo Latest merged tag is: !LATEST_TAG!
+          )
+          
+          REM If no tag is defined, default to 0.0.0.
+          if not defined LATEST_TAG (
+              echo No tag found. Defaulting to 0.0.0.
+              set "LATEST_TAG=0.0.0"
+              REM Count all commits and subtract 1 (first commit remains 0.0.0).
+              for /f %%i in ('git rev-list HEAD --count') do set ALL_COUNT=%%i
+              echo Total commits found: !ALL_COUNT!
+              set /a COMMITS_SINCE=!ALL_COUNT! - 1
+              if !COMMITS_SINCE! lss 0 set COMMITS_SINCE=0
+              echo Computed commits since tag: !COMMITS_SINCE!
+          ) else (
+              REM If a tag exists, count commits from that tag to HEAD.
+              for /f %%i in ('git rev-list !LATEST_TAG!..HEAD --count') do set COMMITS_SINCE=%%i
+              echo Commits since tag !LATEST_TAG!: !COMMITS_SINCE!
+          )
+          
+          echo -------------------------------------------
+          echo  Finished counting commits.
+          echo -------------------------------------------
+          
+          REM Check if HEAD is already tagged with the current LATEST_TAG.
+          set "HEAD_TAG="
+          for /f %%i in ('git tag --points-at HEAD') do (
+              echo Found tag on HEAD: %%i
+              if "%%i"=="!LATEST_TAG!" (
+                  set "HEAD_TAG=%%i"
+              )
+          )
+          if defined HEAD_TAG (
+              echo HEAD is already tagged with !LATEST_TAG!. Reusing that version.
+              set "VERSION=!LATEST_TAG!"
+              goto WriteOutput
+          )
+          
+          REM In the default case for 0.0.0, if there are no new commits, keep version 0.0.0.
+          if "!LATEST_TAG!"=="0.0.0" (
+              if "!COMMITS_SINCE!"=="0" (
+                  echo No new commits since base tag 0.0.0. Keeping version 0.0.0.
+                  set "VERSION=0.0.0"
+                  goto WriteOutput
+              )
+          )
+          
+          REM Otherwise, split LATEST_TAG into MAJOR, MINOR, and PATCH.
+          echo Splitting LATEST_TAG (!LATEST_TAG!) into major, minor, and patch.
+          for /f "tokens=1-3 delims=." %%a in ("!LATEST_TAG!") do (
+              set MAJOR=%%a
+              set MINOR=%%b
+              set PATCH=%%c
+          )
+          echo Major: !MAJOR!, Minor: !MINOR!, Patch: !PATCH!
+          
+          set /a NEW_PATCH=!PATCH! + !COMMITS_SINCE!
+          set "VERSION=!MAJOR!.!MINOR!.!NEW_PATCH!"
+          echo New version computed: !VERSION!
+          
+          REM Create a lightweight tag on HEAD (so no annotated tag/committer identity required) and push it.
+          echo Tagging HEAD with version !VERSION!
+          git tag !VERSION!
+          echo Pushing tag !VERSION! to origin...
+          git push origin !VERSION!
+          echo Tag !VERSION! pushed successfully.
+          
+          :WriteOutput
+          REM Write the computed version to GitHub Actions' output file.
+          echo version=!VERSION!>> %GITHUB_OUTPUT%
+          echo -------------------------------------------
+          echo  Version determination complete: !VERSION!
+          echo -------------------------------------------
+
+      - name: Rename release package with version
+        shell: cmd
+        run: |
+          REM Change directory to where the release package is located.
+          cd x64\release
+          REM Rename RekordBoxSongExporter.zip to include the version number.
+          ren RekordBoxSongExporter.zip RekordBoxSongExporter-${{ steps.version.outputs.version }}.zip
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ReleaseZip
+          path: x64/release/RekordBoxSongExporter-${{ steps.version.outputs.version }}.zip
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          release_name: Release ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: x64/release/RekordBoxSongExporter-${{ steps.version.outputs.version }}.zip
+          asset_name: RekordBoxSongExporter-${{ steps.version.outputs.version }}.zip
+          asset_content_type: application/zip
+
