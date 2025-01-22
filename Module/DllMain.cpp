@@ -45,6 +45,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
       if (!initialize_log()) {
         return false;
       }
+
       CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)mainThread, NULL, 0, NULL);
         //// hook the uimanager initialization function to wait for rekordbox to initialize
         //if (!hook_uimanager_init()) {

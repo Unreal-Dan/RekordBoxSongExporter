@@ -8,6 +8,9 @@
 
 // sig for a function that accesses the global g_MainComponent object
 #define MAIN_COMPONENT_SIG "49 8B CE 41 2B FC 41 2B FF 2B FD 2B BC 24 C0 00 00 00 41 2B FD"
+// found it same by looking for reference to "MainComponent" then finding
+// the global like described below
+#define MAIN_COMPONENT_SIG_7 "48 89 5C 24 10 48 89 74 24 18 55 57 41 54 41 56 41 57 48 8D 6C 24 B0 48 81 EC 50 01 00 00"
 
 // get the ID of the track which is used to lookup track info in the browser
 uint32_t djplayer_uiplayer::getTrackBrowserID()
@@ -26,11 +29,18 @@ uint32_t djplayer_uiplayer::getTrackBrowserID()
   case RBVER_651:
   case RBVER_652:
   case RBVER_653:
-  default:
-    // use this offset for all versions after 650
-    if (config.version >= RBVER_650) {
-      return *(uint32_t *)((uintptr_t)this + 0x368);
-    }
+  case RBVER_661: // 6.6.1
+  case RBVER_662: // 6.6.2
+  case RBVER_663: // 6.6.3
+  case RBVER_664: // 6.6.4
+  case RBVER_6610: // 6.6.10
+  case RBVER_6611: // 6.6.11
+  case RBVER_670: // 6.7.0
+  case RBVER_675: // 6.7.5
+    return *(uint32_t *)((uintptr_t)this + 0x368);
+  case RBVER_708:
+  default: // 7.0.8+
+    return *(uint32_t *)((uintptr_t)this + 0x580);
     error("Unknown version");
     break;
   }
@@ -44,6 +54,10 @@ uintptr_t djplayer_uiplayer::find_device_offset(const char *name)
   // in reclass and see where the massive list of pointers begins
   uintptr_t device_list_start = (uintptr_t)this + 0x450;
   uintptr_t device_list_end = (uintptr_t)this + 0xe60;
+  if (config.version >= RBVER_708) {
+    device_list_start = (uintptr_t)this + 0x5F8;
+    device_list_end = (uintptr_t)this + 0x1008;
+  }
   uintptr_t device_ptr = device_list_start;
   // iterate the device list and find the device with the name @BPM
   do {
@@ -69,12 +83,13 @@ uint32_t djplayer_uiplayer::getDeckBPM()
   // string "@BPM" inside djplay::UiPlayer::createDevice().
   void *bpmDevice = nullptr;
   void *bpmDeviceInner = nullptr;
+  const uint32_t dataOffset = (config.version >= RBVER_708) ? 0x298 : 0x154;
   uint32_t bpm = 0;
   switch (config.version) {
   case RBVER_585:
     bpmDevice = *(void **)((uintptr_t)this + 0xA90);
     bpmDeviceInner = *(void **)((uintptr_t)bpmDevice + 0x80);
-    bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + 0x154);
+    bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + dataOffset);
     break;
   case RBVER_650:
   case RBVER_651:
@@ -102,7 +117,7 @@ uint32_t djplayer_uiplayer::getDeckBPM()
       if (!bpmDeviceInner) {
         break;
       }
-      bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + 0x154);
+      bpm = *(uint32_t *)((uintptr_t)bpmDeviceInner + dataOffset);
       break;
     }
     error("Unknown version");
@@ -121,6 +136,7 @@ uint32_t djplayer_uiplayer::getDeckTime()
   // string "@BPM" inside djplay::UiPlayer::createDevice().
   void *timeDevice = nullptr;
   void *timeDeviceInner = nullptr;
+  const uint32_t dataOffset = (config.version >= RBVER_708) ? 0x298 : 0x154;
   uint32_t time = 0;
   switch (config.version) {
   case RBVER_585:
@@ -139,7 +155,7 @@ uint32_t djplayer_uiplayer::getDeckTime()
       timeDevice = *(void **)((uintptr_t)this + time_device_offset);
       // then the offsets for the time within the device should never change
       timeDeviceInner = *(void **)((uintptr_t)timeDevice + 0x80);
-      time = *(uint32_t *)((uintptr_t)timeDeviceInner + 0x154);
+      time = *(uint32_t *)((uintptr_t)timeDeviceInner + dataOffset);
       break;
     }
     error("Unknown version");
@@ -158,6 +174,7 @@ uint32_t djplayer_uiplayer::getTotalTime()
   // string "@BPM" inside djplay::UiPlayer::createDevice().
   void *timeDevice = nullptr;
   void *timeDeviceInner = nullptr;
+  const uint32_t dataOffset = (config.version >= RBVER_708) ? 0x298 : 0x154;
   uint32_t time = 0;
   switch (config.version) {
   case RBVER_585:
@@ -176,7 +193,7 @@ uint32_t djplayer_uiplayer::getTotalTime()
       timeDevice = *(void **)((uintptr_t)this + total_time_device_offset);
       // then the offsets for the time within the device should never change
       timeDeviceInner = *(void **)((uintptr_t)timeDevice + 0x80);
-      time = *(uint32_t *)((uintptr_t)timeDeviceInner + 0x154);
+      time = *(uint32_t *)((uintptr_t)timeDeviceInner + dataOffset);
       break;
     }
     error("Unknown version");
@@ -232,6 +249,10 @@ static djplayer_uiplayer **get_player_list()
   //
   // This is the first UiPlayer of four UiPlayers. It's not an array, they are
   // just consecutive members but they can be accessed like an array.
+  // ============================================================================
+  // Latest work on 7.0.1+ needs new notes around this topic, finding the constructor
+  // for MainComponent is still very important, then the UIManager offset was guessed
+  // by looking at the same code on the older version.
   static uintptr_t main_component = 0;
   static uintptr_t ui_manager = 0;
   static djplayer_uiplayer **pPlayers = nullptr;
@@ -252,8 +273,16 @@ static djplayer_uiplayer **get_player_list()
     case RBVER_653:
       main_component = *(uintptr_t *)(rb_base() + 0x3E4B308);
       break;
-    default: // RBVER_661+
-        // just going to set this going forward... hopefully it doesn't change
+
+    case RBVER_661: // 6.6.1
+    case RBVER_662: // 6.6.2
+    case RBVER_663: // 6.6.3
+    case RBVER_664: // 6.6.4
+    case RBVER_6610: // 6.6.10
+    case RBVER_6611: // 6.6.11
+    case RBVER_670: // 6.7.0
+    case RBVER_675: // 6.7.5
+      // just going to set this going forward... hopefully it doesn't change
       if (config.version >= RBVER_661) {
         // this sig will dump us 0x1D bytes before a reference to gMainComponent
         uintptr_t main_component_ref = sig_scan(MAIN_COMPONENT_SIG);
@@ -269,6 +298,24 @@ static djplayer_uiplayer **get_player_list()
       }
       error("Unknown version");
       return NULL;
+    case RBVER_708: // 7.0.8
+      if (config.version >= RBVER_708) {
+        // this sig will dump us 0x1D bytes before a reference to gMainComponent
+        uintptr_t main_component_ref = sig_scan(MAIN_COMPONENT_SIG_7);
+        if (!main_component_ref) {
+          error("Failed to locate main component reference sig");
+          return NULL;
+        }
+        // this is the offset to the addr for gMainComponent
+        int32_t offset = *(int32_t *)(main_component_ref + 0x4A);
+        // the main component is offset bytes from the opcode after the reference
+        main_component = *(uintptr_t *)(main_component_ref + 0x4E + offset);
+        break;
+      }
+      break;
+    default: // RBVER_661+
+      error("Unknown version");
+      return NULL;
     }
     if (!main_component) {
       error("Failed to locate main component");
@@ -277,8 +324,10 @@ static djplayer_uiplayer **get_player_list()
     // version 585 the uimanager is at 0x638, every version after is 0x648
     if (config.version == RBVER_585) {
       ui_manager = *(uintptr_t *)(main_component + 0x638);
-    } else {
+    } else if (config.version < RBVER_708) {
       ui_manager = *(uintptr_t *)(main_component + 0x648);
+    } else { // RBVER 708+
+      ui_manager = *(uintptr_t *)(main_component + 0x490);
     }
     if (!ui_manager) {
       error("UIManager is NULL");
@@ -304,12 +353,15 @@ static djplayer_uiplayer **get_player_list()
 djplayer_uiplayer *lookup_player(uint32_t deck_idx)
 {
   // there's only 4 decks in this object
-  if (deck_idx >= 3) {
+  if (deck_idx > 3) {
     deck_idx = 0;
   }
   // pPlayers is really just the first of four consecutive UIPlayers in
   // the UIManager object so we can access them like an array
   djplayer_uiplayer **pPlayers = get_player_list();
+  if (!pPlayers) {
+    return nullptr;
+  }
   return pPlayers[deck_idx];
 }
 

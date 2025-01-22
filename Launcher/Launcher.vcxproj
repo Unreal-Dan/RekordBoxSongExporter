@@ -157,6 +157,7 @@ powershell.exe -command Compress-Archive -Path $(OutputPath)Launcher.exe,$(Outpu
   <ItemGroup>
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="Injector.cpp" />
+    <ClCompile Include="ModuleLogger.cpp" />
     <ClCompile Include="OutputFiles.cpp" />
     <ClCompile Include="Versions.cpp" />
     <ClCompile Include="WinMain.cpp" />
@@ -164,6 +165,7 @@ powershell.exe -command Compress-Archive -Path $(OutputPath)Launcher.exe,$(Outpu
   <ItemGroup>
     <ClInclude Include="Config.h" />
     <ClInclude Include="Injector.h" />
+    <ClInclude Include="ModuleLogger.h" />
     <ClInclude Include="OutputFiles.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="Versions.h" />

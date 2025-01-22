@@ -491,6 +491,7 @@ void track_data::load(uint32_t deck_idx)
   // lookup a rowdata object
   row_data *rowdata = lookup_row_data(deck_idx);
   if (!rowdata) {
+    error("Null rowdata for deck: %d", deck_idx);
     return;
   }
   // steal all the track information so we have it stored in our own containers
