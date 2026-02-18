@@ -25,6 +25,25 @@ The optional server allows you to send the track information to another PC and
 perform the logging on that pc instead. For situations where Rekordbox may be running
 on a separate PC from OBS.
 
+## How to build
+
+1. Install the [Build Tools for Visual Studio 2022](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022) to get the MSVC v19.3 compiler with MSBuild toolset v143
+2. Install [Python 3](https://www.python.org/downloads/)
+3. Install [conan](https://conan.io/downloads.html): ```pip install conan```
+4. Add the local recipes to your remotes:
+    ```sh
+    conan remote add local-rbse-repo ./conan --allowed-packages="link/*" --force
+    ```
+5. Install the dependencies and build the project:
+    ```sh
+    conan build . -of conan/build/release -pr:a ./conan/profiles/release --build missing
+    ```
+   You can also build in Debug mode during the development using:
+    ```sh
+    conan build . -of conan/build/debug -pr:a ./conan/profiles/debug --build missing
+    ```
+6. The binaries will be in the `x64` folder.
+
 ## Getting Started
 
 If you run Rekordbox and OBS on different PCs then you must start the Server on the

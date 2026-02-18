@@ -35,6 +35,7 @@ public:
     std::string rbox_path;
     bool use_server;
     std::string server_ip;
+    bool use_link;
 };
 
 // the currently loaded config

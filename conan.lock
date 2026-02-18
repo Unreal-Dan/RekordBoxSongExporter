@@ -1,0 +1,12 @@
+{
+    "version": "0.5",
+    "requires": [
+        "link/3.1.2#24efbb48a0163fb7b1d89cd9752fa3f7%1738265915.4270449",
+        "capstone/5.0.1#1f9c39dc23cad765aab6a67b124bd712%1703969667.741"
+    ],
+    "build_requires": [
+        "cmake/3.31.3#8733a6094cad0031a30ddbd1e6055117%1735557487.463"
+    ],
+    "python_requires": [],
+    "config_requires": []
+}

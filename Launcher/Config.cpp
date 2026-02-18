@@ -81,6 +81,8 @@ bool config_load()
             config.server_ip = value;
         } else if (key == "update_rate") {
             // not support in UI right now
+        } else if (key == "use_link") {
+            config.use_link = (strtoul(value.c_str(), NULL, 10) != 0);
         }
     }
     // use the new version number and latest version of rekordbox
@@ -113,6 +115,7 @@ bool config_save()
        << "rbox_path=" << config.rbox_path << "\n"
        << "use_server=" << (config.use_server ? "1" : "0") << "\n"
        << "server_ip=" << config.server_ip << "\n"
+        << "use_link=" << (config.use_link ? "1" : "0") << "\n"
        << "\n[Output Files]\n";
     save_output_files(of);
     return true;

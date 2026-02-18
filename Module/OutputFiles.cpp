@@ -1,3 +1,4 @@
+#include <ableton/Link.hpp>
 #include <Windows.h>
 
 #include <fstream>
@@ -143,6 +144,22 @@ class output_file
 public:
   // construct an output file by parsing a config line
   output_file(const string &line);
+  // calc time since the first time this was called
+  static string get_timestamp_since_start();
+  // get bpm of a specific deck as a string
+  static string get_deck_bpm(uint32_t deck);
+  // get the rounded bpm of a specific deck as a string
+  static string get_deck_rounded_bpm(uint32_t deck);
+  // get master bpm as a string
+  static string get_master_bpm();
+  // get master rounded bpm as a string
+  static string get_master_rounded_bpm();
+  // get time of a specific deck
+  static string get_deck_time(uint32_t deck);
+  // get time of master deck
+  static string get_master_time();
+  static string get_deck_total_time(uint32_t deck);
+  static string get_master_total_time();
 
   // function to log a track to an output file
   void log_track(track_data *track);
@@ -192,22 +209,6 @@ private:
   bool rewrite_file(const string &filename, const string &data);
   // helper for in-place replacements
   bool replace(string &str, const string &from, const string &to);
-  // calc time since the first time this was called
-  string get_timestamp_since_start();
-  // get bpm of a specific deck as a string
-  string get_deck_bpm(uint32_t deck);
-  // get the rounded bpm of a specific deck as a string
-  string get_deck_rounded_bpm(uint32_t deck);
-  // get master bpm as a string
-  string get_master_bpm();
-  // get master rounded bpm as a string
-  string get_master_rounded_bpm();
-  // get time of a specific deck
-  string get_deck_time(uint32_t deck);
-  // get time of master deck
-  string get_master_time();
-  string get_deck_total_time(uint32_t deck);
-  string get_master_total_time();
 };
 
 // simple structure to describe the 'deck change' data, this is the data type
@@ -318,6 +319,15 @@ void push_deck_update(uint32_t deck_idx, deck_update_type_t type)
 // run the listener loop which waits for messages to update te output files
 void run_listener()
 {
+  // Ableton Link
+  ableton::Link *link = nullptr;
+  if(config.use_link) {
+    info("[LINK] Initializing Ableton Link");
+    link = new ableton::Link(120.);
+    link->enable(true);
+    success("[LINK] Ableton Link started");
+  }
+
   // Only write to log files in this safe thread, for some reason windows 8.1
   // doesn't like when we call CreateFile inside the threads that we hook.
 
@@ -366,11 +376,26 @@ void run_listener()
       if (track.bpm.length()) { info("\tbpm: %s", track.bpm.c_str()); }
 #endif
       break;
+    // don't load track data for these kinds of updates
+    // handle the Ableton Link BPM
     case UPDATE_TYPE_BPM:
     case UPDATE_TYPE_TIME:
     case UPDATE_TYPE_TOTAL_TIME:
     case UPDATE_TYPE_MASTER:
-      // don't load track data for these kinds of updates
+      // if the Ableton Link is enabled, send the BPM to Link
+      if (config.use_link && link != nullptr && link->isEnabled()) {
+        auto currentMasterBpm = output_file::get_master_bpm();
+        //info("[LINK] Session state capture started");
+        auto state = link->captureAppSessionState();
+        state.setTempo(stod(currentMasterBpm), chrono::microseconds(0));
+        //info("[LINK] Sending new BPM to Link peers...");
+        link->commitAppSessionState(state);
+        //success("[LINK] Master BPM set to: %s (%.2f)", currentMasterBpm.c_str(), stod(currentMasterBpm));
+      } else if (config.use_link && link == nullptr) {
+        error("[LINK] Ableton Link has not been initialized correctly, skipping BPM update");
+      } else if (config.use_link) {
+        error("[LINK] Ableton Link has been disabled, skipping BPM update");
+      }
       break;
     }
 
@@ -455,6 +480,17 @@ void run_listener()
       // log the track to the output file
       outfile->log_track(&track);
     }
+  }
+
+  // Shut down Ableton Link
+  if (config.use_link && link != nullptr && link->isEnabled()) {
+    info("[LINK] Stopping Ableton Link");
+    link->enable(false);
+    success("[LINK] Ableton Link stopped");
+  } else if (config.use_link && link == nullptr) {
+    error("[LINK] Ableton Link has not been initialized correctly, no need to stop");
+  } else if (config.use_link) {
+    error("[LINK] Ableton Link is already disabled, no need to stop");
   }
 }
 

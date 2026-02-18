@@ -48,13 +48,15 @@ typedef enum rbox_version_enum
 class Config
 {
 public:
-    Config() : version(RBVER_UNK), use_server(false), server_ip(), output_files(), update_rate(500) {}
+    Config() : version(RBVER_UNK), use_server(false), server_ip(), output_files(), update_rate(500), use_link(false) {}
     // the version loaded from config
     rbox_version_t version;
     // whether to use server mode
     bool use_server;
     // a server ip if there is one
     std::string server_ip;
+    // whether to use Ableton Link
+    bool use_link;
     // a vector of output file config strings
     std::vector<std::string> output_files;
     // a secret update_rate config for maxing out the server command update rate

@@ -85,6 +85,10 @@ HWND hwndMaxLinesEdit;
 HWND hwndLaunchButton;
 #define LAUNCH_BUTTON_ID        1014
 
+// launch button
+HWND hwndLinkCheck;
+#define LINK_CHECK_ID           1015
+
 
 // background color brush 1
 HBRUSH bkbrush;
@@ -144,7 +148,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, 
     hwnd = CreateWindow(wc.lpszClassName, "Rekordbox Song Exporter " RBSE_VERSION,
         WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
         (desktop.right/2) - 240, (desktop.bottom/2) - 84,
-        420, 269, NULL, NULL, hInstance, NULL);
+        420, 289, NULL, NULL, hInstance, NULL);
     if (!hwnd) {
         MessageBox(NULL, "Failed to open window", "Error", 0);
         return 0;
@@ -338,7 +342,7 @@ static void do_create(HWND hwnd)
     // Create listbox of output files
     hwndOutfilesList = CreateWindow(WC_LISTBOX, NULL,
         WS_VISIBLE | WS_CHILD | WS_BORDER | WS_VSCROLL | LBS_NOTIFY | WS_TABSTOP,
-        12, 70, 140, 128, hwnd, (HMENU)OUTFILES_LIST_ID, NULL, NULL);
+        12, 70, 140, 145, hwnd, (HMENU)OUTFILES_LIST_ID, NULL, NULL);
 
     // populate the listbox with names, when an item is
     // selected the rest of the fields will be populated
@@ -349,12 +353,12 @@ static void do_create(HWND hwnd)
     // Button to delete entries from listbox
     hwndDelFileButton = CreateWindow(WC_BUTTON, "Delete",
         WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON | WS_TABSTOP,
-        12, 192, 69, 28, hwnd, (HMENU)DEL_BUTTON_ID, NULL, NULL);
+        12, 210, 69, 30, hwnd, (HMENU)DEL_BUTTON_ID, NULL, NULL);
 
     // Button to add new entries to listbox
     hwndAddFileButton = CreateWindow(WC_BUTTON, "Add",
         WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON | WS_TABSTOP,
-        83, 192, 69, 28, hwnd, (HMENU)ADD_BUTTON_ID, NULL, NULL);
+        83, 210, 69, 30, hwnd, (HMENU)ADD_BUTTON_ID, NULL, NULL);
 
     // Output file name edit textbox
     hwndOutfileNameEdit = CreateWindow(WC_EDIT, "",
@@ -414,10 +418,24 @@ static void do_create(HWND hwnd)
         350, 148, 40, 20, hwnd, (HMENU)MAXLINES_EDIT_ID, NULL, NULL);
     EnableWindow(hwndMaxLinesEdit, false);
 
+    // end output file configs
+    // begin Ableton Link config
+
+    // create the Link checkbox and Link textbox
+    hwndLinkCheck = CreateWindow(WC_BUTTON, "Send Master BPM to AbletonLink",
+                                 WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX | WS_TABSTOP,
+                                 160, 178, 230, 16, hwnd, (HMENU)LINK_CHECK_ID, NULL, NULL);
+    // whether to enable Link checkbox
+    if (config.use_link) {
+      Button_SetCheck(hwndLinkCheck, true);
+    }
+
+    // end Ableton Link config
+
     // create the launch button
     hwndLaunchButton = CreateWindow(WC_BUTTON, "Launch",
         WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON | WS_TABSTOP,
-        160, 178, 230, 42, hwnd, (HMENU)LAUNCH_BUTTON_ID, NULL, NULL);
+        160, 198, 230, 42, hwnd, (HMENU)LAUNCH_BUTTON_ID, NULL, NULL);
 
     // -----------------------------------------------------
     // after everything is created send a message to select
@@ -461,7 +479,8 @@ static LRESULT do_button_paint(WPARAM wParam, LPARAM lParam)
         lParam == (LPARAM)hwndReplaceModeRadio ||
         lParam == (LPARAM)hwndAppendModeRadio ||
         lParam == (LPARAM)hwndPrependModeRadio ||
-        lParam == (LPARAM)hwndServerCheck
+        lParam == (LPARAM)hwndServerCheck ||
+        lParam == (LPARAM)hwndLinkCheck
         ) {
         SetBkMode(hdc, TRANSPARENT);
         return (LRESULT)bkbrush;
@@ -559,6 +578,9 @@ static void handle_click(HWND hwnd, WPARAM wParam, LPARAM lParam)
     case SERVER_CHECK_ID:
         config.use_server = !config.use_server;
         EnableWindow(hwndServerEdit, config.use_server);
+        break;
+    case LINK_CHECK_ID:
+        config.use_link = !config.use_link;
         break;
     default:
         break;

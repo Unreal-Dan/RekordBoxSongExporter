@@ -77,6 +77,8 @@ bool initialize_config()
             config.server_ip = value;
         } else if (key == "update_rate") {
             config.update_rate = strtoul(value.c_str(), NULL, 10);
+        } else if (key == "use_link") {
+            config.use_link = (strtoul(value.c_str(), NULL, 10) != 0);
         }
     }
     // read out all the output file config strings into a vector
